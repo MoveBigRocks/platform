@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# Backward-compatible entrypoint for the commit-msg hook.
+# Keep scripts as wrappers so both installation paths remain supported.
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+HOOK_SCRIPT="$SCRIPT_DIR/../.githooks/commit-msg"
+
+if [ -f "$HOOK_SCRIPT" ]; then
+  exec "$HOOK_SCRIPT" "$1"
+fi
+
+# If the canonical hook is not present, keep behavior permissive.
+exit 0

@@ -1,0 +1,821 @@
+{{define "api_tokens.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Agent Tokens - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+        <style>
+            .app-grid {
+                display: grid;
+                gap: 1rem;
+                grid-template-columns: repeat(1, 1fr);
+            }
+            @media (min-width: 768px) {
+                .app-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+            @media (min-width: 1200px) {
+                .app-grid {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+            }
+            .app-card {
+                background: white;
+                border-radius: 0.75rem;
+                border: 1px solid rgb(228 228 231);
+                padding: 1.25rem;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+                transition: box-shadow 0.2s, border-color 0.2s;
+            }
+            .app-card:hover {
+                box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+                border-color: rgb(199 210 254);
+            }
+            .app-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+            .app-icon {
+                width: 3rem;
+                height: 3rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 0.75rem;
+                flex-shrink: 0;
+            }
+            .app-icon-token {
+                background: rgb(220 252 231);
+                color: rgb(22 101 52);
+            }
+            .app-icon-oauth {
+                background: rgb(239 246 255);
+                color: rgb(59 130 246);
+            }
+            .app-name {
+                font-weight: 600;
+                font-size: 1rem;
+                color: rgb(24 24 27);
+                margin-bottom: 0.25rem;
+            }
+            .app-client-id {
+                font-size: 0.75rem;
+                color: rgb(113 113 122);
+                font-family: ui-monospace, monospace;
+            }
+            .type-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.25rem;
+                padding: 0.25rem 0.5rem;
+                font-size: 0.6875rem;
+                font-weight: 600;
+                border-radius: 0.375rem;
+                text-transform: uppercase;
+                letter-spacing: 0.025em;
+            }
+            .type-badge-token {
+                background: rgb(220 252 231);
+                color: rgb(22 101 52);
+            }
+            .type-badge-oauth {
+                background: rgb(219 234 254);
+                color: rgb(30 64 175);
+            }
+            .workspace-tags {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                margin-top: 0.75rem;
+            }
+            .workspace-tag {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.375rem;
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
+                font-weight: 500;
+                border-radius: 0.375rem;
+                background: rgb(243 244 246);
+                color: rgb(55 65 81);
+            }
+            .workspace-tag i {
+                width: 0.875rem;
+                height: 0.875rem;
+            }
+            .workspace-tag .permission-badge {
+                padding: 0.125rem 0.375rem;
+                font-size: 0.625rem;
+                font-weight: 600;
+                border-radius: 0.25rem;
+                text-transform: uppercase;
+            }
+            .permission-full {
+                background: rgb(220 252 231);
+                color: rgb(22 101 52);
+            }
+            .permission-readwrite {
+                background: rgb(219 234 254);
+                color: rgb(30 64 175);
+            }
+            .permission-read {
+                background: rgb(243 244 246);
+                color: rgb(75 85 99);
+            }
+            .app-meta {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 1rem;
+                margin-top: 1rem;
+                padding-top: 1rem;
+                border-top: 1px solid rgb(244 244 245);
+                font-size: 0.75rem;
+                color: rgb(113 113 122);
+            }
+            .app-meta-item {
+                display: flex;
+                align-items: center;
+                gap: 0.375rem;
+            }
+            .app-meta-item i {
+                width: 0.875rem;
+                height: 0.875rem;
+            }
+            .revoke-btn {
+                padding: 0.375rem 0.75rem;
+                font-size: 0.75rem;
+                font-weight: 500;
+                color: rgb(220 38 38);
+                background: rgb(254 242 242);
+                border: 1px solid rgb(254 202 202);
+                border-radius: 0.375rem;
+                cursor: pointer;
+                transition: all 0.15s;
+            }
+            .revoke-btn:hover {
+                background: rgb(254 226 226);
+                border-color: rgb(252 165 165);
+            }
+            .empty-state {
+                padding: 4rem 2rem;
+                text-align: center;
+                background: white;
+                border-radius: 0.75rem;
+                border: 1px solid rgb(228 228 231);
+            }
+            .empty-state-icon {
+                width: 4rem;
+                height: 4rem;
+                margin: 0 auto 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 9999px;
+                background: rgb(244 244 245);
+                color: rgb(161 161 170);
+            }
+            .section-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+            }
+            .section-title {
+                font-size: 1.125rem;
+                font-weight: 600;
+                color: rgb(24 24 27);
+            }
+            .section-description {
+                font-size: 0.875rem;
+                color: rgb(113 113 122);
+                margin-top: 0.25rem;
+            }
+            .create-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: white;
+                background: rgb(59 130 246);
+                border: none;
+                border-radius: 0.5rem;
+                cursor: pointer;
+                transition: background 0.15s;
+            }
+            .create-btn:hover {
+                background: rgb(37 99 235);
+            }
+            .modal-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 50;
+            }
+            .modal-content {
+                position: fixed;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                width: 100%;
+                max-width: 28rem;
+                background: white;
+                border-radius: 0.75rem;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                z-index: 51;
+            }
+            .modal-header {
+                padding: 1.25rem 1.5rem;
+                border-bottom: 1px solid rgb(228 228 231);
+            }
+            .modal-body {
+                padding: 1.5rem;
+            }
+            .modal-footer {
+                padding: 1rem 1.5rem;
+                border-top: 1px solid rgb(228 228 231);
+                display: flex;
+                justify-content: flex-end;
+                gap: 0.75rem;
+            }
+            .form-group {
+                margin-bottom: 1rem;
+            }
+            .form-label {
+                display: block;
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: rgb(55 65 81);
+                margin-bottom: 0.375rem;
+            }
+            .form-input, .form-select {
+                width: 100%;
+                padding: 0.5rem 0.75rem;
+                border: 1px solid rgb(209 213 219);
+                border-radius: 0.375rem;
+                font-size: 0.875rem;
+            }
+            .form-input:focus, .form-select:focus {
+                outline: none;
+                border-color: rgb(59 130 246);
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+            .btn-secondary {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: rgb(55 65 81);
+                background: white;
+                border: 1px solid rgb(209 213 219);
+                border-radius: 0.375rem;
+                cursor: pointer;
+            }
+            .btn-secondary:hover {
+                background: rgb(249 250 251);
+            }
+            .success-alert {
+                background: rgb(220 252 231);
+                border: 1px solid rgb(134 239 172);
+                border-radius: 0.75rem;
+                padding: 1rem 1.25rem;
+                margin-bottom: 1.5rem;
+            }
+            .success-alert h4 {
+                font-weight: 600;
+                color: rgb(22 101 52);
+                margin-bottom: 0.5rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            .success-alert p {
+                font-size: 0.875rem;
+                color: rgb(21 128 61);
+                margin-bottom: 0.75rem;
+            }
+            .token-display {
+                display: flex;
+                gap: 0.5rem;
+                align-items: center;
+                background: white;
+                border: 1px solid rgb(134 239 172);
+                border-radius: 0.5rem;
+                padding: 0.75rem 1rem;
+                font-family: ui-monospace, monospace;
+                font-size: 0.875rem;
+            }
+            .token-display code {
+                flex: 1;
+                word-break: break-all;
+            }
+            .copy-btn {
+                padding: 0.375rem 0.75rem;
+                font-size: 0.75rem;
+                font-weight: 500;
+                color: rgb(22 101 52);
+                background: rgb(187 247 208);
+                border: 1px solid rgb(134 239 172);
+                border-radius: 0.375rem;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 0.375rem;
+            }
+            .setup-box {
+                background: rgb(249 250 251);
+                border: 1px solid rgb(229 231 235);
+                border-radius: 0.5rem;
+                padding: 1rem;
+                margin-top: 1rem;
+            }
+            .setup-box h5 {
+                font-weight: 600;
+                margin-bottom: 0.5rem;
+                color: rgb(55 65 81);
+                font-size: 0.8125rem;
+            }
+            .setup-box code {
+                display: block;
+                background: rgb(17 24 39);
+                color: rgb(229 231 235);
+                padding: 0.75rem 1rem;
+                border-radius: 0.375rem;
+                font-size: 0.75rem;
+                overflow-x: auto;
+                white-space: pre-wrap;
+                word-break: break-all;
+            }
+        </style>
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="page-content">
+                    <!-- Action Bar (hidden when empty) -->
+                    <div id="action-bar" style="display: none; justify-content: flex-end; margin-bottom: 1.5rem;">
+                        <button type="button" onclick="openCreateModal()" class="create-btn">
+                            <i data-lucide="plus" class="h-4 w-4"></i>
+                            Create API Token
+                        </button>
+                    </div>
+
+                    <!-- New Token Success Alert (hidden by default) -->
+                    <div id="new-token-alert" class="success-alert" style="display: none;">
+                        <h4>
+                            <i data-lucide="check-circle" class="h-5 w-5"></i>
+                            Token Created Successfully
+                        </h4>
+                        <p>Copy this token now - it won't be shown again!</p>
+                        <div class="token-display">
+                            <code id="new-token-value"></code>
+                            <button type="button" onclick="copyNewToken()" class="copy-btn">
+                                <i data-lucide="copy" class="h-3.5 w-3.5"></i>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="setup-box">
+                            <h5>Setup Command:</h5>
+                            <code id="setup-command"></code>
+                        </div>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="loading-state" class="empty-state">
+                        <div class="empty-state-icon">
+                            <i data-lucide="loader-2" class="h-8 w-8 animate-spin"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-zinc-900">Loading...</h3>
+                        <p class="text-zinc-500 mt-1">Fetching your API tokens</p>
+                    </div>
+
+                    <!-- Empty State (hidden by default) -->
+                    <div id="empty-state" class="empty-state" style="display: none;">
+                        <div class="empty-state-icon">
+                            <i data-lucide="key" class="h-8 w-8"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-zinc-900">No Agent Tokens</h3>
+                        <p class="text-zinc-500 mt-1">Create an API token to connect CLI tools like Claude Code, scripts, or other integrations.</p>
+                        <button type="button" onclick="openCreateModal()" class="create-btn mt-4">
+                            <i data-lucide="plus" class="h-4 w-4"></i>
+                            Create API Token
+                        </button>
+                    </div>
+
+                    <!-- App Grid (hidden by default) -->
+                    <div id="app-grid" class="app-grid" style="display: none;">
+                        <!-- Apps will be loaded here via JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Create Token Modal -->
+        <div id="create-modal" class="hidden">
+            <div class="modal-backdrop" onclick="closeCreateModal()"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="text-lg font-semibold text-zinc-900">Create API Token</h3>
+                    <p class="text-sm text-zinc-500 mt-1">Create a token for CLI tools, scripts, or other integrations</p>
+                </div>
+                <form id="create-token-form" onsubmit="createToken(event)">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label" for="token-name">Token Name</label>
+                            <input type="text" id="token-name" name="name" placeholder="e.g., My CLI Token" required class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="workspace-id">Workspace</label>
+                            <select id="workspace-id" name="workspaceId" required class="form-select">
+                                <option value="">Select a workspace...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" onclick="closeCreateModal()" class="btn-secondary">Cancel</button>
+                        <button type="submit" id="create-btn" class="create-btn">
+                            <i data-lucide="plus" class="h-4 w-4"></i>
+                            Create Token
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Revoke Confirmation Modal -->
+        <div id="revoke-modal" class="hidden">
+            <div class="modal-backdrop" onclick="closeRevokeModal()"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="text-lg font-semibold text-zinc-900">Revoke Access?</h3>
+                </div>
+                <div class="modal-body">
+                    <p class="text-sm text-zinc-600">
+                        This will immediately revoke <strong id="revoke-app-name"></strong>'s access to your workspaces.
+                        The application will need to be re-authorized to regain access.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="closeRevokeModal()" class="btn-secondary">Cancel</button>
+                    <button id="confirm-revoke-btn" onclick="confirmRevoke()" class="revoke-btn" style="padding: 0.5rem 1rem;">
+                        Revoke Access
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            let tokens = [];
+            let pendingRevokeTokenId = null;
+            let newTokenValue = '';
+
+            document.addEventListener('DOMContentLoaded', function() {
+                loadWorkspaces();
+                loadTokens();
+            });
+
+            function openCreateModal() {
+                document.getElementById('create-modal').classList.remove('hidden');
+            }
+
+            function closeCreateModal() {
+                document.getElementById('create-modal').classList.add('hidden');
+                document.getElementById('create-token-form').reset();
+            }
+
+            async function loadWorkspaces() {
+                try {
+                    const response = await fetch('/admin/graphql', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            query: `query { workspaces { id name } }`
+                        })
+                    });
+                    const data = await response.json();
+                    if (data.errors) {
+                        console.error('GraphQL errors:', data.errors);
+                        return;
+                    }
+                    if (data.data && data.data.workspaces) {
+                        const select = document.getElementById('workspace-id');
+                        data.data.workspaces.forEach(ws => {
+                            const option = document.createElement('option');
+                            option.value = ws.id;
+                            option.textContent = ws.name;
+                            select.appendChild(option);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error loading workspaces:', error);
+                }
+            }
+
+            async function createToken(event) {
+                event.preventDefault();
+
+                const name = document.getElementById('token-name').value;
+                const workspaceId = document.getElementById('workspace-id').value;
+                const btn = document.getElementById('create-btn');
+
+                btn.disabled = true;
+                btn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 animate-spin"></i> Creating...';
+                lucide.createIcons();
+
+                try {
+                    // First create the agent
+                    const agentResponse = await fetch('/admin/graphql', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            query: `mutation CreateAgent($input: CreateAgentInput!) {
+                                createAgent(input: $input) { id name }
+                            }`,
+                            variables: {
+                                input: {
+                                    workspaceID: workspaceId,
+                                    name: name,
+                                    description: "Created via Authorized Apps page"
+                                }
+                            }
+                        })
+                    });
+
+                    const agentData = await agentResponse.json();
+                    if (agentData.errors) {
+                        throw new Error(agentData.errors[0].message);
+                    }
+
+                    const agentId = agentData.data.createAgent.id;
+
+                    // Then create the token
+                    const tokenResponse = await fetch('/admin/graphql', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            query: `mutation CreateAgentToken($input: CreateAgentTokenInput!) {
+                                createAgentToken(input: $input) {
+                                    token { id name tokenPrefix }
+                                    plaintextToken
+                                }
+                            }`,
+                            variables: {
+                                input: { agentID: agentId, name: "default" }
+                            }
+                        })
+                    });
+
+                    const tokenData = await tokenResponse.json();
+                    if (tokenData.errors) {
+                        throw new Error(tokenData.errors[0].message);
+                    }
+
+                    const plainToken = tokenData.data.createAgentToken.plaintextToken;
+                    closeCreateModal();
+                    showNewToken(plainToken);
+                    loadTokens();
+
+                } catch (error) {
+                    console.error('Error creating token:', error);
+                    alert('Failed to create token: ' + error.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i data-lucide="plus" class="h-4 w-4"></i> Create Token';
+                    lucide.createIcons();
+                }
+            }
+
+            function showNewToken(token) {
+                newTokenValue = token;
+                document.getElementById('new-token-value').textContent = token;
+                const apiOrigin = window.location.hostname.startsWith('admin.')
+                    ? window.location.origin.replace('://admin.', '://api.')
+                    : window.location.origin;
+                document.getElementById('setup-command').textContent =
+                    `curl -sS ${apiOrigin}/graphql -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" -d '{"query":"query { __typename }"}'`;
+                document.getElementById('new-token-alert').style.display = 'block';
+                lucide.createIcons();
+                document.getElementById('new-token-alert').scrollIntoView({ behavior: 'smooth' });
+            }
+
+            function copyNewToken() {
+                navigator.clipboard.writeText(newTokenValue).then(() => {
+                    const btn = event.target.closest('button');
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i data-lucide="check" class="h-3.5 w-3.5"></i> Copied!';
+                    lucide.createIcons();
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        lucide.createIcons();
+                    }, 2000);
+                });
+            }
+
+            async function loadTokens() {
+                try {
+                    const response = await fetch('/admin/graphql', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            query: `query {
+                                workspaces {
+                                    id
+                                    name
+                                    agents {
+                                        id
+                                        name
+                                        status
+                                        createdAt
+                                        tokens {
+                                            id
+                                            name
+                                            tokenPrefix
+                                            createdAt
+                                            lastUsedAt
+                                            revokedAt
+                                        }
+                                    }
+                                }
+                            }`
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.errors) {
+                        throw new Error(data.errors[0].message);
+                    }
+
+                    // Process agent tokens
+                    let tokenList = [];
+                    if (data.data && data.data.workspaces) {
+                        data.data.workspaces.forEach(ws => {
+                            (ws.agents || []).forEach(agent => {
+                                (agent.tokens || []).filter(t => !t.revokedAt).forEach(token => {
+                                    tokenList.push({
+                                        id: token.id,
+                                        agent_id: agent.id,
+                                        name: agent.name,
+                                        token_prefix: token.tokenPrefix + '...',
+                                        created_at: token.createdAt,
+                                        last_used_at: token.lastUsedAt,
+                                        workspace_name: ws.name,
+                                        workspace_id: ws.id,
+                                        status: agent.status
+                                    });
+                                });
+                            });
+                        });
+                    }
+
+                    // Sort by creation date (newest first)
+                    tokens = tokenList.sort((a, b) =>
+                        new Date(b.created_at) - new Date(a.created_at)
+                    );
+
+                    renderTokens();
+                } catch (error) {
+                    console.error('Error loading tokens:', error);
+                    document.getElementById('loading-state').innerHTML = `
+                        <div class="empty-state-icon" style="background: rgb(254 242 242); color: rgb(220 38 38);">
+                            <i data-lucide="alert-triangle" class="h-8 w-8"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-zinc-900">Error Loading Data</h3>
+                        <p class="text-zinc-500 mt-1">Failed to load API tokens. Please try refreshing the page.</p>
+                    `;
+                    lucide.createIcons();
+                }
+            }
+
+            function renderTokens() {
+                const loadingState = document.getElementById('loading-state');
+                const emptyState = document.getElementById('empty-state');
+                const appGrid = document.getElementById('app-grid');
+                const actionBar = document.getElementById('action-bar');
+
+                loadingState.style.display = 'none';
+
+                if (tokens.length === 0) {
+                    emptyState.style.display = 'block';
+                    appGrid.style.display = 'none';
+                    actionBar.style.display = 'none';
+                    lucide.createIcons();
+                    return;
+                }
+
+                emptyState.style.display = 'none';
+                appGrid.style.display = 'grid';
+                actionBar.style.display = 'flex';
+                appGrid.innerHTML = tokens.map(token => renderTokenCard(token)).join('');
+                lucide.createIcons();
+            }
+
+            function renderTokenCard(token) {
+                const createdAt = new Date(token.created_at).toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'short', day: 'numeric'
+                });
+                const lastUsed = token.last_used_at
+                    ? new Date(token.last_used_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                    : 'Never';
+
+                return `
+                    <div class="app-card">
+                        <div class="app-header">
+                            <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                                <div class="app-icon app-icon-token">
+                                    <i data-lucide="key" class="h-6 w-6"></i>
+                                </div>
+                                <div>
+                                    <div class="app-name">${escapeHtml(token.name)}</div>
+                                    <div class="app-client-id">${escapeHtml(token.token_prefix)}</div>
+                                </div>
+                            </div>
+                            <button class="revoke-btn" onclick="showRevokeModal('${token.id}', '${escapeHtml(token.name)}')">
+                                Revoke
+                            </button>
+                        </div>
+
+                        <div class="workspace-tags">
+                            <span class="workspace-tag">
+                                <i data-lucide="box"></i>
+                                ${escapeHtml(token.workspace_name)}
+                            </span>
+                        </div>
+
+                        <div class="app-meta">
+                            <div class="app-meta-item">
+                                <i data-lucide="calendar"></i>
+                                Created ${createdAt}
+                            </div>
+                            <div class="app-meta-item">
+                                <i data-lucide="activity"></i>
+                                Last used: ${lastUsed}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function showRevokeModal(id, name) {
+                pendingRevokeTokenId = id;
+                document.getElementById('revoke-app-name').textContent = name;
+                document.getElementById('revoke-modal').classList.remove('hidden');
+            }
+
+            function closeRevokeModal() {
+                pendingRevokeTokenId = null;
+                document.getElementById('revoke-modal').classList.add('hidden');
+            }
+
+            async function confirmRevoke() {
+                if (!pendingRevokeTokenId) return;
+
+                const btn = document.getElementById('confirm-revoke-btn');
+                btn.disabled = true;
+                btn.textContent = 'Revoking...';
+
+                try {
+                    const response = await fetch('/admin/graphql', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            query: `mutation RevokeAgentToken($id: ID!) {
+                                revokeAgentToken(id: $id) { id }
+                            }`,
+                            variables: { id: pendingRevokeTokenId }
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.errors) {
+                        throw new Error(data.errors[0].message);
+                    }
+
+                    closeRevokeModal();
+                    loadTokens();
+                } catch (error) {
+                    console.error('Error revoking:', error);
+                    alert('Failed to revoke token: ' + error.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Revoke Access';
+                }
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        </script>
+    </body>
+</html>
+{{end}}

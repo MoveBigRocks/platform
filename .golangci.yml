@@ -1,0 +1,180 @@
+# =============================================================================
+# golangci-lint configuration
+# =============================================================================
+#
+# PHILOSOPHY:
+#   1. Strict by default - every error matters until proven otherwise
+#   2. No blanket exclusions for production code - if you ignore an error,
+#      use `_ = fn()` so it's visible in code review, not hidden in config
+#   3. Test code gets relaxed rules because tests are about behavior verification,
+#      not production hardening
+#
+# WHY THIS MATTERS:
+#   The previous config had ~90 exclude rules suppressing errcheck across entire
+#   directories with comments like "best-effort operations". That's not configuration,
+#   that's denial. When something fails in production, you want to know about it.
+#
+# =============================================================================
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    # -------------------------------------------------------------------------
+    # Core linters - these catch real bugs, not style issues
+    # -------------------------------------------------------------------------
+    - govet         # Catches subtle bugs: printf format mismatches, struct tag errors, etc.
+    - staticcheck   # The gold standard for Go static analysis - finds real bugs
+    - gosimple      # Suggests simplifications that reduce cognitive load
+    - ineffassign   # Catches `x = foo()` where x is never read - often indicates logic errors
+    - unused        # Dead code is confusing code - delete it
+    - errcheck      # THE MOST IMPORTANT LINTER: unchecked errors are silent failures
+
+    # -------------------------------------------------------------------------
+    # Quality linters - these enforce consistency and catch common mistakes
+    # -------------------------------------------------------------------------
+    - gocritic      # Catches common Go gotchas (e.g., append to wrong slice)
+    - unconvert     # Unnecessary conversions add noise and hide intent
+    - misspell      # Typos in comments/strings look unprofessional
+    - gofmt         # Non-negotiable: all Go code must be gofmt'd
+    - goimports     # Consistent import ordering aids code review
+    - bodyclose     # Leaked HTTP response bodies cause resource exhaustion
+    - nilerr        # `if err != nil { return nil }` is almost always a bug
+    - copyloopvar   # Pre-Go 1.22 loop variable capture bug detector
+
+  disable:
+    - typecheck  # Redundant: `go build` already does this, and it's more accurate
+
+linters-settings:
+  errcheck:
+    # WHY check-blank: false?
+    # We WANT developers to write `_ = fn()` when intentionally ignoring errors.
+    # This makes the decision visible in code review. If check-blank were true,
+    # they'd have to add //nolint comments which are easier to miss.
+    check-blank: false
+
+    # WHY exclude these functions?
+    # These functions have error returns that literally cannot fail in normal operation,
+    # or where failure is unrecoverable anyway. Checking them adds noise without value.
+    exclude-functions:
+      # In-memory buffer writes cannot fail - they just grow the buffer
+      - (*bytes.Buffer).WriteString
+      - (*bytes.Buffer).Write
+      - (*bytes.Buffer).WriteByte
+      - (*bytes.Buffer).WriteRune
+      - (*strings.Builder).WriteString
+      - (*strings.Builder).Write
+      - (*strings.Builder).WriteByte
+      - (*strings.Builder).WriteRune
+
+      # Hash.Write never returns an error (per hash.Hash interface contract)
+      - (hash.Hash).Write
+
+      # Printing to stdout/stderr: if these fail, there's nothing we can do anyway
+      # (and the program is probably terminating). Checking adds noise to every log line.
+      - fmt.Print
+      - fmt.Println
+      - fmt.Printf
+
+      # Close after successful read: we already have the data, error here is informational only
+      - (*os.File).Close
+
+  gocritic:
+    disabled-checks:
+      # WHY disable commentFormatting?
+      # Requiring "// Foo" instead of "//Foo" is pedantic and breaks legitimate
+      # patterns like "//nolint" directives. Not worth the noise.
+      - commentFormatting
+
+      # WHY disable exitAfterDefer?
+      # main() functions legitimately call os.Exit() or log.Fatal(). The defers
+      # not running is intentional - we're terminating the program.
+      - exitAfterDefer
+
+      # WHY disable ifElseChain?
+      # Sometimes a clear if/else chain is more readable than a switch.
+      # This is stylistic, not a bug. Let humans decide.
+      - ifElseChain
+
+  misspell:
+    locale: US  # Consistency: pick one locale and stick with it
+
+issues:
+  exclude-dirs:
+    - vendor  # Third-party code is not our problem
+
+  # WHY unlimited issues?
+  # When you're fixing linter issues, you want to see ALL of them, not an arbitrary
+  # subset. Hiding issues just means you'll be surprised later.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+  exclude-rules:
+    # =========================================================================
+    # TEST CODE EXCLUSIONS
+    # =========================================================================
+    # WHY relax rules for tests?
+    # Tests have different goals than production code:
+    # - errcheck: Tests often intentionally trigger errors to verify error handling
+    # - gocritic: Test helper patterns sometimes look "wrong" but are correct for tests
+    # - bodyclose: Test HTTP clients are short-lived; leaked bodies don't matter
+    # - unused: Test helpers may be used conditionally or in future tests
+    # =========================================================================
+
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gocritic
+        - bodyclose
+        - unused
+
+    # =========================================================================
+    # TEST UTILITIES (internal/testutil/)
+    # =========================================================================
+    # WHY extra exclusions for test utilities?
+    # The synth package generates test scenarios that intentionally:
+    # - Return nil on error to test error recovery paths (nilerr)
+    # - Have "unused" code that's used conditionally (unused)
+    # - Reassign err without reading it to simulate partial failures (ineffassign)
+    # - Access potentially nil values to test nil handling (staticcheck SA5011)
+    # These patterns would be bugs in production but are correct for test generation.
+    # =========================================================================
+
+    - path: internal/testutil/
+      linters:
+        - errcheck
+        - gocritic
+        - unused
+        - nilerr
+        - ineffassign
+        - staticcheck
+
+    # =========================================================================
+    # INTEGRATION TESTS (internal/integration/)
+    # =========================================================================
+    # WHY relax rules here?
+    # Integration tests focus on end-to-end behavior, not error handling minutiae.
+    # They may have placeholder code or conditional test paths.
+    # =========================================================================
+
+    - path: internal/integration/
+      linters:
+        - errcheck
+        - unused
+
+    # =========================================================================
+    # KNOWN LINTER FALSE POSITIVES
+    # =========================================================================
+    # WHY this specific exclusion?
+    # unconvert incorrectly flags `string(event.Priority)` as unnecessary.
+    # CasePriority is `type CasePriority string`, but prometheus' WithLabelValues
+    # takes `...string`, not `...CasePriority`. The conversion IS necessary.
+    # This is a known limitation of unconvert with type aliases in variadic calls.
+    # =========================================================================
+
+    - path: internal/support/handlers/case_handler\.go
+      linters:
+        - unconvert
+      text: "unnecessary conversion"

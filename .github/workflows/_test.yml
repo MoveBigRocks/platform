@@ -1,0 +1,160 @@
+name: Test
+
+on:
+  workflow_call:
+    outputs:
+      tests_passed:
+        description: "Whether all tests passed"
+        value: ${{ jobs.test.outputs.passed }}
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    outputs:
+      passed: ${{ steps.unit_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.0'
+          cache-dependency-path: go.sum
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v4
+        continue-on-error: true
+        with:
+          version: latest
+          args: --timeout=5m
+          install-mode: goinstall
+
+      - name: Run docs link check
+        run: make docs-check
+
+      - name: Run unit tests (no integration)
+        id: unit_tests
+        env:
+          DATABASE_DSN: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
+          TEST_DATABASE_ADMIN_DSN: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
+          STORAGE_TYPE: filesystem
+          STORAGE_PATH: /tmp/mbr-test
+          CACHE_ENABLED: true
+        run: go test -v -short -race -coverprofile=coverage.out ./...
+
+      - name: Run integration tests
+        id: integration_tests
+        continue-on-error: true
+        env:
+          DATABASE_DSN: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
+          TEST_DATABASE_ADMIN_DSN: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
+          STORAGE_TYPE: filesystem
+          STORAGE_PATH: /tmp/mbr-test
+          CACHE_ENABLED: true
+        run: go test -v -tags=integration ./...
+
+      - name: Run PostgreSQL migration and store tests
+        id: postgres_tests
+        env:
+          TEST_DATABASE_ADMIN_DSN: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
+          STORAGE_TYPE: filesystem
+          STORAGE_PATH: /tmp/mbr-test
+          CACHE_ENABLED: true
+        run: |
+          go test -v ./internal/infrastructure/stores/sql \
+            -run 'TestStoreContractPostgres|TestExtensionSchemaMigrator|TestNewDBWithConfigRejectsDirtyPostgresMigrationLedger|TestOutboxStoreGetPendingOutboxEventsOnPostgres|TestIdempotencyStoreMarkProcessedOnPostgres|TestRuleStoreIncrementRuleStatsOnPostgres|TestErrorMonitoringStoreDeleteProjectOnPostgres|TestCaseStoreLinkCaseToKBArticleOnPostgres' \
+            -count=1
+
+      - name: Run deadcode on production packages only
+        run: make deadcode-production
+
+      - name: Run Sentry SDK integration tests (optional, external)
+        id: sentry_sdk_tests
+        continue-on-error: true
+        run: |
+          if [ "${RUN_SENTRY_SDK_TESTS:-false}" != "true" ]; then
+            echo "Skipping Sentry SDK tests (set RUN_SENTRY_SDK_TESTS=true to run)."
+            exit 0
+          fi
+
+          cd tests
+          npm install --no-audit --no-fund
+          node sentry_sdk_integration_test.js
+          cd ..
+          python3 -m pip install --user --quiet sentry-sdk requests
+          python3 tests/sentry_sdk_integration_test.py
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.out
+          flags: unittests
+        continue-on-error: true
+
+      - name: Security scan with gosec
+        continue-on-error: true
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          # Run gosec and fail on HIGH severity issues
+          # -severity=high: Only fail on high severity issues
+          # -confidence=high: Require high confidence to fail (reduces false positives)
+          # Exclude test files and generated code
+          gosec -severity=high -confidence=high -exclude-dir=tests -exclude-dir=testutil -fmt text ./...
+
+      - name: Vulnerability scan with govulncheck
+        continue-on-error: true
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: Build verification
+        run: |
+          go build -v -o mbr-server ./cmd/api
+          go build -v -o mbr ./cmd/mbr
+
+      - name: Create test summary
+        if: always()
+        run: |
+          if [ -f coverage.out ]; then
+            COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $NF}' | sed 's/%//')
+          else
+            COVERAGE="N/A"
+          fi
+
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ## Test Results
+
+          **Status**: ${{ steps.unit_tests.outcome == 'success' && steps.integration_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' && 'All tests passed' || 'Tests failed' }}
+          **Commit**: \`${{ github.sha }}\`
+          **Coverage**: ${COVERAGE}%
+
+          ### Checks Performed
+          - Go linting (golangci-lint)
+          - Unit tests with race detection (PostgreSQL)
+          - Integration tests
+          - PostgreSQL migration and store integration tests
+          - Dead-code scan (production packages)
+          - Optional Sentry SDK integration tests
+          - Security scan (gosec)
+          - Build verification
+          EOF

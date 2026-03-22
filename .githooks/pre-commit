@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# pre-commit hook for hectic
+set -e
+
+echo "Running pre-commit checks..."
+
+# 1. Check Go builds
+echo "  [1/5] Building Go code..."
+if ! go build ./... 2>&1; then
+	echo "FAILED: Go build failed"
+	exit 1
+fi
+
+# 2. Run linter (if golangci-lint is installed)
+echo "  [2/5] Running linter..."
+if command -v golangci-lint &> /dev/null; then
+	if ! golangci-lint run --timeout=2m 2>&1; then
+		echo "FAILED: Linter found issues"
+		exit 1
+	fi
+else
+	echo "    (skipped - golangci-lint not installed)"
+fi
+
+# 3. Validate templates parse correctly (catches undefined functions, syntax errors)
+echo "  [3/5] Validating admin templates..."
+if ! go run cmd/tools/validate-templates/main.go 2>&1; then
+	echo ""
+	echo "FAILED: Template validation failed!"
+	echo "Fix the template errors above before committing."
+	exit 1
+fi
+
+# 4. Check admin panel templates for endpoint drift (legacy /api paths)
+echo "  [4/5] Checking admin template endpoint contracts..."
+if ! bash "$(git rev-parse --show-toplevel)/scripts/check-admin-endpoint-drift.sh"; then
+	echo "FAILED: Admin template route drift check failed"
+	exit 1
+fi
+
+# 5. Run quick tests (if they exist)
+echo "  [5/5] Running quick tests..."
+if go test ./... -short -count=1 2>&1 | grep -q "FAIL"; then
+	echo "FAILED: Tests failed"
+	go test ./... -short -count=1 2>&1 | grep -A5 "FAIL"
+	exit 1
+fi
+
+echo "All pre-commit checks passed!"

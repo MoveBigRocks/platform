@@ -1,0 +1,15 @@
+{
+  "uid": "mbr-tracing",
+  "title": "Distributed Tracing",
+  "tags": ["mbr", "tracing"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1, "title": "Tracing", "type": "text",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "options": {"content": "# Distributed Tracing\n\nTrace data will be available once OpenTelemetry is integrated.\n\nTo enable, add the OTLP exporter and configure TRACING_ENABLED=true.", "mode": "markdown"}
+    }
+  ],
+  "schemaVersion": 39
+}

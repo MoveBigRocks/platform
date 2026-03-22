@@ -1,0 +1,1820 @@
+# Move Big Rocks GraphQL API Schema
+# Used by admin portal, services, and AI agents
+
+scalar DateTime
+scalar JSON
+
+# =============================================================================
+# Principal Types (Users and Agents)
+# =============================================================================
+
+enum PrincipalType {
+  user
+  agent
+}
+
+enum AgentStatus {
+  active
+  suspended
+  revoked
+}
+
+type Agent {
+  id: ID!
+  workspaceID: ID!
+  name: String!
+  description: String
+  ownerID: ID!
+  owner: User
+  status: AgentStatus!
+  statusReason: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdByID: ID!
+  tokens: [AgentToken!]!
+  membership: WorkspaceMembership
+}
+
+type AgentToken {
+  id: ID!
+  agentID: ID!
+  tokenPrefix: String!
+  name: String!
+  expiresAt: DateTime
+  revokedAt: DateTime
+  lastUsedAt: DateTime
+  lastUsedIP: String
+  useCount: Int!
+  createdAt: DateTime!
+  createdByID: ID!
+}
+
+type User {
+  id: ID!
+  email: String!
+  name: String!
+  avatarURL: String
+}
+
+type WorkspaceMembership {
+  id: ID!
+  workspaceID: ID!
+  principalID: ID!
+  principalType: PrincipalType!
+  role: String!
+  permissions: [String!]!
+  constraints: MembershipConstraints!
+  grantedAt: DateTime!
+  expiresAt: DateTime
+  revokedAt: DateTime
+}
+
+type MembershipConstraints {
+  rateLimitPerMinute: Int
+  rateLimitPerHour: Int
+  allowedIPs: [String!]!
+  allowedProjectIDs: [ID!]!
+  allowedTeamIDs: [ID!]!
+  allowDelegatedRouting: Boolean!
+  delegatedRoutingTeamIDs: [ID!]!
+  activeHoursStart: String
+  activeHoursEnd: String
+  activeTimezone: String
+  activeDays: [Int!]!
+}
+
+type Team {
+  id: ID!
+  workspaceID: ID!
+  name: String!
+  description: String
+  emailAddress: String
+  responseTimeHours: Int!
+  resolutionTimeHours: Int!
+  autoAssign: Boolean!
+  autoAssignKeywords: [String!]!
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  members: [TeamMember!]!
+}
+
+type TeamMember {
+  id: ID!
+  teamID: ID!
+  userID: ID!
+  workspaceID: ID!
+  role: String!
+  isActive: Boolean!
+  joinedAt: DateTime!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# =============================================================================
+# Workspace
+# =============================================================================
+
+type Workspace {
+  id: ID!
+  name: String!
+  shortCode: String!
+  agents: [Agent!]!
+  teams: [Team!]!
+  queues: [Queue!]!
+  extensions: [InstalledExtension!]!
+  cases(filter: CaseFilter): CaseConnection!
+}
+
+# =============================================================================
+# Support (Cases)
+# =============================================================================
+
+# Case status matches shareddomain constants
+enum CaseStatus {
+  new
+  open
+  pending
+  resolved
+  closed
+  spam
+}
+
+enum CasePriority {
+  low
+  medium
+  high
+  urgent
+}
+
+type Queue {
+  id: ID!
+  workspaceID: ID!
+  slug: String!
+  name: String!
+  description: String
+  items: [QueueItem!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum QueueItemKind {
+  case
+  conversation_session
+}
+
+type QueueItem {
+  id: ID!
+  workspaceID: ID!
+  queueID: ID!
+  itemKind: QueueItemKind!
+  caseID: ID
+  conversationSessionID: ID
+  case: Case
+  conversationSession: ConversationSession
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum ConversationChannel {
+  web_chat
+  mobile_chat
+  email
+  operator_console
+}
+
+enum ConversationStatus {
+  open
+  waiting
+  escalated
+  resolved
+  closed
+}
+
+enum ConversationParticipantKind {
+  anonymous_visitor
+  contact
+  user
+  agent
+  runtime_connector
+}
+
+enum ConversationParticipantRole {
+  requester
+  operator
+  assistant
+  observer
+}
+
+enum ConversationMessageRole {
+  user
+  assistant
+  system
+  tool
+}
+
+enum ConversationMessageKind {
+  text
+  tool_call
+  tool_result
+  citation
+  form_update
+  event
+}
+
+enum ConversationMessageVisibility {
+  customer
+  internal
+}
+
+enum ConversationOutcomeKind {
+  resolved_in_session
+  form_drafted
+  form_submitted
+  case_created
+  handed_to_operator
+}
+
+type ConversationCatalogSuggestion {
+  catalogNodeID: ID!
+  reason: String
+  confidence: Float!
+}
+
+type ConversationParticipant {
+  id: ID!
+  workspaceID: ID!
+  conversationSessionID: ID!
+  participantKind: ConversationParticipantKind!
+  participantRef: String!
+  roleInSession: ConversationParticipantRole!
+  displayName: String
+  joinedAt: DateTime!
+  leftAt: DateTime
+  metadata: JSON!
+  createdAt: DateTime!
+}
+
+type ConversationMessage {
+  id: ID!
+  workspaceID: ID!
+  conversationSessionID: ID!
+  participantID: ID
+  role: ConversationMessageRole!
+  kind: ConversationMessageKind!
+  visibility: ConversationMessageVisibility!
+  contentText: String
+  content: JSON!
+  createdAt: DateTime!
+}
+
+type ConversationWorkingState {
+  conversationSessionID: ID!
+  workspaceID: ID!
+  primaryCatalogNodeID: ID
+  suggestedCatalogNodes: [ConversationCatalogSuggestion!]!
+  classificationConfidence: Float
+  activePolicyProfileRef: String
+  activeFormSpecID: ID
+  activeFormSubmissionID: ID
+  collectedFields: JSON!
+  missingFields: JSON!
+  requiresOperatorReview: Boolean!
+  updatedAt: DateTime!
+}
+
+type ConversationOutcome {
+  id: ID!
+  workspaceID: ID!
+  conversationSessionID: ID!
+  kind: ConversationOutcomeKind!
+  resultRef: JSON!
+  createdAt: DateTime!
+}
+
+type ConversationSession {
+  id: ID!
+  workspaceID: ID!
+  channel: ConversationChannel!
+  status: ConversationStatus!
+  title: String
+  languageCode: String
+  sourceRef: String
+  externalSessionKey: String
+  primaryContactID: ID
+  primaryCatalogNodeID: ID
+  activeFormSpecID: ID
+  activeFormSubmissionID: ID
+  linkedCaseID: ID
+  handlingTeamID: ID
+  assignedOperatorUserID: ID
+  delegatedRuntimeConnectorID: String
+  openedAt: DateTime!
+  lastActivityAt: DateTime!
+  closedAt: DateTime
+  metadata: JSON!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  participants: [ConversationParticipant!]!
+  messages(visibility: ConversationMessageVisibility): [ConversationMessage!]!
+  workingState: ConversationWorkingState
+  outcomes: [ConversationOutcome!]!
+}
+
+enum KnowledgeResourceKind {
+  policy
+  guide
+  skill
+  context
+  constraint
+  best_practice
+  template
+  checklist
+  decision
+  idea
+}
+
+enum KnowledgeResourceSourceKind {
+  workspace
+  extension
+  imported
+}
+
+enum KnowledgeResourceTrustLevel {
+  workspace
+  reviewed
+  system
+}
+
+enum KnowledgeResourceStatus {
+  draft
+  active
+  archived
+}
+
+enum KnowledgeSurface {
+  private
+  published
+  workspace_shared
+}
+
+enum KnowledgeReviewStatus {
+  draft
+  reviewed
+  approved
+}
+
+enum ConceptSpecSourceKind {
+  core
+  workspace
+  extension
+}
+
+enum ConceptSpecStatus {
+  draft
+  active
+  archived
+}
+
+enum ServiceCatalogNodeKind {
+  domain
+  service
+  request_type
+  issue_type
+}
+
+enum ServiceCatalogNodeStatus {
+  draft
+  active
+  archived
+}
+
+enum ServiceCatalogNodeVisibility {
+  workspace
+  customer
+  restricted
+}
+
+enum ServiceCatalogBindingTargetKind {
+  knowledge_resource
+  form_spec
+  queue
+  policy_profile
+}
+
+enum ServiceCatalogBindingKind {
+  primary
+  suggested
+  default
+}
+
+enum FormSpecStatus {
+  draft
+  active
+  archived
+}
+
+enum FormSubmissionStatus {
+  draft
+  submitted
+  accepted
+  rejected
+}
+
+type KnowledgeResource {
+  id: ID!
+  workspaceID: ID!
+  ownerTeamID: ID!
+  slug: String!
+  title: String!
+  kind: KnowledgeResourceKind!
+  conceptSpecKey: String!
+  conceptSpecVersion: String!
+  conceptSpec: ConceptSpec
+  sourceKind: KnowledgeResourceSourceKind!
+  sourceRef: String
+  pathRef: String
+  artifactPath: String!
+  summary: String
+  bodyMarkdown: String!
+  frontmatter: JSON!
+  supportedChannels: [String!]!
+  sharedWithTeamIDs: [ID!]!
+  surface: KnowledgeSurface!
+  trustLevel: KnowledgeResourceTrustLevel!
+  searchKeywords: [String!]!
+  status: KnowledgeResourceStatus!
+  reviewStatus: KnowledgeReviewStatus!
+  contentHash: String!
+  revisionRef: String!
+  publishedRevision: String
+  reviewedAt: DateTime
+  publishedAt: DateTime
+  publishedByID: ID
+  createdByID: ID
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type KnowledgeRevision {
+  ref: String!
+  committedAt: DateTime!
+  subject: String!
+}
+
+type KnowledgeDiff {
+  path: String!
+  fromRevision: String
+  toRevision: String!
+  patch: String!
+}
+
+type ConceptSpec {
+  id: ID!
+  workspaceID: ID
+  ownerTeamID: ID
+  key: String!
+  version: String!
+  name: String!
+  description: String!
+  extendsKey: String
+  extendsVersion: String
+  instanceKind: KnowledgeResourceKind!
+  metadataSchema: JSON!
+  sectionsSchema: JSON!
+  workflowSchema: JSON!
+  agentGuidanceMarkdown: String!
+  artifactPath: String!
+  revisionRef: String
+  sourceKind: ConceptSpecSourceKind!
+  sourceRef: String
+  status: ConceptSpecStatus!
+  createdByID: ID
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type ServiceCatalogBinding {
+  id: ID!
+  workspaceID: ID!
+  catalogNodeID: ID!
+  targetKind: ServiceCatalogBindingTargetKind!
+  targetID: ID!
+  bindingKind: ServiceCatalogBindingKind!
+  confidence: Float
+  createdAt: DateTime!
+}
+
+type ServiceCatalogNode {
+  id: ID!
+  workspaceID: ID!
+  parentNodeID: ID
+  slug: String!
+  pathSlug: String!
+  title: String!
+  descriptionMarkdown: String
+  nodeKind: ServiceCatalogNodeKind!
+  status: ServiceCatalogNodeStatus!
+  visibility: ServiceCatalogNodeVisibility!
+  supportedChannels: [String!]!
+  defaultCaseCategory: String
+  defaultQueueID: ID
+  defaultPriority: String
+  searchKeywords: [String!]!
+  displayOrder: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  bindings: [ServiceCatalogBinding!]!
+}
+
+type FormSpec {
+  id: ID!
+  workspaceID: ID!
+  name: String!
+  slug: String!
+  publicKey: String
+  descriptionMarkdown: String
+  fieldSpec: JSON!
+  evidenceRequirements: [JSON!]!
+  inferenceRules: [JSON!]!
+  approvalPolicy: JSON!
+  submissionPolicy: JSON!
+  destinationPolicy: JSON!
+  supportedChannels: [String!]!
+  isPublic: Boolean!
+  status: FormSpecStatus!
+  metadata: JSON!
+  createdByID: ID
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  deletedAt: DateTime
+}
+
+type FormSubmission {
+  id: ID!
+  workspaceID: ID!
+  formSpecID: ID!
+  conversationSessionID: ID
+  caseID: ID
+  contactID: ID
+  status: FormSubmissionStatus!
+  channel: String!
+  submitterEmail: String
+  submitterName: String
+  completionToken: String
+  collectedFields: JSON!
+  missingFields: JSON!
+  evidence: [JSON!]!
+  validationErrors: [String!]!
+  metadata: JSON!
+  submittedAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum ExtensionStatus {
+  installed
+  active
+  inactive
+  failed
+}
+
+enum ExtensionValidationStatus {
+  unknown
+  valid
+  invalid
+}
+
+enum ExtensionHealthStatus {
+  unknown
+  healthy
+  degraded
+  failed
+  inactive
+}
+
+enum ExtensionKind {
+  product
+  identity
+  connector
+  operational
+}
+
+enum ExtensionScope {
+  workspace
+  instance
+}
+
+enum ExtensionRisk {
+  standard
+  privileged
+}
+
+enum ExtensionWorkspaceInstallMode {
+  install_into_existing_workspace
+  provision_dedicated_workspace
+}
+
+enum ExtensionAssetKind {
+  template
+  static
+  other
+}
+
+type ExtensionQueueSeed {
+  slug: String!
+  name: String!
+  description: String
+}
+
+type ExtensionWorkspacePlan {
+  mode: ExtensionWorkspaceInstallMode
+  name: String
+  slug: String
+  description: String
+}
+
+type ExtensionFormSeed {
+  slug: String!
+  name: String!
+  description: String
+  status: String
+  isPublic: Boolean!
+  requiresAuth: Boolean!
+  allowMultiple: Boolean!
+  collectEmail: Boolean!
+  autoCreateCase: Boolean!
+  autoCasePriority: String
+  autoCaseType: String
+  autoTags: [String!]!
+  submissionMessage: String
+  redirectURL: String
+  theme: String
+  schema: JSON!
+  uiSchema: JSON!
+  validationRules: JSON!
+}
+
+type ExtensionAutomationSeed {
+  key: String!
+  title: String!
+  description: String
+  isActive: Boolean!
+  priority: Int!
+  maxExecutionsPerHour: Int!
+  maxExecutionsPerDay: Int!
+  conditions: JSON!
+  actions: JSON!
+}
+
+type ExtensionArtifactSurface {
+  name: String!
+  description: String
+  seedAssetPath: String
+}
+
+type ExtensionRoute {
+  pathPrefix: String!
+  assetPath: String
+  artifactSurface: String
+  artifactPath: String
+}
+
+enum ExtensionEndpointClass {
+  public_page
+  public_asset
+  public_ingest
+  webhook
+  admin_page
+  admin_action
+  extension_api
+  health
+}
+
+enum ExtensionEndpointAuth {
+  public
+  signed_webhook
+  session
+  agent_token
+  extension_token
+  internal_only
+}
+
+enum ExtensionWorkspaceBinding {
+  none
+  workspace_from_session
+  workspace_from_agent_token
+  workspace_from_route
+  instance_scoped
+}
+
+type ExtensionEndpoint {
+  name: String!
+  class: ExtensionEndpointClass!
+  mountPath: String!
+  methods: [String!]!
+  auth: ExtensionEndpointAuth!
+  contentTypes: [String!]!
+  maxBodyBytes: Int!
+  rateLimitPerMinute: Int!
+  workspaceBinding: ExtensionWorkspaceBinding!
+  assetPath: String
+  artifactSurface: String
+  artifactPath: String
+  serviceTarget: String
+}
+
+type ExtensionAdminNavigationItem {
+  name: String!
+  section: String
+  title: String!
+  icon: String
+  endpoint: String!
+  activePage: String
+}
+
+type ExtensionDashboardWidget {
+  name: String!
+  title: String!
+  description: String
+  icon: String
+  endpoint: String!
+}
+
+type ExtensionEventConsumer {
+  name: String!
+  description: String
+  stream: String!
+  eventTypes: [String!]!
+  consumerGroup: String
+  serviceTarget: String!
+}
+
+type ExtensionScheduledJob {
+  name: String!
+  description: String
+  intervalSeconds: Int!
+  serviceTarget: String!
+}
+
+type ExtensionCommand {
+  name: String!
+  description: String
+}
+
+type ExtensionAgentSkill {
+  name: String!
+  description: String
+  assetPath: String!
+}
+
+type ExtensionEventDefinition {
+  type: String!
+  description: String
+  schemaVersion: Int!
+}
+
+type ExtensionEventCatalog {
+  publishes: [ExtensionEventDefinition!]!
+  subscribes: [String!]!
+}
+
+type ExtensionRuntimeEvent {
+  type: String!
+  description: String
+  schemaVersion: Int!
+  core: Boolean!
+  publishers: [String!]!
+  subscribers: [String!]!
+}
+
+type ExtensionAsset {
+  id: ID!
+  path: String!
+  kind: ExtensionAssetKind!
+  contentType: String!
+  isCustomizable: Boolean!
+  checksum: String!
+  size: Int!
+  textContent: String
+  updatedAt: DateTime!
+}
+
+type ExtensionArtifactFile {
+  surface: String!
+  path: String!
+}
+
+type ArtifactRevision {
+  ref: String!
+  committedAt: DateTime!
+  subject: String!
+}
+
+type ArtifactDiff {
+  fromRevision: String
+  toRevision: String!
+  patch: String!
+}
+
+type ExtensionArtifactPublication {
+  surface: String!
+  path: String!
+  revisionRef: String!
+}
+
+type InstalledExtension {
+  id: ID!
+  workspaceID: ID
+  slug: String!
+  name: String!
+  publisher: String!
+  version: String!
+  description: String
+  kind: ExtensionKind!
+  scope: ExtensionScope!
+  risk: ExtensionRisk!
+  workspacePlan: ExtensionWorkspacePlan
+  permissions: [String!]!
+  seedQueues: [ExtensionQueueSeed!]!
+  seedForms: [ExtensionFormSeed!]!
+  seedAutomationRules: [ExtensionAutomationSeed!]!
+  artifactSurfaces: [ExtensionArtifactSurface!]!
+  publicRoutes: [ExtensionRoute!]!
+  adminRoutes: [ExtensionRoute!]!
+  endpoints: [ExtensionEndpoint!]!
+  adminNavigation: [ExtensionAdminNavigationItem!]!
+  dashboardWidgets: [ExtensionDashboardWidget!]!
+  events: ExtensionEventCatalog!
+  eventConsumers: [ExtensionEventConsumer!]!
+  scheduledJobs: [ExtensionScheduledJob!]!
+  commands: [ExtensionCommand!]!
+  agentSkills: [ExtensionAgentSkill!]!
+  customizableAssets: [String!]!
+  config: JSON!
+  status: ExtensionStatus!
+  validationStatus: ExtensionValidationStatus!
+  validationMessage: String
+  healthStatus: ExtensionHealthStatus!
+  healthMessage: String
+  runtimeDiagnostics: ExtensionRuntimeDiagnostics!
+  bundleSHA256: String!
+  bundleSize: Int!
+  installedByID: ID
+  installedAt: DateTime!
+  activatedAt: DateTime
+  deactivatedAt: DateTime
+  validatedAt: DateTime
+  lastHealthCheckAt: DateTime
+  assets: [ExtensionAsset!]!
+}
+
+type ExtensionRuntimeDiagnostics {
+  bootstrapStatus: String!
+  lastBootstrapAt: DateTime
+  lastBootstrapError: String
+  endpoints: [ExtensionRuntimeEndpointState!]!
+  eventConsumers: [ExtensionRuntimeConsumerState!]!
+  scheduledJobs: [ExtensionRuntimeJobState!]!
+}
+
+type ExtensionRuntimeEndpointState {
+  name: String!
+  class: String!
+  mountPath: String!
+  serviceTarget: String
+  status: String!
+  consecutiveFailures: Int!
+  registeredAt: DateTime
+  lastCheckedAt: DateTime
+  lastSuccessAt: DateTime
+  lastFailureAt: DateTime
+  lastError: String
+}
+
+type ExtensionRuntimeConsumerState {
+  name: String!
+  stream: String!
+  consumerGroup: String
+  serviceTarget: String!
+  status: String!
+  consecutiveFailures: Int!
+  registeredAt: DateTime
+  lastDeliveredAt: DateTime
+  lastSuccessAt: DateTime
+  lastFailureAt: DateTime
+  lastError: String
+}
+
+type ExtensionRuntimeJobState {
+  name: String!
+  intervalSeconds: Int!
+  serviceTarget: String!
+  status: String!
+  consecutiveFailures: Int!
+  registeredAt: DateTime
+  lastStartedAt: DateTime
+  lastSuccessAt: DateTime
+  lastFailureAt: DateTime
+  backoffUntil: DateTime
+  lastError: String
+}
+
+type Case {
+  id: ID!
+  caseID: String!
+  workspaceID: ID!
+  subject: String!
+  status: CaseStatus!
+  priority: CasePriority!
+  teamID: ID
+  queueID: ID
+  queue: Queue
+  contactID: ID
+  contact: Contact
+  assigneeID: ID
+  assignee: User
+  originatingConversationID: ID
+  originatingConversation: ConversationSession
+  communications: [Communication!]!
+  workThread: [CaseWorkThreadEntry!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  resolvedAt: DateTime
+}
+
+type CaseWorkThreadEntry {
+  id: ID!
+  caseID: ID!
+  kind: String!
+  communicationID: ID
+  conversationMessageID: ID
+  conversationSessionID: ID
+  channel: String
+  direction: String
+  role: String
+  visibility: String
+  subject: String
+  body: String!
+  createdAt: DateTime!
+}
+
+type Contact {
+  id: ID!
+  email: String!
+  name: String
+}
+
+type Communication {
+  id: ID!
+  caseID: ID!
+  direction: String!
+  channel: String!
+  subject: String
+  body: String!
+  bodyHTML: String
+  fromEmail: String
+  fromName: String
+  fromUserID: ID
+  fromUser: User
+  fromAgentID: ID
+  fromAgent: Agent
+  isInternal: Boolean!
+  createdAt: DateTime!
+}
+
+# =============================================================================
+# Pagination (Relay-style connections)
+# =============================================================================
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type CaseConnection {
+  edges: [CaseEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type CaseEdge {
+  node: Case!
+  cursor: String!
+}
+
+# =============================================================================
+# Filters
+# =============================================================================
+
+input CaseFilter {
+  status: [CaseStatus!]
+  priority: [CasePriority!]
+  queueID: ID
+  assigneeID: ID
+  contactID: ID
+  search: String
+  first: Int
+  after: String
+}
+
+# =============================================================================
+# Queries
+# =============================================================================
+
+type Query {
+  # Current principal info
+  me: Principal!
+
+  # Workspace queries
+  workspace(id: ID!): Workspace
+  workspaces: [Workspace!]!
+  team(id: ID!): Team
+  teams(workspaceID: ID!): [Team!]!
+
+  # Case queries
+  case(id: ID!): Case
+  caseByHumanID(workspaceID: ID!, caseID: String!): Case
+  cases(workspaceID: ID!, filter: CaseFilter): CaseConnection!
+  queue(id: ID!): Queue
+  queues(workspaceID: ID!): [Queue!]!
+  conversationSession(id: ID!): ConversationSession
+  conversationSessions(workspaceID: ID!, filter: ConversationSessionFilter): [ConversationSession!]!
+  knowledgeResource(id: ID!): KnowledgeResource
+  knowledgeResourceBySlug(workspaceID: ID!, teamID: ID!, surface: KnowledgeSurface!, slug: String!): KnowledgeResource
+  knowledgeResources(workspaceID: ID!, filter: KnowledgeResourceFilter): [KnowledgeResource!]!
+  knowledgeResourceHistory(id: ID!, limit: Int): [KnowledgeRevision!]!
+  knowledgeResourceDiff(id: ID!, fromRevision: String, toRevision: String): KnowledgeDiff!
+  conceptSpec(workspaceID: ID, key: String!, version: String): ConceptSpec
+  conceptSpecs(workspaceID: ID): [ConceptSpec!]!
+  serviceCatalogNode(id: ID!): ServiceCatalogNode
+  serviceCatalogNodeByPath(workspaceID: ID!, path: String!): ServiceCatalogNode
+  serviceCatalogNodes(workspaceID: ID!, parentNodeID: ID): [ServiceCatalogNode!]!
+  formSpec(id: ID!): FormSpec
+  formSpecBySlug(workspaceID: ID!, slug: String!): FormSpec
+  formSpecs(workspaceID: ID!): [FormSpec!]!
+  formSubmission(id: ID!): FormSubmission
+  formSubmissions(workspaceID: ID!, filter: FormSubmissionFilter): [FormSubmission!]!
+  extension(id: ID!): InstalledExtension
+  extensions(workspaceID: ID!): [InstalledExtension!]!
+  instanceExtensions: [InstalledExtension!]!
+  extensionEventCatalog(workspaceID: ID!): [ExtensionRuntimeEvent!]!
+  extensionArtifactFiles(id: ID!, surface: String!): [ExtensionArtifactFile!]!
+  extensionArtifactContent(id: ID!, surface: String!, path: String!, ref: String): String!
+  extensionArtifactHistory(id: ID!, surface: String!, path: String!, limit: Int): [ArtifactRevision!]!
+  extensionArtifactDiff(id: ID!, surface: String!, path: String!, fromRevision: String, toRevision: String): ArtifactDiff!
+
+  # Agent queries (for management)
+  agent(id: ID!): Agent
+  agents(workspaceID: ID!): [Agent!]!
+  contacts(workspaceID: ID!): [Contact!]!
+}
+
+# Principal union for polymorphic auth context
+union Principal = User | Agent
+
+# =============================================================================
+# Mutations
+# =============================================================================
+
+type Mutation {
+  # Case mutations
+  addCommunication(input: AddCommunicationInput!): Communication!
+  updateCaseStatus(id: ID!, status: CaseStatus!): Case!
+  assignCase(id: ID!, assigneeID: ID): Case!
+  handoffCase(id: ID!, input: CaseHandoffInput!): Case!
+  createQueue(input: CreateQueueInput!): Queue!
+  updateQueue(id: ID!, input: UpdateQueueInput!): Queue!
+  createFormSpec(input: CreateFormSpecInput!): FormSpec!
+  updateFormSpec(id: ID!, input: UpdateFormSpecInput!): FormSpec!
+  createFormSubmission(input: CreateFormSubmissionInput!): FormSubmission!
+  setCaseQueue(caseID: ID!, queueID: ID): Case!
+  addConversationMessage(sessionID: ID!, input: AddConversationMessageInput!): ConversationMessage!
+  handoffConversation(sessionID: ID!, input: ConversationHandoffInput!): ConversationSession!
+  escalateConversation(sessionID: ID!, input: EscalateConversationInput!): Case!
+  createKnowledgeResource(input: CreateKnowledgeResourceInput!): KnowledgeResource!
+  updateKnowledgeResource(id: ID!, input: UpdateKnowledgeResourceInput!): KnowledgeResource!
+  reviewKnowledgeResource(id: ID!, status: KnowledgeReviewStatus): KnowledgeResource!
+  publishKnowledgeResource(id: ID!, surface: KnowledgeSurface): KnowledgeResource!
+  shareKnowledgeResource(id: ID!, input: ShareKnowledgeResourceInput!): KnowledgeResource!
+  registerConceptSpec(input: RegisterConceptSpecInput!): ConceptSpec!
+  installExtension(input: InstallExtensionInput!): InstalledExtension!
+  upgradeExtension(id: ID!, input: UpgradeExtensionInput!): InstalledExtension!
+  activateExtension(id: ID!): InstalledExtension!
+  deactivateExtension(id: ID!, reason: String): InstalledExtension!
+  validateExtension(id: ID!): InstalledExtension!
+  checkExtensionHealth(id: ID!): InstalledExtension!
+  updateExtensionConfig(id: ID!, input: UpdateExtensionConfigInput!): InstalledExtension!
+  updateExtensionAsset(id: ID!, input: UpdateExtensionAssetInput!): ExtensionAsset!
+  publishExtensionArtifact(id: ID!, input: PublishExtensionArtifactInput!): ExtensionArtifactPublication!
+
+  # Agent management (requires human)
+  createAgent(input: CreateAgentInput!): Agent!
+  updateAgent(id: ID!, input: UpdateAgentInput!): Agent!
+  suspendAgent(id: ID!, reason: String!): Agent!
+  activateAgent(id: ID!): Agent!
+  revokeAgent(id: ID!, reason: String!): Agent!
+
+  # Agent token management (requires human)
+  createAgentToken(input: CreateAgentTokenInput!): AgentTokenResult!
+  revokeAgentToken(id: ID!): AgentToken!
+
+  # Workspace membership (requires human)
+  grantAgentMembership(input: GrantMembershipInput!): WorkspaceMembership!
+  revokeAgentMembership(id: ID!): WorkspaceMembership!
+  createTeam(input: CreateTeamInput!): Team!
+  addTeamMember(input: AddTeamMemberInput!): TeamMember!
+}
+
+# =============================================================================
+# Mutation Inputs
+# =============================================================================
+
+input AddCommunicationInput {
+  caseID: ID!
+  body: String!
+  bodyHTML: String
+  isInternal: Boolean
+}
+
+input MembershipConstraintsInput {
+  rateLimitPerMinute: Int
+  rateLimitPerHour: Int
+  allowedIPs: [String!]
+  allowedProjectIDs: [ID!]
+  allowedTeamIDs: [ID!]
+  allowDelegatedRouting: Boolean
+  delegatedRoutingTeamIDs: [ID!]
+  activeHoursStart: String
+  activeHoursEnd: String
+  activeTimezone: String
+  activeDays: [Int!]
+}
+
+input CreateQueueInput {
+  workspaceID: ID!
+  name: String!
+  slug: String
+  description: String
+}
+
+input UpdateQueueInput {
+  name: String
+  slug: String
+  description: String
+}
+
+input CreateFormSpecInput {
+  workspaceID: ID!
+  name: String!
+  slug: String
+  publicKey: String
+  descriptionMarkdown: String
+  fieldSpec: JSON
+  evidenceRequirements: [JSON!]
+  inferenceRules: [JSON!]
+  approvalPolicy: JSON
+  submissionPolicy: JSON
+  destinationPolicy: JSON
+  supportedChannels: [String!]
+  isPublic: Boolean
+  status: FormSpecStatus
+  metadata: JSON
+}
+
+input UpdateFormSpecInput {
+  name: String
+  slug: String
+  publicKey: String
+  descriptionMarkdown: String
+  fieldSpec: JSON
+  evidenceRequirements: [JSON!]
+  inferenceRules: [JSON!]
+  approvalPolicy: JSON
+  submissionPolicy: JSON
+  destinationPolicy: JSON
+  supportedChannels: [String!]
+  isPublic: Boolean
+  status: FormSpecStatus
+  metadata: JSON
+}
+
+input CreateFormSubmissionInput {
+  formSpecID: ID!
+  conversationSessionID: ID
+  caseID: ID
+  contactID: ID
+  status: FormSubmissionStatus
+  channel: String
+  submitterEmail: String
+  submitterName: String
+  completionToken: String
+  collectedFields: JSON
+  missingFields: JSON
+  evidence: [JSON!]
+  validationErrors: [String!]
+  metadata: JSON
+  submittedAt: DateTime
+}
+
+input CaseHandoffInput {
+  teamID: ID
+  queueID: ID!
+  assigneeID: ID
+  reason: String
+}
+
+input KnowledgeResourceFilter {
+  teamID: ID
+  kind: KnowledgeResourceKind
+  status: KnowledgeResourceStatus
+  surface: KnowledgeSurface
+  reviewStatus: KnowledgeReviewStatus
+  search: String
+  limit: Int
+  offset: Int
+}
+
+input FormSubmissionFilter {
+  formSpecID: ID
+  conversationSessionID: ID
+  caseID: ID
+  contactID: ID
+  status: FormSubmissionStatus
+  limit: Int
+  offset: Int
+}
+
+input ConversationSessionFilter {
+  status: ConversationStatus
+  channel: ConversationChannel
+  primaryCatalogNodeID: ID
+  primaryContactID: ID
+  linkedCaseID: ID
+  limit: Int
+  offset: Int
+}
+
+input AddConversationMessageInput {
+  participantID: ID
+  role: ConversationMessageRole
+  kind: ConversationMessageKind
+  visibility: ConversationMessageVisibility
+  contentText: String
+  content: JSON
+}
+
+input ConversationHandoffInput {
+  teamID: ID
+  queueID: ID!
+  operatorUserID: ID
+  reason: String
+}
+
+input EscalateConversationInput {
+  teamID: ID
+  queueID: ID!
+  operatorUserID: ID
+  subject: String
+  description: String
+  priority: CasePriority
+  category: String
+  reason: String
+}
+
+input CreateKnowledgeResourceInput {
+  workspaceID: ID!
+  teamID: ID!
+  slug: String!
+  title: String!
+  kind: KnowledgeResourceKind
+  conceptSpecKey: String
+  conceptSpecVersion: String
+  sourceKind: KnowledgeResourceSourceKind
+  sourceRef: String
+  pathRef: String
+  summary: String
+  bodyMarkdown: String
+  frontmatter: JSON
+  supportedChannels: [String!]
+  sharedWithTeamIDs: [ID!]
+  searchKeywords: [String!]
+  surface: KnowledgeSurface
+  status: KnowledgeResourceStatus
+}
+
+input UpdateKnowledgeResourceInput {
+  slug: String
+  title: String
+  kind: KnowledgeResourceKind
+  conceptSpecKey: String
+  conceptSpecVersion: String
+  sourceKind: KnowledgeResourceSourceKind
+  sourceRef: String
+  pathRef: String
+  summary: String
+  bodyMarkdown: String
+  frontmatter: JSON
+  supportedChannels: [String!]
+  searchKeywords: [String!]
+  status: KnowledgeResourceStatus
+}
+
+input ShareKnowledgeResourceInput {
+  teamIDs: [ID!]!
+}
+
+input RegisterConceptSpecInput {
+  workspaceID: ID!
+  ownerTeamID: ID
+  key: String!
+  version: String
+  name: String!
+  description: String
+  extendsKey: String
+  extendsVersion: String
+  instanceKind: KnowledgeResourceKind!
+  metadataSchema: JSON
+  sectionsSchema: JSON
+  workflowSchema: JSON
+  agentGuidanceMarkdown: String
+  sourceKind: ConceptSpecSourceKind
+  sourceRef: String
+  status: ConceptSpecStatus
+}
+
+input InstallExtensionAssetInput {
+  path: String!
+  content: String!
+  contentType: String
+  isCustomizable: Boolean
+}
+
+input InstallExtensionMigrationInput {
+  path: String!
+  content: String!
+}
+
+input InstallExtensionInput {
+  workspaceID: ID
+  licenseToken: String!
+  bundleBase64: String
+  manifest: JSON!
+  assets: [InstallExtensionAssetInput!]!
+  migrations: [InstallExtensionMigrationInput!]!
+}
+
+input UpgradeExtensionInput {
+  licenseToken: String
+  bundleBase64: String
+  manifest: JSON!
+  assets: [InstallExtensionAssetInput!]!
+  migrations: [InstallExtensionMigrationInput!]!
+}
+
+input UpdateExtensionConfigInput {
+  config: JSON!
+}
+
+input UpdateExtensionAssetInput {
+  path: String!
+  content: String!
+  contentType: String
+}
+
+input PublishExtensionArtifactInput {
+  surface: String!
+  path: String!
+  content: String!
+}
+
+input CreateAgentInput {
+  workspaceID: ID!
+  name: String!
+  description: String
+}
+
+input UpdateAgentInput {
+  name: String
+  description: String
+}
+
+input CreateAgentTokenInput {
+  agentID: ID!
+  name: String!
+  expiresInDays: Int
+}
+
+# Result includes plaintext token (shown only once)
+type AgentTokenResult {
+  token: AgentToken!
+  plaintextToken: String!
+}
+
+input GrantMembershipInput {
+  workspaceID: ID!
+  agentID: ID!
+  role: String!
+  permissions: [String!]!
+  expiresInDays: Int
+  constraints: MembershipConstraintsInput
+}
+
+# =============================================================================
+# Admin Types (Instance Admin Operations)
+# =============================================================================
+
+enum InstanceRole {
+  super_admin
+  admin
+  operator
+}
+
+type AdminUser {
+  id: ID!
+  email: String!
+  name: String!
+  avatarURL: String
+  instanceRole: InstanceRole
+  isActive: Boolean!
+  emailVerified: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  workspaceCount: Int!
+}
+
+type AdminUserConnection {
+  edges: [AdminUserEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AdminUserEdge {
+  node: AdminUser!
+  cursor: String!
+}
+
+type AdminUserWithWorkspaces {
+  user: AdminUser!
+  workspaces: [WorkspaceRoleInfo!]!
+}
+
+type WorkspaceRoleInfo {
+  workspace: Workspace!
+  role: String!
+  joinedAt: String!
+}
+
+input AdminUserFilter {
+  search: String
+  isActive: Boolean
+  instanceRole: InstanceRole
+  first: Int
+  after: String
+}
+
+input CreateUserInput {
+  email: String!
+  name: String!
+  instanceRole: InstanceRole
+}
+
+input UpdateUserInput {
+  email: String
+  name: String
+  instanceRole: InstanceRole
+  isActive: Boolean
+  emailVerified: Boolean
+}
+
+# =============================================================================
+# Admin Queries
+# =============================================================================
+
+extend type Query {
+  # Admin user queries (requires admin role)
+  adminUsers(filter: AdminUserFilter): AdminUserConnection!
+  adminUser(id: ID!): AdminUser
+  adminUserWithWorkspaces(id: ID!): AdminUserWithWorkspaces
+}
+
+# =============================================================================
+# Admin Mutations
+# =============================================================================
+
+extend type Mutation {
+  # Admin user mutations (requires admin role)
+  adminCreateUser(input: CreateUserInput!): AdminUser!
+  adminUpdateUser(id: ID!, input: UpdateUserInput!): AdminUser!
+  adminToggleUserStatus(id: ID!, isActive: Boolean!): AdminUser!
+  adminDeleteUser(id: ID!): Boolean!
+}
+
+# =============================================================================
+# Admin Workspace Types
+# =============================================================================
+
+type AdminWorkspace {
+  id: ID!
+  name: String!
+  shortCode: String!
+  description: String
+  memberCount: Int!
+  caseCount: Int!
+  projectCount: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type AdminWorkspaceConnection {
+  edges: [AdminWorkspaceEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AdminWorkspaceEdge {
+  node: AdminWorkspace!
+  cursor: String!
+}
+
+input AdminWorkspaceFilter {
+  search: String
+  first: Int
+  after: String
+}
+
+input CreateWorkspaceInput {
+  name: String!
+  shortCode: String!
+  description: String
+}
+
+input CreateTeamInput {
+  workspaceID: ID!
+  name: String!
+  description: String
+  emailAddress: String
+  responseTimeHours: Int
+  resolutionTimeHours: Int
+  autoAssign: Boolean
+  autoAssignKeywords: [String!]
+  isActive: Boolean
+}
+
+input AddTeamMemberInput {
+  teamID: ID!
+  userID: ID!
+  role: String!
+}
+
+input UpdateWorkspaceInput {
+  name: String
+  shortCode: String
+  description: String
+}
+
+# =============================================================================
+# Admin Case Types (Cross-workspace)
+# =============================================================================
+
+type AdminCase {
+  id: ID!
+  caseID: String!
+  workspaceID: ID!
+  workspaceName: String
+  subject: String!
+  status: CaseStatus!
+  priority: CasePriority!
+  contactEmail: String
+  contactName: String
+  assigneeID: ID
+  assigneeName: String
+  tags: [String!]!
+  category: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  resolvedAt: DateTime
+}
+
+type AdminCaseConnection {
+  edges: [AdminCaseEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AdminCaseEdge {
+  node: AdminCase!
+  cursor: String!
+}
+
+type AdminCaseDetail {
+  case: AdminCase!
+  communications: [Communication!]!
+  availableUsers: [User!]!
+}
+
+input AdminCaseFilter {
+  workspaceID: ID
+  status: [CaseStatus!]
+  priority: [CasePriority!]
+  assigneeID: ID
+  search: String
+  first: Int
+  after: String
+}
+
+# =============================================================================
+# Admin Rule Types
+# =============================================================================
+
+type AdminRule {
+  id: ID!
+  workspaceID: ID!
+  workspaceName: String
+  title: String!
+  description: String
+  isActive: Boolean!
+  priority: Int!
+  maxExecutionsPerHour: Int!
+  maxExecutionsPerDay: Int!
+  conditions: JSON
+  actions: JSON
+  executionCount: Int!
+  lastExecutedAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdByID: ID!
+}
+
+type AdminRuleConnection {
+  edges: [AdminRuleEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AdminRuleEdge {
+  node: AdminRule!
+  cursor: String!
+}
+
+input AdminRuleFilter {
+  workspaceID: ID
+  isActive: Boolean
+  search: String
+  first: Int
+  after: String
+}
+
+input CreateRuleInput {
+  workspaceID: ID!
+  title: String!
+  description: String
+  isActive: Boolean
+  priority: Int
+  maxExecutionsPerHour: Int
+  maxExecutionsPerDay: Int
+  conditions: JSON!
+  actions: JSON!
+}
+
+input UpdateRuleInput {
+  title: String
+  description: String
+  isActive: Boolean
+  priority: Int
+  maxExecutionsPerHour: Int
+  maxExecutionsPerDay: Int
+  conditions: JSON
+  actions: JSON
+}
+
+# =============================================================================
+# Admin Form Types
+# =============================================================================
+
+enum FormStatus {
+  draft
+  active
+  inactive
+}
+
+type AdminForm {
+  id: ID!
+  workspaceID: ID!
+  workspaceName: String
+  name: String!
+  slug: String!
+  description: String
+  status: FormStatus!
+  cryptoID: String!
+  isPublic: Boolean!
+  requiresCaptcha: Boolean!
+  collectEmail: Boolean!
+  autoCreateCase: Boolean!
+  autoCasePriority: String
+  autoCaseType: String
+  autoAssignTeamID: String
+  autoTags: [String!]
+  notifyOnSubmission: Boolean!
+  notificationEmails: [String!]
+  submissionMessage: String
+  redirectURL: String
+  schemaData: JSON
+  submissionCount: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdByID: ID!
+}
+
+type AdminFormConnection {
+  edges: [AdminFormEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AdminFormEdge {
+  node: AdminForm!
+  cursor: String!
+}
+
+input AdminFormFilter {
+  workspaceID: ID
+  status: FormStatus
+  isPublic: Boolean
+  search: String
+  first: Int
+  after: String
+}
+
+input CreateFormInput {
+  workspaceID: ID!
+  name: String!
+  slug: String!
+  description: String
+  status: FormStatus
+  isPublic: Boolean
+  requiresCaptcha: Boolean
+  collectEmail: Boolean
+  autoCreateCase: Boolean
+  autoCasePriority: String
+  autoCaseType: String
+  autoAssignTeamID: String
+  autoTags: [String!]
+  notifyOnSubmission: Boolean
+  notificationEmails: [String!]
+  submissionMessage: String
+  redirectURL: String
+  schemaData: JSON
+}
+
+input UpdateFormInput {
+  name: String
+  slug: String
+  description: String
+  status: FormStatus
+  isPublic: Boolean
+  requiresCaptcha: Boolean
+  collectEmail: Boolean
+  autoCreateCase: Boolean
+  autoCasePriority: String
+  autoCaseType: String
+  autoAssignTeamID: String
+  autoTags: [String!]
+  notifyOnSubmission: Boolean
+  notificationEmails: [String!]
+  submissionMessage: String
+  redirectURL: String
+  schemaData: JSON
+}
+
+# =============================================================================
+# Extended Admin Queries
+# =============================================================================
+
+extend type Query {
+  # Admin rule queries (requires instance admin)
+  adminRules(filter: AdminRuleFilter): AdminRuleConnection!
+  adminRule(id: ID!): AdminRule
+
+  # Admin form queries (requires instance admin)
+  adminForms(filter: AdminFormFilter): AdminFormConnection!
+  adminForm(id: ID!): AdminForm
+}
+
+# =============================================================================
+# Extended Admin Mutations
+# =============================================================================
+
+extend type Mutation {
+  # Admin rule mutations (requires instance admin)
+  adminCreateRule(input: CreateRuleInput!): AdminRule!
+  adminUpdateRule(id: ID!, input: UpdateRuleInput!): AdminRule!
+  adminDeleteRule(id: ID!): Boolean!
+
+  # Admin form mutations (requires instance admin)
+  adminCreateForm(input: CreateFormInput!): AdminForm!
+  adminUpdateForm(id: ID!, input: UpdateFormInput!): AdminForm!
+  adminDeleteForm(id: ID!): Boolean!
+}

@@ -1,0 +1,230 @@
+{{define "instance.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Instance - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+        <style>
+            .settings-section {
+                background: white;
+                border-radius: 0.75rem;
+                border: 1px solid rgb(228 228 231);
+                padding: 1.5rem;
+            }
+            .settings-section h3 {
+                font-size: 0.9375rem;
+                font-weight: 600;
+                color: rgb(24 24 27);
+                margin-bottom: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            .settings-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 0.75rem;
+            }
+            @media (max-width: 640px) {
+                .settings-grid { grid-template-columns: 1fr; }
+            }
+            .setting-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.5rem 0;
+                border-bottom: 1px solid rgb(244 244 245);
+            }
+            .setting-row:last-child { border-bottom: none; }
+            .setting-label {
+                font-size: 0.8125rem;
+                color: rgb(113 113 122);
+            }
+            .setting-value {
+                font-size: 0.8125rem;
+                font-weight: 500;
+                color: rgb(24 24 27);
+                font-family: ui-monospace, monospace;
+            }
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.125rem 0.5rem;
+                border-radius: 9999px;
+                font-size: 0.75rem;
+                font-weight: 500;
+            }
+            .badge-green { background: rgb(220 252 231); color: rgb(22 101 52); }
+            .badge-amber { background: rgb(254 243 199); color: rgb(146 64 14); }
+            .badge-red { background: rgb(254 226 226); color: rgb(153 27 27); }
+            .badge-blue { background: rgb(219 234 254); color: rgb(30 64 175); }
+            .badge-zinc { background: rgb(244 244 245); color: rgb(63 63 70); }
+        </style>
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="max-w-4xl mx-auto space-y-5">
+                {{with .Config}}
+
+                    <!-- General -->
+                    <div class="settings-section">
+                        <h3><i data-lucide="globe" class="h-4 w-4 text-zinc-400"></i> General</h3>
+                        <div class="setting-row">
+                            <span class="setting-label">Environment</span>
+                            <span class="badge {{if eq .Environment "production"}}badge-green{{else if eq .Environment "staging"}}badge-amber{{else}}badge-blue{{end}}">{{.Environment}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Domain</span>
+                            <span class="setting-value">{{.Domain}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Admin URL</span>
+                            <span class="setting-value">{{.AdminURL}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">API URL</span>
+                            <span class="setting-value">{{.APIURL}}</span>
+                        </div>
+                    </div>
+
+                    <!-- Authentication -->
+                    <div class="settings-section">
+                        <h3><i data-lucide="shield" class="h-4 w-4 text-zinc-400"></i> Authentication</h3>
+                        <div class="setting-row">
+                            <span class="setting-label">Session Expiry</span>
+                            <span class="setting-value">{{.SessionExpiry}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Magic Link TTL</span>
+                            <span class="setting-value">{{.MagicLinkTTL}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Signup</span>
+                            <span class="badge {{if .SignupEnabled}}badge-green{{else}}badge-zinc{{end}}">{{if .SignupEnabled}}Enabled{{else}}Disabled{{end}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Magic Link Auth</span>
+                            <span class="badge {{if .MagicLinkEnabled}}badge-green{{else}}badge-zinc{{end}}">{{if .MagicLinkEnabled}}Enabled{{else}}Disabled{{end}}</span>
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="settings-section">
+                        <h3><i data-lucide="mail" class="h-4 w-4 text-zinc-400"></i> Email</h3>
+                        <div class="setting-row">
+                            <span class="setting-label">Backend</span>
+                            <span class="badge {{if eq .EmailBackend "mock"}}badge-amber{{else if eq .EmailBackend "none"}}badge-red{{else}}badge-green{{end}}">{{.EmailBackend}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">From Address</span>
+                            <span class="setting-value">{{.FromName}} &lt;{{.FromEmail}}&gt;</span>
+                        </div>
+                    </div>
+
+                    <!-- Storage -->
+                    <div class="settings-section">
+                        <h3><i data-lucide="hard-drive" class="h-4 w-4 text-zinc-400"></i> Storage</h3>
+                        <div class="setting-row">
+                            <span class="setting-label">Type</span>
+                            <span class="badge badge-blue">{{.StorageType}}</span>
+                        </div>
+                        {{if eq .StorageType "s3"}}
+                        <div class="setting-row">
+                            <span class="setting-label">Region</span>
+                            <span class="setting-value">{{.S3Region}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Bucket</span>
+                            <span class="setting-value">{{.S3Bucket}}</span>
+                        </div>
+                        {{end}}
+                        <div class="setting-row">
+                            <span class="setting-label">Encryption</span>
+                            <span class="badge {{if .EncryptionEnabled}}badge-green{{else}}badge-zinc{{end}}">{{if .EncryptionEnabled}}Enabled{{else}}Disabled{{end}}</span>
+                        </div>
+                    </div>
+
+                    <!-- Security -->
+                    <div class="settings-section">
+                        <h3><i data-lucide="lock" class="h-4 w-4 text-zinc-400"></i> Security</h3>
+                        <div class="setting-row">
+                            <span class="setting-label">Rate Limiting</span>
+                            <span class="badge {{if .RateLimitEnabled}}badge-green{{else}}badge-amber{{end}}">{{if .RateLimitEnabled}}{{.RateLimitPerMin}} req/min{{else}}Disabled{{end}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Default User Role</span>
+                            <span class="setting-value">{{.DefaultUserRole}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Max Upload Size</span>
+                            <span class="setting-value">{{.MaxUploadSize}} MB</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Max Request Size</span>
+                            <span class="setting-value">{{.MaxRequestSize}} MB</span>
+                        </div>
+                    </div>
+
+                    <!-- Integrations -->
+                    <div class="settings-section">
+                        <h3><i data-lucide="plug" class="h-4 w-4 text-zinc-400"></i> Integrations</h3>
+                        <div class="setting-row">
+                            <span class="setting-label">OpenAI</span>
+                            <span class="badge {{if .HasOpenAI}}badge-green{{else}}badge-zinc{{end}}">{{if .HasOpenAI}}Connected{{else}}Not configured{{end}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Anthropic</span>
+                            <span class="badge {{if .HasAnthropic}}badge-green{{else}}badge-zinc{{end}}">{{if .HasAnthropic}}Connected{{else}}Not configured{{end}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Elasticsearch</span>
+                            <span class="badge {{if .HasElasticsearch}}badge-green{{else}}badge-zinc{{end}}">{{if .HasElasticsearch}}Connected{{else}}Not configured{{end}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">ClamAV Scanner</span>
+                            <span class="badge {{if .HasClamAV}}badge-green{{else}}badge-zinc{{end}}">{{if .HasClamAV}}Connected{{else}}Not configured{{end}}</span>
+                        </div>
+                    </div>
+
+                    <!-- Infrastructure -->
+                    <div class="settings-section">
+                        <h3><i data-lucide="server" class="h-4 w-4 text-zinc-400"></i> Infrastructure</h3>
+                        <div class="setting-row">
+                            <span class="setting-label">Metrics</span>
+                            <span class="badge {{if .MetricsEnabled}}badge-green{{else}}badge-zinc{{end}}">{{if .MetricsEnabled}}Enabled{{else}}Disabled{{end}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Cache</span>
+                            <span class="badge {{if .CacheEnabled}}badge-green{{else}}badge-zinc{{end}}">{{if .CacheEnabled}}Enabled (TTL: {{.CacheTTL}}){{else}}Disabled{{end}}</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-label">Database</span>
+                            <span class="setting-value">{{.DatabaseDriver}}: {{.DatabaseTarget}}</span>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-zinc-400 text-center pb-4">
+                        Configuration is set via environment variables. Changes require a service restart.
+                    </p>
+
+                {{else}}
+                    <div class="settings-section">
+                        <p class="text-sm text-zinc-500">Unable to load configuration.</p>
+                    </div>
+                {{end}}
+                </div>
+            </div>
+        </main>
+
+        <script>
+        if (window.lucide) lucide.createIcons();
+        </script>
+    </body>
+</html>
+{{end}}

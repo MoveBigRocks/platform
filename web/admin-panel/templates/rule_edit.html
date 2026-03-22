@@ -1,0 +1,508 @@
+{{define "rule_edit.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>{{if .Rule}}Edit Automation{{else}}New Automation{{end}} - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+        <style>
+            .form-section {
+                background: white;
+                border-radius: 0.75rem;
+                border: 1px solid rgb(228 228 231);
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+            .form-section-title {
+                font-size: 1rem;
+                font-weight: 600;
+                color: rgb(24 24 27);
+                margin-bottom: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            .condition-row, .action-row {
+                display: flex;
+                gap: 0.75rem;
+                align-items: flex-start;
+                padding: 1rem;
+                background: rgb(250 250 250);
+                border-radius: 0.5rem;
+                margin-bottom: 0.75rem;
+                flex-wrap: wrap;
+            }
+            .condition-row select, .action-row select,
+            .condition-row input, .action-row input {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.875rem;
+                border: 1px solid rgb(228 228 231);
+                border-radius: 0.375rem;
+                background: white;
+            }
+            .condition-row select:focus, .action-row select:focus,
+            .condition-row input:focus, .action-row input:focus {
+                outline: none;
+                border-color: rgb(165 180 252);
+                box-shadow: 0 0 0 3px rgba(79 70 229 / 0.1);
+            }
+            .remove-btn {
+                padding: 0.5rem;
+                color: rgb(239 68 68);
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                border-radius: 0.375rem;
+            }
+            .remove-btn:hover {
+                background: rgb(254 226 226);
+            }
+            .add-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: rgb(79 70 229);
+                background: rgb(238 242 255);
+                border: 1px dashed rgb(165 180 252);
+                border-radius: 0.375rem;
+                cursor: pointer;
+            }
+            .add-btn:hover {
+                background: rgb(224 231 255);
+            }
+            .toggle-switch {
+                position: relative;
+                width: 3rem;
+                height: 1.5rem;
+                background: rgb(228 228 231);
+                border-radius: 9999px;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            .toggle-switch.active {
+                background: rgb(79 70 229);
+            }
+            .toggle-switch::after {
+                content: '';
+                position: absolute;
+                top: 0.125rem;
+                left: 0.125rem;
+                width: 1.25rem;
+                height: 1.25rem;
+                background: white;
+                border-radius: 9999px;
+                transition: transform 0.2s;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            .toggle-switch.active::after {
+                transform: translateX(1.5rem);
+            }
+            .action-config {
+                display: none;
+                width: 100%;
+                margin-top: 0.75rem;
+                padding-top: 0.75rem;
+                border-top: 1px solid rgb(228 228 231);
+            }
+            .action-config.show {
+                display: block;
+            }
+            .action-config-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 0.75rem;
+            }
+            .empty-state-small {
+                padding: 2rem;
+                text-align: center;
+                color: rgb(113 113 122);
+                background: rgb(250 250 250);
+                border-radius: 0.5rem;
+                border: 1px dashed rgb(228 228 231);
+            }
+        </style>
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="max-w-4xl mx-auto">
+                    <form id="rule-form" method="POST" action="{{if .Rule}}/admin/actions/rules/{{.Rule.ID}}{{else}}/admin/actions/rules{{end}}">
+                        {{if .Rule}}<input type="hidden" name="_method" value="PUT">{{end}}
+                        <input type="hidden" name="workspace_id" value="{{.WorkspaceID}}">
+
+                        <!-- Basic Info Section -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">
+                                <i data-lucide="info" class="h-4 w-4"></i>
+                                Basic Information
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="form-label">Automation Name</label>
+                                    <input type="text" name="title" class="form-input" placeholder="e.g., Auto-assign urgent cases" value="{{if .Rule}}{{.Rule.Title}}{{end}}" required>
+                                </div>
+                                <div>
+                                    <label class="form-label">Description</label>
+                                    <textarea name="description" class="form-input" rows="2" placeholder="Describe what this rule does...">{{if .Rule}}{{.Rule.Description}}{{end}}</textarea>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="form-label">Workspace</label>
+                                        <select name="workspace_id" class="form-input" {{if .Rule}}disabled{{end}}>
+                                            {{range .Workspaces}}
+                                            <option value="{{.ID}}" {{if eq .ID $.WorkspaceID}}selected{{end}}>{{.Name}}</option>
+                                            {{end}}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Priority</label>
+                                        <select name="priority" class="form-input">
+                                            <option value="1" {{if and .Rule (eq .Rule.Priority 1)}}selected{{end}}>High (runs first)</option>
+                                            <option value="2" {{if or (not .Rule) (eq .Rule.Priority 2)}}selected{{end}}>Normal</option>
+                                            <option value="3" {{if and .Rule (eq .Rule.Priority 3)}}selected{{end}}>Low (runs last)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="toggle-switch {{if or (not .Rule) .Rule.IsActive}}active{{end}}" onclick="toggleSwitch(this)" data-input="is_active"></div>
+                                    <input type="hidden" name="is_active" value="{{if or (not .Rule) .Rule.IsActive}}true{{else}}false{{end}}">
+                                    <span class="text-sm font-medium">Automation is active</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Conditions Section -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">
+                                <i data-lucide="filter" class="h-4 w-4"></i>
+                                Conditions
+                                <span class="text-xs font-normal text-zinc-500 ml-2">When should this rule trigger?</span>
+                            </h3>
+                            <div id="conditions-container">
+                                {{if and .Rule .Rule.ParsedConditions}}
+                                    {{range $i, $cond := .Rule.ParsedConditions}}
+                                    <div class="condition-row" data-index="{{$i}}">
+                                        <select name="conditions[{{$i}}][field]" class="flex-1" style="min-width: 150px;">
+                                            <option value="">Select field...</option>
+                                            <option value="trigger" {{if eq $cond.Field "trigger"}}selected{{end}}>Event Trigger</option>
+                                            <option value="status" {{if eq $cond.Field "status"}}selected{{end}}>Status</option>
+                                            <option value="priority" {{if eq $cond.Field "priority"}}selected{{end}}>Priority</option>
+                                            <option value="channel" {{if eq $cond.Field "channel"}}selected{{end}}>Channel</option>
+                                            <option value="category" {{if eq $cond.Field "category"}}selected{{end}}>Category</option>
+                                            <option value="subject" {{if eq $cond.Field "subject"}}selected{{end}}>Subject</option>
+                                            <option value="contact_email" {{if eq $cond.Field "contact_email"}}selected{{end}}>Contact Email</option>
+                                            <option value="tags" {{if eq $cond.Field "tags"}}selected{{end}}>Tags</option>
+                                            <option value="assigned_to_id" {{if eq $cond.Field "assigned_to_id"}}selected{{end}}>Assignee</option>
+                                        </select>
+                                        <select name="conditions[{{$i}}][operator]" style="min-width: 120px;">
+                                            <option value="equals" {{if eq $cond.Operator "equals"}}selected{{end}}>equals</option>
+                                            <option value="not_equals" {{if eq $cond.Operator "not_equals"}}selected{{end}}>not equals</option>
+                                            <option value="in" {{if eq $cond.Operator "in"}}selected{{end}}>in list</option>
+                                            <option value="contains" {{if eq $cond.Operator "contains"}}selected{{end}}>contains</option>
+                                            <option value="not_contains" {{if eq $cond.Operator "not_contains"}}selected{{end}}>not contains</option>
+                                            <option value="starts_with" {{if eq $cond.Operator "starts_with"}}selected{{end}}>starts with</option>
+                                            <option value="is_empty" {{if eq $cond.Operator "is_empty"}}selected{{end}}>is empty</option>
+                                            <option value="is_not_empty" {{if eq $cond.Operator "is_not_empty"}}selected{{end}}>is not empty</option>
+                                        </select>
+                                        <input type="text" name="conditions[{{$i}}][value]" placeholder="Value" class="flex-1" style="min-width: 150px;" value="{{$cond.Value}}">
+                                        <button type="button" class="remove-btn" onclick="removeCondition(this)">
+                                            <i data-lucide="x" class="h-4 w-4"></i>
+                                        </button>
+                                    </div>
+                                    {{end}}
+                                {{end}}
+                            </div>
+                            <div id="no-conditions" class="empty-state-small {{if and .Rule .Rule.ParsedConditions}}hidden{{end}}">
+                                No conditions - rule will match all cases
+                            </div>
+                            <button type="button" class="add-btn mt-3" onclick="addCondition()">
+                                <i data-lucide="plus" class="h-4 w-4"></i>
+                                Add Condition
+                            </button>
+                        </div>
+
+                        <!-- Actions Section -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">
+                                <i data-lucide="play" class="h-4 w-4"></i>
+                                Actions
+                                <span class="text-xs font-normal text-zinc-500 ml-2">What should happen when conditions match?</span>
+                            </h3>
+                            <div id="actions-container">
+                                {{if and .Rule .Rule.ParsedActions}}
+                                    {{range $i, $action := .Rule.ParsedActions}}
+                                    <div class="action-row" data-index="{{$i}}">
+                                        <select name="actions[{{$i}}][type]" class="action-type-select" style="min-width: 180px;" onchange="updateActionConfig(this)">
+                                            <option value="">Select action...</option>
+                                            <option value="set_status" {{if eq $action.Type "set_status"}}selected{{end}}>Set Status</option>
+                                            <option value="set_priority" {{if eq $action.Type "set_priority"}}selected{{end}}>Set Priority</option>
+                                            <option value="assign" {{if eq $action.Type "assign"}}selected{{end}}>Assign to User</option>
+                                            <option value="set_team" {{if eq $action.Type "set_team"}}selected{{end}}>Assign to Team</option>
+                                            <option value="add_tag" {{if eq $action.Type "add_tag"}}selected{{end}}>Add Tag</option>
+                                            <option value="remove_tag" {{if eq $action.Type "remove_tag"}}selected{{end}}>Remove Tag</option>
+                                            <option value="send_email" {{if eq $action.Type "send_email"}}selected{{end}}>Send Email</option>
+                                            <option value="escalate" {{if eq $action.Type "escalate"}}selected{{end}}>Escalate</option>
+                                            <option value="close_case" {{if eq $action.Type "close_case"}}selected{{end}}>Close Case</option>
+                                        </select>
+                                        <input type="text" name="actions[{{$i}}][value]" placeholder="Value" class="flex-1 action-value" style="min-width: 200px;" value="{{$action.Value}}">
+                                        <button type="button" class="remove-btn" onclick="removeAction(this)">
+                                            <i data-lucide="x" class="h-4 w-4"></i>
+                                        </button>
+                                    </div>
+                                    {{end}}
+                                {{end}}
+                            </div>
+                            <div id="no-actions" class="empty-state-small {{if and .Rule .Rule.ParsedActions}}hidden{{end}}">
+                                No actions configured
+                            </div>
+                            <button type="button" class="add-btn mt-3" onclick="addAction()">
+                                <i data-lucide="plus" class="h-4 w-4"></i>
+                                Add Action
+                            </button>
+                        </div>
+
+                        <!-- Rate Limiting Section -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">
+                                <i data-lucide="gauge" class="h-4 w-4"></i>
+                                Rate Limiting
+                                <span class="text-xs font-normal text-zinc-500 ml-2">Optional - limit how often this automation runs</span>
+                            </h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="form-label">Max executions per hour</label>
+                                    <input type="number" name="max_executions_per_hour" class="form-input" placeholder="Unlimited" min="0" value="{{if .Rule}}{{.Rule.MaxExecutionsPerHour}}{{end}}">
+                                </div>
+                                <div>
+                                    <label class="form-label">Max executions per day</label>
+                                    <input type="number" name="max_executions_per_day" class="form-input" placeholder="Unlimited" min="0" value="{{if .Rule}}{{.Rule.MaxExecutionsPerDay}}{{end}}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="flex items-center justify-between">
+                            <a href="/rules" class="btn-secondary">
+                                <i data-lucide="arrow-left" class="h-4 w-4"></i>
+                                Cancel
+                            </a>
+                            <div class="flex gap-3">
+                                {{if .Rule}}
+                                <button type="button" class="btn-secondary" style="color: rgb(220 38 38);" onclick="deleteRule('{{.Rule.ID}}')">
+                                    <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                    Delete
+                                </button>
+                                {{end}}
+                                <button type="submit" class="btn-primary">
+                                    <i data-lucide="save" class="h-4 w-4"></i>
+                                    {{if .Rule}}Save Changes{{else}}Create Automation{{end}}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+
+        <script>
+        var conditionIndex = {{if and .Rule .Rule.ParsedConditions}}{{len .Rule.ParsedConditions}}{{else}}0{{end}};
+        var actionIndex = {{if and .Rule .Rule.ParsedActions}}{{len .Rule.ParsedActions}}{{else}}0{{end}};
+
+        function toggleSwitch(el) {
+            el.classList.toggle('active');
+            var input = document.querySelector('input[name="' + el.dataset.input + '"]');
+            input.value = el.classList.contains('active') ? 'true' : 'false';
+        }
+
+        function addCondition() {
+            var container = document.getElementById('conditions-container');
+            var noConditions = document.getElementById('no-conditions');
+            noConditions.classList.add('hidden');
+
+            var row = document.createElement('div');
+            row.className = 'condition-row';
+            row.dataset.index = conditionIndex;
+            row.innerHTML = `
+                <select name="conditions[${conditionIndex}][field]" class="flex-1" style="min-width: 150px;">
+                    <option value="">Select field...</option>
+                    <option value="trigger">Event Trigger</option>
+                    <option value="status">Status</option>
+                    <option value="priority">Priority</option>
+                    <option value="channel">Channel</option>
+                    <option value="category">Category</option>
+                    <option value="subject">Subject</option>
+                    <option value="contact_email">Contact Email</option>
+                    <option value="tags">Tags</option>
+                    <option value="assigned_to_id">Assignee</option>
+                </select>
+                <select name="conditions[${conditionIndex}][operator]" style="min-width: 120px;">
+                    <option value="equals">equals</option>
+                    <option value="not_equals">not equals</option>
+                    <option value="in">in list</option>
+                    <option value="contains">contains</option>
+                    <option value="not_contains">not contains</option>
+                    <option value="starts_with">starts with</option>
+                    <option value="is_empty">is empty</option>
+                    <option value="is_not_empty">is not empty</option>
+                </select>
+                <input type="text" name="conditions[${conditionIndex}][value]" placeholder="Value" class="flex-1" style="min-width: 150px;">
+                <button type="button" class="remove-btn" onclick="removeCondition(this)">
+                    <i data-lucide="x" class="h-4 w-4"></i>
+                </button>
+            `;
+            container.appendChild(row);
+            conditionIndex++;
+            lucide.createIcons();
+        }
+
+        function removeCondition(btn) {
+            btn.closest('.condition-row').remove();
+            var container = document.getElementById('conditions-container');
+            if (container.children.length === 0) {
+                document.getElementById('no-conditions').classList.remove('hidden');
+            }
+        }
+
+        function addAction() {
+            var container = document.getElementById('actions-container');
+            var noActions = document.getElementById('no-actions');
+            noActions.classList.add('hidden');
+
+            var row = document.createElement('div');
+            row.className = 'action-row';
+            row.dataset.index = actionIndex;
+            row.innerHTML = `
+                <select name="actions[${actionIndex}][type]" class="action-type-select" style="min-width: 180px;" onchange="updateActionConfig(this)">
+                    <option value="">Select action...</option>
+                    <option value="set_status">Set Status</option>
+                    <option value="set_priority">Set Priority</option>
+                    <option value="assign">Assign to User</option>
+                    <option value="set_team">Assign to Team</option>
+                    <option value="add_tag">Add Tag</option>
+                    <option value="remove_tag">Remove Tag</option>
+                    <option value="send_email">Send Email</option>
+                    <option value="escalate">Escalate</option>
+                    <option value="close_case">Close Case</option>
+                </select>
+                <input type="text" name="actions[${actionIndex}][value]" placeholder="Value" class="flex-1 action-value" style="min-width: 200px;">
+                <button type="button" class="remove-btn" onclick="removeAction(this)">
+                    <i data-lucide="x" class="h-4 w-4"></i>
+                </button>
+            `;
+            container.appendChild(row);
+            actionIndex++;
+            lucide.createIcons();
+        }
+
+        function removeAction(btn) {
+            btn.closest('.action-row').remove();
+            var container = document.getElementById('actions-container');
+            if (container.children.length === 0) {
+                document.getElementById('no-actions').classList.remove('hidden');
+            }
+        }
+
+        function updateActionConfig(select) {
+            var row = select.closest('.action-row');
+            var valueInput = row.querySelector('.action-value');
+            var actionType = select.value;
+
+            // Update placeholder based on action type
+            var placeholders = {
+                'set_status': 'open, pending, resolved, closed',
+                'set_priority': 'low, normal, high, urgent',
+                'assign': 'User ID or email',
+                'set_team': 'Team ID',
+                'add_tag': 'Tag name',
+                'remove_tag': 'Tag name',
+                'send_email': 'Email address',
+                'escalate': 'Escalation reason',
+                'close_case': 'Resolution message'
+            };
+            valueInput.placeholder = placeholders[actionType] || 'Value';
+        }
+
+        function deleteRule(ruleId) {
+            if (confirm('Are you sure you want to delete this automation? This cannot be undone.')) {
+                fetch('/admin/actions/rules/' + ruleId, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                }).then(function(response) {
+                    if (response.ok) {
+                        window.location.href = '/rules';
+                    } else {
+                        alert('Failed to delete automation');
+                    }
+                });
+            }
+        }
+
+        // Form submission handler
+        document.getElementById('rule-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var formData = new FormData(this);
+            var data = {
+                title: formData.get('title'),
+                description: formData.get('description'),
+                workspace_id: formData.get('workspace_id'),
+                priority: parseInt(formData.get('priority')) || 2,
+                is_active: formData.get('is_active') === 'true',
+                max_executions_per_hour: parseInt(formData.get('max_executions_per_hour')) || 0,
+                max_executions_per_day: parseInt(formData.get('max_executions_per_day')) || 0,
+                conditions: [],
+                actions: []
+            };
+
+            // Collect conditions
+            var conditionRows = document.querySelectorAll('.condition-row');
+            conditionRows.forEach(function(row, i) {
+                var field = row.querySelector('select[name*="[field]"]').value;
+                var operator = row.querySelector('select[name*="[operator]"]').value;
+                var value = row.querySelector('input[name*="[value]"]').value;
+                if (field) {
+                    data.conditions.push({ field: field, operator: operator, value: value });
+                }
+            });
+
+            // Collect actions
+            var actionRows = document.querySelectorAll('.action-row');
+            actionRows.forEach(function(row, i) {
+                var type = row.querySelector('select[name*="[type]"]').value;
+                var value = row.querySelector('input[name*="[value]"]').value;
+                if (type) {
+                    data.actions.push({ type: type, value: value });
+                }
+            });
+
+            var url = this.action;
+            var method = formData.get('_method') === 'PUT' ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(data)
+            }).then(function(response) {
+                if (response.ok) {
+                    window.location.href = '/rules';
+                } else {
+                    response.json().then(function(err) {
+                        alert('Error: ' + (err.error || 'Failed to save automation'));
+                    });
+                }
+            }).catch(function(err) {
+                alert('Network error: ' + err.message);
+            });
+        });
+        </script>
+    </body>
+</html>
+{{end}}

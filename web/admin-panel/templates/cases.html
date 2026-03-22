@@ -1,0 +1,196 @@
+{{define "cases.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Cases - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+        <style>
+            .status-pill {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.25rem 0.625rem;
+                font-size: 0.75rem;
+                font-weight: 500;
+                border-radius: 9999px;
+            }
+            .status-pill.new { background: rgb(219 234 254); color: rgb(29 78 216); }
+            .status-pill.open { background: rgb(254 249 195); color: rgb(161 98 7); }
+            .status-pill.pending { background: rgb(243 232 255); color: rgb(126 34 206); }
+            .status-pill.resolved { background: rgb(220 252 231); color: rgb(22 101 52); }
+            .status-pill.closed { background: rgb(244 244 245); color: rgb(82 82 91); }
+            .priority-pill {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.25rem 0.625rem;
+                font-size: 0.75rem;
+                font-weight: 500;
+                border-radius: 9999px;
+            }
+            .priority-pill.urgent { background: rgb(254 226 226); color: rgb(185 28 28); }
+            .priority-pill.high { background: rgb(255 237 213); color: rgb(194 65 12); }
+            .priority-pill.medium { background: rgb(219 234 254); color: rgb(29 78 216); }
+            .priority-pill.low { background: rgb(244 244 245); color: rgb(82 82 91); }
+            .case-icon {
+                width: 2.5rem;
+                height: 2.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 0.5rem;
+                background: rgb(243 244 246);
+                color: rgb(107 114 128);
+            }
+            .empty-state {
+                padding: 4rem 2rem;
+                text-align: center;
+            }
+            .empty-state-icon {
+                width: 4rem;
+                height: 4rem;
+                margin: 0 auto 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 9999px;
+                background: rgb(244 244 245);
+                color: rgb(161 161 170);
+            }
+            .info-box {
+                display: flex;
+                gap: 1rem;
+                padding: 1rem 1.25rem;
+                background: rgb(239 246 255);
+                border: 1px solid rgb(191 219 254);
+                border-radius: 0.75rem;
+                margin-top: 1.5rem;
+            }
+            .info-box-icon {
+                flex-shrink: 0;
+                color: rgb(59 130 246);
+            }
+        </style>
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="max-w-7xl mx-auto space-y-6">
+
+                    <!-- Cases Table Card -->
+                    <div class="section-card">
+                        <div class="section-card-header">
+                            <div>
+                                <h3 class="section-card-title">All Cases</h3>
+                                <p class="text-sm text-zinc-500 mt-1">{{if .TotalCases}}{{.TotalCases}} cases{{else}}No cases{{end}} across all workspaces</p>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="responsive-table">
+                                <thead>
+                                    <tr>
+                                        <th>Case</th>
+                                        <th>Workspace</th>
+                                        <th>Status</th>
+                                        <th>Priority</th>
+                                        <th>Contact</th>
+                                        <th>Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{if .Cases}}
+                                        {{range .Cases}}
+                                        <tr onclick="window.location='/cases/{{.ID}}'">
+                                            <td class="mobile-header">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="case-icon">
+                                                        <i data-lucide="inbox" class="h-5 w-5"></i>
+                                                    </div>
+                                                    <div>
+                                                        <a href="/cases/{{.ID}}" class="font-medium text-zinc-900 hover:text-indigo-600">{{.CaseID}}</a>
+                                                        <div class="text-sm text-zinc-500 max-w-xs truncate">{{.Subject}}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td data-label="Workspace">
+                                                <span class="chip">{{index $.WorkspaceNames .WorkspaceID}}</span>
+                                            </td>
+                                            <td data-label="Status">
+                                                {{if eq .Status "new"}}
+                                                    <span class="status-pill new">New</span>
+                                                {{else if eq .Status "open"}}
+                                                    <span class="status-pill open">Open</span>
+                                                {{else if eq .Status "pending"}}
+                                                    <span class="status-pill pending">Pending</span>
+                                                {{else if eq .Status "resolved"}}
+                                                    <span class="status-pill resolved">Resolved</span>
+                                                {{else if eq .Status "closed"}}
+                                                    <span class="status-pill closed">Closed</span>
+                                                {{else}}
+                                                    <span class="status-pill closed">{{.Status}}</span>
+                                                {{end}}
+                                            </td>
+                                            <td data-label="Priority">
+                                                {{if eq .Priority "urgent"}}
+                                                    <span class="priority-pill urgent">Urgent</span>
+                                                {{else if eq .Priority "high"}}
+                                                    <span class="priority-pill high">High</span>
+                                                {{else if eq .Priority "medium"}}
+                                                    <span class="priority-pill medium">Medium</span>
+                                                {{else if eq .Priority "low"}}
+                                                    <span class="priority-pill low">Low</span>
+                                                {{else}}
+                                                    <span class="priority-pill low">{{.Priority}}</span>
+                                                {{end}}
+                                            </td>
+                                            <td data-label="Contact">
+                                                <div class="text-sm text-zinc-900">
+                                                    {{if .ContactName}}{{.ContactName}}{{else}}{{.ContactEmail}}{{end}}
+                                                </div>
+                                                {{if and .ContactName .ContactEmail}}
+                                                <div class="text-xs text-zinc-500">{{.ContactEmail}}</div>
+                                                {{end}}
+                                            </td>
+                                            <td data-label="Created"><span class="text-sm text-zinc-600">{{formatDate .CreatedAt "Jan 02, 2006"}}</span></td>
+                                        </tr>
+                                        {{end}}
+                                    {{else}}
+                                        <tr>
+                                            <td colspan="6">
+                                                <div class="empty-state">
+                                                    <div class="empty-state-icon">
+                                                        <i data-lucide="inbox" class="h-8 w-8"></i>
+                                                    </div>
+                                                    <h3 class="text-lg font-semibold text-zinc-900">No cases found</h3>
+                                                    <p class="text-zinc-500 mt-1">Cases will appear here when customers submit support requests</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Info Box -->
+                    <div class="info-box">
+                        <div class="info-box-icon">
+                            <i data-lucide="info" class="h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-zinc-900">About Cases</h4>
+                            <p class="text-sm text-zinc-600 mt-0.5">
+                                This view shows all support cases across all workspaces. Cases are created when customers submit support requests via email, web forms, or API.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </body>
+</html>
+{{end}}

@@ -1,0 +1,197 @@
+{{define "context-switcher"}}
+<!-- Context Switcher Component -->
+<div class="dropdown" id="context-switcher-dropdown">
+    <button class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors rounded-md hover:bg-zinc-50">
+        <i data-lucide="globe" class="h-4 w-4"></i>
+        <span id="current-context-name" class="max-w-[150px] truncate">Loading...</span>
+        <i data-lucide="chevron-down" class="h-3 w-3 opacity-60"></i>
+    </button>
+    <div class="dropdown-content" style="min-width: 16rem;" id="context-list">
+        <div class="px-3 py-2 border-b border-zinc-100">
+            <p class="text-xs font-medium text-zinc-400 uppercase tracking-wider">Available Contexts</p>
+        </div>
+        <div class="p-1">
+            <div class="flex items-center justify-center py-4">
+                <div class="h-4 w-4 border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Context Switcher Logic
+(function() {
+    'use strict';
+
+    var currentContext = null;
+    var availableContexts = [];
+
+    function loadContexts() {
+        var nameEl = document.getElementById('current-context-name');
+        if (!nameEl) {
+            console.error('[ContextSwitcher] Element not found');
+            return;
+        }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/auth/context', true);
+        xhr.withCredentials = true;
+        xhr.timeout = 10000;
+
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    currentContext = data.current_context;
+                    availableContexts = data.available_contexts || [];
+                    renderContextSwitcher();
+                } catch (e) {
+                    console.error('[ContextSwitcher] Parse error:', e);
+                    nameEl.textContent = 'Error';
+                }
+            } else {
+                console.error('[ContextSwitcher] HTTP ' + xhr.status);
+                nameEl.textContent = 'Error';
+            }
+        };
+
+        xhr.onerror = function() {
+            console.error('[ContextSwitcher] Network error');
+            nameEl.textContent = 'Error';
+        };
+
+        xhr.ontimeout = function() {
+            console.error('[ContextSwitcher] Timeout');
+            nameEl.textContent = 'Timeout';
+        };
+
+        xhr.send();
+    }
+
+    function renderContextSwitcher() {
+        var nameEl = document.getElementById('current-context-name');
+        var listEl = document.getElementById('context-list');
+
+        if (!nameEl || !listEl) return;
+
+        // Update display name
+        nameEl.textContent = getContextDisplayName(currentContext);
+
+        // Build dropdown menu
+        var html = '<div class="px-3 py-2 border-b border-zinc-100">';
+        html += '<p class="text-xs font-medium text-zinc-400 uppercase tracking-wider">Available Contexts</p>';
+        html += '</div><div class="p-1">';
+
+        for (var i = 0; i < availableContexts.length; i++) {
+            var ctx = availableContexts[i];
+            var isActive = isContextActive(ctx);
+            var displayName = getContextDisplayName(ctx);
+            var iconName = ctx.type === 'instance' ? 'shield' : 'building-2';
+            var role = ctx.role ? ctx.role.replace(/_/g, ' ') : '';
+
+            html += '<a href="#" class="context-item flex items-center gap-3 px-3 py-2 rounded-md transition-colors';
+            html += isActive ? ' bg-indigo-50 text-indigo-700' : ' text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900';
+            html += '"';
+            html += ' data-type="' + ctx.type + '"';
+            html += ' data-workspace-id="' + (ctx.workspace_id || '') + '"';
+            html += ' data-workspace-slug="' + (ctx.workspace_slug || '') + '"';
+            html += ' data-role="' + ctx.role + '"';
+            if (isActive) html += ' data-active="true"';
+            html += '>';
+            html += '<i data-lucide="' + iconName + '" class="h-4 w-4"></i>';
+            html += '<span class="flex flex-col flex-1">';
+            html += '<span class="text-sm font-medium">' + displayName + '</span>';
+            html += '<span class="text-xs opacity-60 capitalize">' + role + '</span>';
+            html += '</span>';
+            if (isActive) {
+                html += '<span class="text-xs font-medium bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">Current</span>';
+            }
+            html += '</a>';
+        }
+
+        html += '</div>';
+        listEl.innerHTML = html;
+
+        // Re-initialize Lucide icons for the new content
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+
+        // Attach click handlers
+        var items = listEl.querySelectorAll('.context-item:not([data-active])');
+        for (var j = 0; j < items.length; j++) {
+            items[j].addEventListener('click', handleContextSwitch);
+        }
+    }
+
+    function getContextDisplayName(ctx) {
+        if (!ctx) return 'Unknown';
+        if (ctx.type === 'instance') return 'Instance Admin';
+        if (ctx.workspace_name) {
+            return ctx.workspace_name;
+        }
+        if (ctx.workspace_id) {
+            return 'Workspace ' + ctx.workspace_id.substring(0, 8) + '...';
+        }
+        return 'Workspace';
+    }
+
+    function isContextActive(ctx) {
+        if (!currentContext || !ctx) return false;
+        if (ctx.type !== currentContext.type) return false;
+        if (ctx.type === 'workspace') {
+            return ctx.workspace_id === currentContext.workspace_id;
+        }
+        return true;
+    }
+
+    function handleContextSwitch(e) {
+        e.preventDefault();
+
+        var item = e.currentTarget;
+        var type = item.getAttribute('data-type');
+        var workspaceId = item.getAttribute('data-workspace-id') || null;
+
+        var payload = { type: type };
+        if (type === 'workspace' && workspaceId) {
+            payload.workspace_id = workspaceId;
+        }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/auth/switch-context', true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.timeout = 10000;
+
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                window.location.href = '/dashboard';
+                return;
+            }
+
+            console.error('[ContextSwitcher] Switch failed with HTTP ' + xhr.status);
+            window.location.href = '/dashboard';
+        };
+
+        xhr.onerror = function() {
+            console.error('[ContextSwitcher] Switch network error');
+            window.location.href = '/dashboard';
+        };
+
+        xhr.ontimeout = function() {
+            console.error('[ContextSwitcher] Switch timeout');
+            window.location.href = '/dashboard';
+        };
+
+        xhr.send(JSON.stringify(payload));
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadContexts);
+    } else {
+        loadContexts();
+    }
+})();
+</script>
+{{end}}

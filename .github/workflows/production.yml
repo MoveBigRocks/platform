@@ -1,0 +1,201 @@
+name: Release Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  test:
+    name: Test
+    uses: ./.github/workflows/_test.yml
+
+  build:
+    name: Build
+    needs: test
+    uses: ./.github/workflows/_build.yml
+
+  version:
+    name: Tag Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_BASE: movebigrocks/mbr
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install ORAS
+        run: |
+          VERSION="1.2.0"
+          curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz"
+          tar -xzf "oras_${VERSION}_linux_amd64.tar.gz"
+          sudo mv oras /usr/local/bin/
+          oras version
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch manifest for artifact digests
+        id: manifest
+        run: |
+          SHA="${{ needs.build.outputs.git_sha }}"
+
+          # Fetch manifest.json from OCI registry
+          oras pull ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-manifest:${SHA} -o /tmp/
+
+          # Extract digests
+          API_DIGEST=$(jq -r '.artifacts.services.digest' /tmp/manifest.json)
+          MIGRATIONS_DIGEST=$(jq -r '.artifacts.migrations.digest' /tmp/manifest.json)
+          BUILD_DATE=$(jq -r '.build_date' /tmp/manifest.json)
+
+          # Get manifest digest
+          MANIFEST_DIGEST=$(oras manifest fetch ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-manifest:${SHA} --descriptor | jq -r '.digest')
+
+          echo "api_digest=${API_DIGEST}" >> $GITHUB_OUTPUT
+          echo "migrations_digest=${MIGRATIONS_DIGEST}" >> $GITHUB_OUTPUT
+          echo "manifest_digest=${MANIFEST_DIGEST}" >> $GITHUB_OUTPUT
+          echo "build_date=${BUILD_DATE}" >> $GITHUB_OUTPUT
+
+      - name: Calculate version
+        id: version
+        run: |
+          # Get latest tag or default to v1.0.0
+          LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+          echo "Latest tag: $LATEST"
+
+          # Parse current version
+          MAJOR=$(echo $LATEST | cut -d. -f1 | tr -d 'v')
+          MINOR=$(echo $LATEST | cut -d. -f2)
+          PATCH=$(echo $LATEST | cut -d. -f3)
+
+          # Get commits since last tag
+          if git rev-parse "$LATEST" >/dev/null 2>&1; then
+            COMMITS=$(git log ${LATEST}..HEAD --pretty=format:"%s%n%b")
+          else
+            COMMITS=$(git log --pretty=format:"%s%n%b")
+          fi
+
+          # Skip if no new commits since last tag
+          if [ -z "$COMMITS" ]; then
+            echo "No new commits since $LATEST, skipping tag"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Commits since $LATEST:"
+          echo "$COMMITS"
+
+          # Determine bump type
+          if echo "$COMMITS" | grep -qE "^.*!:|BREAKING CHANGE"; then
+            echo "Breaking change detected - major bump"
+            MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
+          elif echo "$COMMITS" | grep -qE "^feat(\(.*\))?:"; then
+            echo "Feature detected - minor bump"
+            MINOR=$((MINOR + 1)); PATCH=0
+          else
+            echo "Patch changes only"
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "skip=false" >> $GITHUB_OUTPUT
+
+      - name: Create annotated git tag with OCI digests
+        if: steps.version.outputs.skip != 'true'
+        env:
+          API_DIGEST: ${{ steps.manifest.outputs.api_digest }}
+          MIGRATIONS_DIGEST: ${{ steps.manifest.outputs.migrations_digest }}
+          MANIFEST_DIGEST: ${{ steps.manifest.outputs.manifest_digest }}
+          BUILD_DATE: ${{ steps.manifest.outputs.build_date }}
+        run: |
+          export VERSION="${{ steps.version.outputs.new_version }}"
+          export SHA="${{ needs.build.outputs.git_sha }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create annotated tag with OCI artifact digests
+          cat > /tmp/tag-message.txt << 'TAGEOF'
+          Release ${VERSION}
+
+          Commit: ${SHA}
+          Build Date: ${BUILD_DATE}
+
+          OCI Artifacts:
+            services:    ${API_DIGEST}
+            migrations:  ${MIGRATIONS_DIGEST}
+            manifest:    ${MANIFEST_DIGEST}
+
+          Pull with: oras pull ghcr.io/movebigrocks/mbr-manifest:${VERSION}
+          TAGEOF
+
+          # Substitute variables and strip YAML indentation (10 spaces)
+          envsubst < /tmp/tag-message.txt | sed 's/^          //' > /tmp/tag-final.txt
+
+          git tag -a "$VERSION" -F /tmp/tag-final.txt
+          git push origin "$VERSION"
+          echo "Created git tag $VERSION with OCI digest annotations"
+
+      - name: Tag OCI artifacts with semver
+        if: steps.version.outputs.skip != 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.new_version }}"
+          SHA="${{ needs.build.outputs.git_sha }}"
+
+          # Tag all artifacts with semver
+          oras tag ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-services:${SHA} ${VERSION}
+          oras tag ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-migrations:${SHA} ${VERSION}
+          oras tag ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-manifest:${SHA} ${VERSION}
+
+          echo "Tagged all OCI artifacts with ${VERSION}"
+
+      - name: Create release summary
+        if: steps.version.outputs.skip != 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.new_version }}"
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ## Release $VERSION
+
+          **Commit:** \`${{ needs.build.outputs.git_sha }}\`
+          **Build Date:** ${{ steps.manifest.outputs.build_date }}
+
+          ### OCI Artifacts
+
+          All artifacts tagged with \`$VERSION\`:
+
+          | Artifact | Digest |
+          |----------|--------|
+          | services | \`${{ steps.manifest.outputs.api_digest }}\` |
+          | migrations | \`${{ steps.manifest.outputs.migrations_digest }}\` |
+          | manifest | \`${{ steps.manifest.outputs.manifest_digest }}\` |
+
+          ### Cross-Reference
+
+          - **Git → OCI:** \`git show $VERSION\` shows all artifact digests
+          - **OCI → Git:** \`oras pull .../mbr-manifest:$VERSION\` includes git SHA
+
+          ### Pull Commands
+
+          \`\`\`bash
+          oras pull ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-services:$VERSION
+          oras pull ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-manifest:$VERSION
+          \`\`\`
+          EOF

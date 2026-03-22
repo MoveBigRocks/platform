@@ -1,0 +1,255 @@
+{{define "forms.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Forms - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+        <style>
+            .form-icon {
+                width: 2.5rem;
+                height: 2.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 0.5rem;
+                background: rgb(219 234 254);
+                color: rgb(37 99 235);
+            }
+            .form-icon.inactive {
+                background: rgb(244 244 245);
+                color: rgb(161 161 170);
+            }
+            .status-pill {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.25rem 0.625rem;
+                font-size: 0.75rem;
+                font-weight: 500;
+                border-radius: 9999px;
+            }
+            .status-pill.active { background: rgb(220 252 231); color: rgb(22 101 52); }
+            .status-pill.inactive { background: rgb(244 244 245); color: rgb(82 82 91); }
+            .status-pill.draft { background: rgb(254 249 195); color: rgb(161 98 7); }
+            .status-pill.archived { background: rgb(254 226 226); color: rgb(185 28 28); }
+            .feature-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.25rem;
+                padding: 0.125rem 0.5rem;
+                font-size: 0.625rem;
+                font-weight: 500;
+                border-radius: 0.25rem;
+                background: rgb(244 244 245);
+                color: rgb(82 82 91);
+                margin-right: 0.25rem;
+            }
+            .feature-pill.enabled {
+                background: rgb(220 252 231);
+                color: rgb(22 101 52);
+            }
+            .empty-state {
+                padding: 4rem 2rem;
+                text-align: center;
+            }
+            .empty-state-icon {
+                width: 4rem;
+                height: 4rem;
+                margin: 0 auto 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 9999px;
+                background: rgb(244 244 245);
+                color: rgb(161 161 170);
+            }
+            .info-box {
+                display: flex;
+                gap: 1rem;
+                padding: 1rem 1.25rem;
+                background: rgb(239 246 255);
+                border: 1px solid rgb(191 219 254);
+                border-radius: 0.75rem;
+                margin-top: 1.5rem;
+            }
+            .info-box-icon {
+                flex-shrink: 0;
+                color: rgb(59 130 246);
+            }
+            .stat-value {
+                font-size: 0.875rem;
+                font-weight: 600;
+                color: rgb(24 24 27);
+            }
+            .stat-label {
+                font-size: 0.75rem;
+                color: rgb(113 113 122);
+            }
+            .slug-link {
+                font-family: monospace;
+                font-size: 0.75rem;
+                color: rgb(113 113 122);
+                background: rgb(244 244 245);
+                padding: 0.125rem 0.375rem;
+                border-radius: 0.25rem;
+            }
+        </style>
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="max-w-7xl mx-auto space-y-6">
+
+                    <!-- Forms Table Card -->
+                    <div class="section-card">
+                        <div class="section-card-header">
+                        <div>
+                            <h3 class="section-card-title">Support Forms</h3>
+                            <p class="text-sm text-zinc-500 mt-1">
+                                {{if .TotalForms}}{{.TotalForms}} forms{{else}}No forms{{end}}
+                                {{if .IsWorkspaceScoped}}
+                                for {{.CurrentWorkspace}}
+                                {{else}}
+                                across all workspaces
+                                {{end}}
+                            </p>
+                        </div>
+                        {{if not .IsWorkspaceScoped}}
+                        <a href="/forms/new" class="btn-primary">
+                            <i data-lucide="plus" class="h-4 w-4"></i>
+                            New Form
+                        </a>
+                        {{end}}
+                    </div>
+                        <div class="overflow-x-auto">
+                            <table class="responsive-table">
+                                <thead>
+                                    <tr>
+                                        <th>Form</th>
+                                        <th>Workspace</th>
+                                        <th>Status</th>
+                                        <th>Features</th>
+                                        <th>Submissions</th>
+                                        <th>Last Submission</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{if .Forms}}
+                                        {{range .Forms}}
+                                        <tr {{if not $.IsWorkspaceScoped}}onclick="window.location='/forms/{{.ID}}'"{{end}}>
+                                            <td class="mobile-header">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="form-icon {{if ne .Status "active"}}inactive{{end}}">
+                                                        <i data-lucide="file-text" class="h-5 w-5"></i>
+                                                    </div>
+                                                    <div>
+                                                        {{if $.IsWorkspaceScoped}}
+                                                        <span class="font-medium text-zinc-900 block">{{.Name}}</span>
+                                                        {{else}}
+                                                        <a href="/forms/{{.ID}}" class="font-medium text-zinc-900 hover:text-blue-600 block">{{.Name}}</a>
+                                                        {{end}}
+                                                        <code class="slug-link">/{{.Slug}}</code>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td data-label="Workspace">
+                                                <span class="chip">{{index $.WorkspaceNames .WorkspaceID}}</span>
+                                            </td>
+                                            <td data-label="Status">
+                                                {{if eq .Status "active"}}
+                                                    <span class="status-pill active">Active</span>
+                                                {{else if eq .Status "draft"}}
+                                                    <span class="status-pill draft">Draft</span>
+                                                {{else if eq .Status "inactive"}}
+                                                    <span class="status-pill inactive">Inactive</span>
+                                                {{else if eq .Status "archived"}}
+                                                    <span class="status-pill archived">Archived</span>
+                                                {{else}}
+                                                    <span class="status-pill inactive">{{.Status}}</span>
+                                                {{end}}
+                                            </td>
+                                            <td data-label="Features">
+                                                <div class="flex flex-wrap gap-1">
+                                                    {{if .IsPublic}}
+                                                        <span class="feature-pill enabled">Public</span>
+                                                    {{end}}
+                                                    {{if .AutoCreateCase}}
+                                                        <span class="feature-pill enabled">Auto-Case</span>
+                                                    {{end}}
+                                                    {{if .NotifyOnSubmission}}
+                                                        <span class="feature-pill enabled">Notify</span>
+                                                    {{end}}
+                                                    {{if .RequiresCaptcha}}
+                                                        <span class="feature-pill">Captcha</span>
+                                                    {{end}}
+                                                    {{if not (or .IsPublic .AutoCreateCase .NotifyOnSubmission .RequiresCaptcha)}}
+                                                        <span class="text-xs text-zinc-400">Basic</span>
+                                                    {{end}}
+                                                </div>
+                                            </td>
+                                            <td data-label="Submissions">
+                                                <div>
+                                                    <span class="stat-value">{{.SubmissionCount}}</span>
+                                                    {{if gt .ConversionRate 0}}
+                                                    <span class="text-xs text-zinc-500 ml-1">({{printf "%.1f" .ConversionRate}}% conv.)</span>
+                                                    {{end}}
+                                                </div>
+                                            </td>
+                                            <td data-label="Last Submission">
+                                                {{if .LastSubmissionAt}}
+                                                    <span class="text-sm text-zinc-600">{{.LastSubmissionAt.Format "Jan 02, 15:04"}}</span>
+                                                {{else}}
+                                                    <span class="text-xs text-zinc-400">Never</span>
+                                                {{end}}
+                                            </td>
+                                        </tr>
+                                        {{end}}
+                                    {{else}}
+                                        <tr>
+                                            <td colspan="6">
+                                                <div class="empty-state">
+                                                    <div class="empty-state-icon">
+                                                        <i data-lucide="file-text" class="h-8 w-8"></i>
+                                                    </div>
+                                                    <h3 class="text-lg font-semibold text-zinc-900">No forms</h3>
+                                                    <p class="text-zinc-500 mt-1">Create forms to collect support requests and customer feedback</p>
+                                                    {{if not .IsWorkspaceScoped}}
+                                                    <a href="/forms/new" class="btn-primary mt-4">
+                                                        <i data-lucide="plus" class="h-4 w-4"></i>
+                                                        Create First Form
+                                                    </a>
+                                                    {{end}}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Info Box -->
+                    <div class="info-box">
+                        <div class="info-box-icon">
+                            <i data-lucide="info" class="h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-zinc-900">About Forms</h4>
+                            <p class="text-sm text-zinc-600 mt-0.5">
+                                Forms allow customers to submit support requests through customizable web forms.
+                                Submissions can automatically create cases, assign them to teams, apply tags, and
+                                send notifications. Forms support public access, captcha protection, and rate limiting.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </body>
+</html>
+{{end}}

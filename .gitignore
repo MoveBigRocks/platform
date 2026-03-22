@@ -1,0 +1,100 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/hectic
+hectic-platform
+hectic-worker
+hectic-outbound-email-sender
+hectic-inbound-email-processor
+bin/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+*_coverage.out
+coverage.html
+coverage.txt
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# Build directories
+dist/
+build/
+
+# Local environment files
+# CRITICAL: Never commit actual environment files with secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+.env.development
+
+# Secrets directory (contains runtime tokens created during deployment)
+infrastructure/secrets/*
+!infrastructure/secrets/README.md
+
+# Data directories
+data/
+test_data/
+*.db
+*.db-shm
+*.db-wal
+
+# Disabled/dead code files
+*.disabled
+
+# IDE specific files
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+*.iml
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+tmp/
+temp/
+.worktrees/
+
+# Local storage for development
+/storage/
+/uploads/
+
+# Docker volumes
+docker-data/
+
+# Cache directories
+.cache/
+*.cache
+# Build artifacts
+/api
+/worker
+/outbound-email-sender
+/inbound-email-processor
+
+# Test output files
+test_output*.txt
+
+# Local audit artifacts
+docs/planning/dead-code-audit-findings.md
+docs/planning/linus-review-findings.md

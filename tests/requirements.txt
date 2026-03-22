@@ -1,0 +1,3 @@
+# Python dependencies for Sentry SDK integration tests
+sentry-sdk>=1.40.0
+requests>=2.31.0

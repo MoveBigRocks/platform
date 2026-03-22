@@ -1,0 +1,403 @@
+# Move Big Rocks
+
+**Replace SaaS tool sprawl with one self-hosted operations platform. Move Big Rocks is free to use with source code available, gives you a growing set of off-the-shelf extensions, and lets you build your own with Claude Code, Codex, or other tools. Manage operational knowledge in structured Markdown with real versioning, team ownership, and agent-native workflows.**
+
+This repository is the source of truth for Move Big Rocks core.
+
+Public site: [movebigrocks.com](https://movebigrocks.com)
+
+[![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-blue.svg)](LICENSE)
+
+## The Problem
+
+Most organisations now have two overlapping problems.
+
+First, operational work is fragmented across support tools, forms tools,
+analytics tools, recruiting tools, ticketing systems, inboxes, and internal
+glue. Each system charges money, models work differently, and creates another
+place where context can drift away from the real work.
+
+Second, the important context is fragmented too. Strategy, goals, plans,
+constraints, prompts, runbooks, and working knowledge are spread across slide
+decks, local Markdown files, chats, tickets, and personal folders. That makes
+them hard for humans to understand consistently and hard for agents to use
+safely.
+
+This problem existed before agentic work. But work is changing much
+faster now. Claude Code, Codex, and other agent tools are becoming part of how
+teams actually operate. Agentic flows are becoming normal. More people can
+build useful software and automation faster than ever, but they still need
+somewhere coherent to deploy, operate, govern, and share that work.
+
+Without that substrate, agents do not reduce organisational chaos. They amplify
+it. The likely result is even more busy work, even more SaaS sprawl, more
+Slack, more meetings, more alignment sessions, more local prompt systems, and
+more work happening outside any deliberate system of record.
+
+Companies that actually want durable value from AI need a new operating system
+for work, not just more models layered on top of the old mess.
+
+Move Big Rocks exists to solve that combined problem: one operational core
+where work, knowledge, strategic context, and agent activity live in the same
+legible system.
+
+## What Move Big Rocks Does About It
+
+Move Big Rocks gives your organisation one operational core instead of a pile
+of adjacent tools:
+
+- **Service catalog and forms** — define what work exists and what information
+  must be collected before work is accepted, routed, or acted on
+- **Queues, conversations, and cases** — handle live interactions in queues,
+  keep conversations conversational when possible, and create durable cases
+  only when real follow-through is needed
+- **Structured Markdown knowledge** — keep RFCs, templates, runbooks,
+  constraints, prompts, and team-specific models in one versioned system with
+  explicit audience control, not scattered across laptops and wikis
+- **Strategic context and delivery** — purpose, goals, strategy, bets, OKRs,
+  milestone goals, and workstreams as real concept types so agents and humans
+  can reason from the same context instead of shallow tickets
+- **Automation and events** — trigger actions when operational events happen
+  without building the whole product around hidden glue
+- **Agent access built in** — one CLI and one GraphQL API for humans and
+  agents, not parallel shadow workflows
+
+For many teams, that core is already enough.
+
+## Extensions You Can Install
+
+Move Big Rocks ships off-the-shelf extension packs. Some replace standalone
+products:
+
+| Pack | What it does |
+|------|-------------|
+| **ATS** | Applicant tracking with careers site, candidate workflows, and interview kits on the same operational base |
+| **Error tracking** | Sentry-compatible ingestion and issue workflows connected to the same queues, cases, and knowledge |
+| **Web analytics** | Cookie-free, privacy-first analytics without pushing operational context into another silo |
+
+Other available extensions include:
+
+- **Enterprise access** — a simple SSO extension that lets your Move Big Rocks
+  instance delegate authentication to your company's existing IdP
+
+Each pack runs on the same core primitives — same teams, same queues, same
+knowledge, same agent contract. That means your ATS candidates, your error
+tracking issues, and your support cases all live in one system instead of
+three, while adjacent capabilities such as enterprise access can plug into the
+same runtime model too.
+
+## Build Your Own Extensions
+
+Move Big Rocks is not just a product — it is a platform you can build on:
+
+- Use the same extension model as the first-party packs
+- Own structured state in your own `ext_*` PostgreSQL schema
+- Use Git-backed artifact surfaces for websites, templates, and published docs
+- Register concept specs and agent skills so your pack is discoverable
+- Test in a sandbox, validate, then promote to production
+- Keep your extensions private or publish them
+
+The extension model is closer to Shopify app extensions than to WordPress
+plugins: explicit manifests, explicit permissions, lifecycle hooks, and
+out-of-process execution.
+
+An agent like Claude Code or Codex can scaffold, implement, and deploy an
+extension through the same CLI and lifecycle as everything else.
+
+## Knowledge For Agentic Operations
+
+Move Big Rocks treats knowledge as a first-class operational primitive, not an
+afterthought wiki:
+
+- **Markdown-first** — author in the format humans and agents already prefer
+- **Structured by concept specs** — versioned definitions for RFCs, templates,
+  constraints, skills, goals, strategies, and team-specific models
+- **Explicit audience control** — team-only, shared with named peers, or
+  workspace-visible, never wider than the concept spec allows
+- **Workspaces and teams** — workspaces isolate tenants, teams own operational
+  responsibility, knowledge respects both boundaries
+- **Local filesystem workflows** — check out an ACL-filtered working copy,
+  edit real files, diff changes, and sync them back
+- **Strategic Context Stack** — purpose, vision, mission, goals, strategy,
+  bets, OKRs, KPIs, milestone goals, and workstreams as structured concept
+  instances linked to queues, catalog, and work
+- **Git-backed versioning** — revision history without forcing raw Git
+  workflows on every user
+
+The structured knowledge model works like this:
+
+- `ConceptSpec` defines the versioned structure, workflow, and agent guidance
+  for a concept such as an RFC, checklist, template, or team-specific brief
+- `KnowledgeResource` stores the actual Markdown instance, parsed frontmatter,
+  review state, in-workspace access policy, Git revision metadata, and a pinned
+  `concept_spec_key` plus `concept_spec_version`
+- agents and humans work against the same concept definitions and instance records
+- Markdown bodies can use typed references such as `@goal/...`,
+  `@strategy/...`, `@milestone/...`, `@workstream/...`, `@queue/...`, and
+  `@catalog/...`; the canonical relation graph stays in structured metadata
+- the server-side database and artifact service remain the source of truth
+- `mbr` can materialize an ACL-filtered local checkout of the knowledge and
+  concept files a user or agent is allowed to see
+- local edits are validated against concept specs and permissions before they
+  are accepted back
+
+The Strategic Context Stack should stay explicit: `purpose`, `vision`,
+`mission`, `goal`, `strategy`, `bet`, `okr`, and `kpi` have different jobs and
+different time horizons. Milestone goals and workstreams sit below that stack
+as the delivery layer. Teams can define milestone goals, workstreams, and
+linked strategic context in one place, and agents can work from those richer
+concept instances instead of requiring a backlog full of tiny tickets.
+
+This is what lets Move Big Rocks replace meaningful slices of Confluence and
+Jira: teams keep strategy, operating context, templates, and work in one
+auditable, agent-usable system instead of splitting them across isolated SaaS
+tools and local folders.
+
+## Agent-Native By Design
+
+Move Big Rocks is designed so a capable agent can operate it efficiently.
+
+That includes Claude Code, Codex, OpenClaw, and other hosts that can use CLI,
+GraphQL, or a thin adapter over the same contract.
+
+The model is consistent:
+
+- give the agent the Move Big Rocks repo or the instance repo
+- give it the current `mbr` CLI and machine-readable contract
+- give it the relevant workspace and team context
+- let it operate through Move Big Rocks approved surfaces
+
+That means an agent should be able to:
+
+- deploy and configure Move Big Rocks
+- work conversations and cases
+- retrieve and publish knowledge
+- fill out forms and submit requests
+- install and configure extensions
+- help teams author private extensions
+
+Move Big Rocks is the place where records live, permissions are enforced,
+approvals happen, and audit trails are recorded. Agents operate through the
+same contract as humans — one `mbr` CLI with `--json` on every command, one
+GraphQL API, machine-readable bootstrap endpoints for discovery, and explicit
+workspace and team context.
+
+A user should be able to tell their agent "create me a Move Big Rocks sandbox"
+and the agent handles the rest through `mbr`.
+
+## Move Big Rocks With OpenClaw
+
+OpenClaw is optional. If a user connects a local OpenClaw setup to Move Big
+Rocks, it becomes a stronger operational hub for setup, operations, support
+work, and extension authoring.
+
+OpenClaw can help with instance setup, case assistance, knowledge retrieval,
+form draft preparation, and extension scaffolding. Move Big Rocks owns the
+operational data, the permissions, the approvals, the extension lifecycle, and
+the audit trail. OpenClaw can help control Move Big Rocks, but Move Big Rocks
+stays in charge.
+
+## Hosted Sandboxes
+
+Move Big Rocks is self-hosted by default in production, but the product also
+supports a hosted sandbox path for evaluation:
+
+- spin up a sandbox in minutes from the `mbr` CLI
+- run `mbr sandboxes create --email you@company.com --json` and get back the ready URL, login path, expiry, and next steps in one response
+- get 5 days free by default
+- extend it for 30 more days for $50 if needed
+- get a disposable hosted environment with seeded demo data
+- get an auto-generated subdomain such as `magic-dumpling-26.movebigrocks.io`
+- use the browser after bootstrap, but create and manage the sandbox through the same `mbr` contract as a real deployment
+- explore teams, queues, conversations, knowledge, concept specs, and extensions
+- use first-party packs in sandbox mode for evaluation without a separate purchase
+- export data and configuration easily before the sandbox expires
+
+The important ergonomics rule is that sandbox creation is CLI-first: `mbr`
+creates, inspects, extends, exports, and destroys sandboxes. In the normal
+path, sandbox creation should return a usable URL directly instead of forcing a
+human or agent through a separate verification step. The public site exposes a
+machine-readable bootstrap endpoint so agents can discover docs, CLI install
+metadata, and sandbox bootstrap steps before `mbr` is installed.
+
+## Self-Hosted, Not SaaS
+
+- **Free core** — self-host the platform without per-seat rent
+- **Paid packs** — buy focused first-party extensions when the depth matters
+- **Sandbox for evaluation** — spin up a disposable hosted sandbox in minutes
+  (5 days free, $50 for 30 more)
+- **Your instance, your control** — one private instance repo, one Linux host,
+  pinned releases, no vendor lock-in
+- **Buy or build on the same base** — use first-party packs or ship your own
+  private or team-authored extensions against the same runtime model
+
+## Why Move Big Rocks
+
+- **Shared operational primitives**: workspace, team, queue, service catalog node, case, conversation, label, contact, concept spec, knowledge resource, form spec, attachment, automation, agent
+- **Structured Markdown knowledge**: versioned concept specs define RFCs, templates, constraints, skills, ideas, strategic context, and other team concepts with default and allowed visibility and review rules
+- **Versioned artifact surfaces**: Git-backed Markdown and publishable content artifacts managed by core for teams and extensions
+- **CLI-first agent access**: stable commands, JSON output, strict exit codes, browser login for humans, token auth for agents
+- **Explicit delegated routing**: agent handoff and escalation governed through workspace membership constraints, not generic write access
+- **Sandbox-first evaluation**: disposable hosted sandboxes for fast trials without weakening the self-hosted production story
+- **Single source of truth**: GraphQL backed by shared services and audit trails
+- **Optional product layers**: ATS, enterprise access, error tracking, web analytics, operational health, and agent-runtime connectors install as extensions
+- **Self-hosted by default**: one Go service, PostgreSQL, predictable deployment
+
+## Pick The Right Repo
+
+Use this repo if you are:
+
+- understanding Move Big Rocks as a product
+- working on Move Big Rocks core source
+- defining the core architecture, CLI, and extension model
+
+Use a private instance repo if you are:
+
+- deploying or operating a live Move Big Rocks instance
+- configuring instance-specific domains, secrets, or extensions
+- doing customer-specific branding or rollout work
+
+For those paths:
+
+- deploy or operate an instance: [START_WITH_AN_AGENT.md](https://github.com/MoveBigRocks/platform/blob/main/START_WITH_AN_AGENT.md) and [MoveBigRocks/instance-template](https://github.com/MoveBigRocks/instance-template)
+- build a custom extension: [MoveBigRocks/extension-sdk](https://github.com/MoveBigRocks/extension-sdk)
+
+## Core Model
+
+Move Big Rocks core owns the operational primitives that extensions build on:
+
+- **Workspace** — the tenant and security boundary inside an instance
+- **Team** — the operational ownership boundary inside a workspace
+- **Service catalog** — what work exists in the organisation
+- **Forms** — what information must be collected before work is accepted or
+  routed (structured specs with validation, tied to catalog and routing)
+- **Queue** — where work is processed, holding queue items that point to
+  conversations or cases
+- **Conversation** — a live interaction that can resolve on its own or
+  escalate into a case
+- **Case** — durable work with ownership, SLA, approvals, and follow-through
+- **Knowledge resource** — Markdown content pinned to a versioned concept spec
+  with explicit audience control
+- **Concept spec** — the versioned definition for a structured knowledge
+  concept (RFC, template, goal, strategy, milestone, workstream, etc.)
+- **Automation** — event-driven rules that trigger actions
+- **Agent** — first-class principal with workspace-scoped tokens and audit
+- **Contact** — the external person a conversation or case is about
+- **Attachment** — files uploaded to cases, forms, or knowledge
+
+## Product Shape
+
+Move Big Rocks core stays small and composable:
+
+- **Core**: auth, workspaces, teams, memberships, agents, contacts, service
+  catalog nodes, queues, conversations, cases, case labels, Markdown knowledge,
+  concept specs, forms, attachments, automation, GraphQL, admin panel, public
+  routes, event-driven integrations
+- **Public example extension**: ATS + careers site in
+  `MoveBigRocks/extension-examples`
+- **Optional first-party packs**: enterprise access, error tracking, web
+  analytics, operational health, agent-runtime connectors
+
+## Delivery Model
+
+Production delivery follows a split repo model:
+
+- **Public core repo** for source, releases, docs, and shared runtime contracts
+- **Public instance template repo** at `MoveBigRocks/instance-template`
+- **Public extension SDK repo** at `MoveBigRocks/extension-sdk`
+- **Private instance repo** created from `MoveBigRocks/instance-template` and
+  used as the deployment control plane for one customer installation
+- **Optional custom extension repo** created from `MoveBigRocks/extension-sdk`
+  when a team needs custom extension code
+
+Customers deploy pinned core releases from their private instance repo, then
+install signed extension bundles into that running instance. This is what makes
+the product agent-friendly: an agent can open the instance repo, configure
+secrets, deploy the server, install extensions, and keep the installation
+upgraded without managing a permanent core fork.
+
+## Production Setup
+
+Production is operated from a private instance repo created from
+`MoveBigRocks/instance-template` and driven through pinned Move Big Rocks
+releases from there.
+
+Most customers need only one private instance repo. A separate custom extension
+repo is only needed when building custom extension logic.
+
+If you want to explore Move Big Rocks through Codex or Claude Code, start with:
+
+- [START_WITH_AN_AGENT.md](https://github.com/MoveBigRocks/platform/blob/main/START_WITH_AN_AGENT.md)
+
+Start here:
+
+- [Customer Instance Setup](https://github.com/MoveBigRocks/platform/blob/main/docs/CUSTOMER_INSTANCE_SETUP.md)
+- [Customer FAQ](https://github.com/MoveBigRocks/platform/blob/main/docs/CUSTOMER_FAQ.md)
+- [Instance and Extension Lifecycle](https://github.com/MoveBigRocks/platform/blob/main/docs/INSTANCE_AND_EXTENSION_LIFECYCLE.md)
+- [Agent Recipes](https://github.com/MoveBigRocks/platform/blob/main/docs/AGENT_RECIPES.md)
+- [MoveBigRocks/instance-template](https://github.com/MoveBigRocks/instance-template)
+- [MoveBigRocks/extension-sdk](https://github.com/MoveBigRocks/extension-sdk)
+- [Infrastructure Guide](https://github.com/MoveBigRocks/platform/blob/main/docs/INFRA_GUIDE.md)
+
+## Local Development Quick Start
+
+Move Big Rocks uses PostgreSQL in local development and production. Start or
+point at a local PostgreSQL instance first, then:
+
+```bash
+git clone https://github.com/movebigrocks/platform
+cd platform
+cp .env.example .env
+make run
+```
+
+`make run` reads `.env` when present. If `DATABASE_DSN` is left unset there, it
+defaults to `postgres://$USER@127.0.0.1:5432/postgres?sslmode=disable`.
+
+Access the service at `http://lvh.me:8080`.
+
+If you want explicit binaries:
+
+```bash
+make build
+./bin/mbr-server
+```
+
+The operator CLI lives at `./bin/mbr`.
+
+## Agent Access
+
+Create a workspace-scoped agent token:
+
+```bash
+make create-agent WORKSPACE=demo NAME="Operations Agent" OWNER=owner@example.com
+```
+
+The `mbr` CLI is the main operator and agent surface for authentication, teams,
+queues, cases, knowledge, forms, attachments, and extension lifecycle work.
+
+## PostgreSQL Runtime Contract
+
+Move Big Rocks uses one PostgreSQL application database per instance.
+
+- Core migrations are authored under `migrations/postgres/` and tracked in
+  `public.schema_migrations`.
+- Core tables live in bounded-context schemas such as `core_platform`,
+  `core_service`, `core_automation`, and `core_knowledge`.
+- Service-backed extensions own their schema-local migration files.
+- Applied extension schema migrations are tracked under
+  `core_extension_runtime.schema_migration_history`.
+- Row primary keys use PostgreSQL-native `UUID` columns with `uuidv7()` defaults.
+
+## Key Documents
+
+- [Vision](https://github.com/MoveBigRocks/platform/blob/main/docs/vision.md)
+- [Milestone 1 Scope](https://github.com/MoveBigRocks/platform/blob/main/milestone-1-scope.md)
+- [START_WITH_AN_AGENT.md](https://github.com/MoveBigRocks/platform/blob/main/START_WITH_AN_AGENT.md)
+- [Agent CLI](https://github.com/MoveBigRocks/platform/blob/main/docs/AGENT_CLI.md)
+- [Customer Instance Setup](https://github.com/MoveBigRocks/platform/blob/main/docs/CUSTOMER_INSTANCE_SETUP.md)
+- [Customer FAQ](https://github.com/MoveBigRocks/platform/blob/main/docs/CUSTOMER_FAQ.md)
+- [Instance and Extension Lifecycle](https://github.com/MoveBigRocks/platform/blob/main/docs/INSTANCE_AND_EXTENSION_LIFECYCLE.md)
+- [Agent Recipes](https://github.com/MoveBigRocks/platform/blob/main/docs/AGENT_RECIPES.md)
+- [MoveBigRocks/instance-template](https://github.com/MoveBigRocks/instance-template)
+- [MoveBigRocks/extension-sdk](https://github.com/MoveBigRocks/extension-sdk)

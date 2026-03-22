@@ -1,0 +1,199 @@
+{{define "issues.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Issues - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+        <style>
+            .level-icon {
+                width: 2.5rem;
+                height: 2.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 0.5rem;
+            }
+            .level-icon.fatal { background: rgb(254 226 226); color: rgb(185 28 28); }
+            .level-icon.error { background: rgb(255 237 213); color: rgb(194 65 12); }
+            .level-icon.warning { background: rgb(254 249 195); color: rgb(161 98 7); }
+            .level-icon.info { background: rgb(219 234 254); color: rgb(29 78 216); }
+            .level-icon.debug { background: rgb(244 244 245); color: rgb(82 82 91); }
+            .status-pill {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.25rem 0.625rem;
+                font-size: 0.75rem;
+                font-weight: 500;
+                border-radius: 9999px;
+            }
+            .status-pill.unresolved { background: rgb(254 249 195); color: rgb(161 98 7); }
+            .status-pill.resolved { background: rgb(220 252 231); color: rgb(22 101 52); }
+            .status-pill.ignored { background: rgb(244 244 245); color: rgb(82 82 91); }
+            .status-pill.muted { background: rgb(243 232 255); color: rgb(126 34 206); }
+            .level-pill {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.25rem 0.625rem;
+                font-size: 0.75rem;
+                font-weight: 500;
+                border-radius: 9999px;
+            }
+            .level-pill.fatal { background: rgb(254 226 226); color: rgb(185 28 28); }
+            .level-pill.error { background: rgb(255 237 213); color: rgb(194 65 12); }
+            .level-pill.warning { background: rgb(254 249 195); color: rgb(161 98 7); }
+            .level-pill.info { background: rgb(219 234 254); color: rgb(29 78 216); }
+            .level-pill.debug { background: rgb(244 244 245); color: rgb(82 82 91); }
+            .empty-state {
+                padding: 4rem 2rem;
+                text-align: center;
+            }
+            .empty-state-icon {
+                width: 4rem;
+                height: 4rem;
+                margin: 0 auto 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 9999px;
+                background: rgb(244 244 245);
+                color: rgb(161 161 170);
+            }
+            .info-box {
+                display: flex;
+                gap: 1rem;
+                padding: 1rem 1.25rem;
+                background: rgb(239 246 255);
+                border: 1px solid rgb(191 219 254);
+                border-radius: 0.75rem;
+                margin-top: 1.5rem;
+            }
+            .info-box-icon {
+                flex-shrink: 0;
+                color: rgb(59 130 246);
+            }
+        </style>
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="max-w-7xl mx-auto space-y-6">
+
+                    <!-- Issues Table Card -->
+                    <div class="section-card">
+                        <div class="section-card-header">
+                            <div>
+                                <h3 class="section-card-title">Error Issues</h3>
+                                <p class="text-sm text-zinc-500 mt-1">{{if .TotalIssues}}{{.TotalIssues}} issues{{else}}No issues{{end}} across all workspaces</p>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="responsive-table">
+                                <thead>
+                                    <tr>
+                                        <th>Issue</th>
+                                        <th>Project</th>
+                                        <th>Status</th>
+                                        <th>Level</th>
+                                        <th>Events</th>
+                                        <th>Last Seen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{if .Issues}}
+                                        {{range .Issues}}
+                                        <tr onclick="window.location='{{$.IssuesBasePath}}/{{.ID}}'">
+                                            <td class="mobile-header">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="level-icon {{.Level}}">
+                                                        <i data-lucide="bug" class="h-5 w-5"></i>
+                                                    </div>
+                                                    <div>
+                                                        <a href="{{$.IssuesBasePath}}/{{.ID}}" class="font-medium text-zinc-900 hover:text-indigo-600 max-w-md truncate block">{{.Title}}</a>
+                                                        <div class="text-sm text-zinc-500 max-w-md truncate">{{.Culprit}}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td data-label="Project">
+                                                <span class="chip">{{index $.ProjectNames .ProjectID}}</span>
+                                            </td>
+                                            <td data-label="Status">
+                                                {{if eq .Status "unresolved"}}
+                                                    <span class="status-pill unresolved">Unresolved</span>
+                                                {{else if eq .Status "resolved"}}
+                                                    <span class="status-pill resolved">Resolved</span>
+                                                {{else if eq .Status "ignored"}}
+                                                    <span class="status-pill ignored">Ignored</span>
+                                                {{else if eq .Status "muted"}}
+                                                    <span class="status-pill muted">Muted</span>
+                                                {{else}}
+                                                    <span class="status-pill ignored">{{.Status}}</span>
+                                                {{end}}
+                                            </td>
+                                            <td data-label="Level">
+                                                {{if eq .Level "fatal"}}
+                                                    <span class="level-pill fatal">Fatal</span>
+                                                {{else if eq .Level "error"}}
+                                                    <span class="level-pill error">Error</span>
+                                                {{else if eq .Level "warning"}}
+                                                    <span class="level-pill warning">Warning</span>
+                                                {{else if eq .Level "info"}}
+                                                    <span class="level-pill info">Info</span>
+                                                {{else if eq .Level "debug"}}
+                                                    <span class="level-pill debug">Debug</span>
+                                                {{else}}
+                                                    <span class="level-pill debug">{{.Level}}</span>
+                                                {{end}}
+                                            </td>
+                                            <td data-label="Events">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-sm font-medium text-zinc-900">{{.EventCount}}</span>
+                                                    {{if gt .UserCount 0}}
+                                                    <span class="text-xs text-zinc-500">({{.UserCount}} users)</span>
+                                                    {{end}}
+                                                </div>
+                                            </td>
+                                            <td data-label="Last Seen"><span class="text-sm text-zinc-600">{{.LastSeen.Format "Jan 02, 15:04"}}</span></td>
+                                        </tr>
+                                        {{end}}
+                                    {{else}}
+                                        <tr>
+                                            <td colspan="6">
+                                                <div class="empty-state">
+                                                    <div class="empty-state-icon">
+                                                        <i data-lucide="bug" class="h-8 w-8"></i>
+                                                    </div>
+                                                    <h3 class="text-lg font-semibold text-zinc-900">No issues found</h3>
+                                                    <p class="text-zinc-500 mt-1">Issues will appear here when errors are ingested from monitored applications</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Info Box -->
+                    <div class="info-box">
+                        <div class="info-box-icon">
+                            <i data-lucide="info" class="h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-zinc-900">About Error Issues</h4>
+                            <p class="text-sm text-zinc-600 mt-0.5">
+                                Issues are groups of similar error events detected by the Sentry-compatible error monitoring system. Each issue represents a unique error that may occur multiple times across users and environments.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </body>
+</html>
+{{end}}

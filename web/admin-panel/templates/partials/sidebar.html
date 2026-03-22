@@ -1,0 +1,154 @@
+{{define "sidebar"}}
+<!-- Mobile overlay -->
+<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
+
+<aside id="layout-sidebar">
+    <!-- Logo -->
+    <div class="sidebar-logo">
+        <a href="/dashboard" class="flex items-center gap-3 flex-1">
+            <div class="logo-frame">
+                <img src="/static/images/puffer-fish-logo.png" alt="Move Big Rocks logo">
+            </div>
+            <div>
+                <img src="/static/images/text-logo.png" alt="Move Big Rocks" class="h-5 w-auto">
+                <p class="text-xs text-zinc-500 mt-1 font-medium">
+                    {{if .IsWorkspaceScoped}}
+                    {{if .CurrentWorkspace}}{{.CurrentWorkspace}}{{else}}Workspace{{end}}
+                    {{else}}
+                    Admin Panel
+                    {{end}}
+                </p>
+            </div>
+        </a>
+        <!-- Mobile close button -->
+        <button class="lg:hidden p-2 text-zinc-400 hover:text-zinc-600" onclick="toggleMobileMenu()">
+            <i data-lucide="x" class="h-5 w-5"></i>
+        </button>
+    </div>
+
+    <!-- Navigation Menu -->
+    <nav id="sidebar-menu">
+        <!-- Section: Overview -->
+        <div class="sidebar-menu-section">
+            <p class="sidebar-menu-title">Overview</p>
+            <a class="sidebar-menu-item {{if eq .ActivePage "dashboard"}}active{{end}}" href="/dashboard">
+                <i data-lucide="layout-dashboard" class="h-4 w-4"></i>
+                Dashboard
+            </a>
+        </div>
+
+        <!-- Section: Support -->
+        <div class="sidebar-menu-section">
+            <p class="sidebar-menu-title">Support</p>
+            <a class="sidebar-menu-item {{if eq .ActivePage "cases"}}active{{end}}" href="/cases">
+                <i data-lucide="inbox" class="h-4 w-4"></i>
+                Cases
+                {{if .CaseCount}}<span class="badge">{{.CaseCount}}</span>{{end}}
+            </a>
+        </div>
+
+        {{range .ExtensionNav}}
+        <div class="sidebar-menu-section">
+            <p class="sidebar-menu-title">{{.Title}}</p>
+            <div class="space-y-0.5">
+                {{range .Items}}
+                <a class="sidebar-menu-item {{if eq $.ActivePage .ActivePage}}active{{end}}" href="{{.Href}}">
+                    <i data-lucide="{{if .Icon}}{{.Icon}}{{else}}puzzle{{end}}" class="h-4 w-4"></i>
+                    {{.Title}}
+                </a>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        {{if not .IsWorkspaceScoped}}
+        <!-- Section: Automation -->
+        <div class="sidebar-menu-section">
+            <p class="sidebar-menu-title">Automation</p>
+            <a class="sidebar-menu-item {{if eq .ActivePage "rules"}}active{{end}}" href="/rules">
+                <i data-lucide="zap" class="h-4 w-4"></i>
+                Automations
+                {{if .RuleCount}}<span class="badge">{{.RuleCount}}</span>{{end}}
+            </a>
+        </div>
+
+        <!-- Section: Configuration -->
+        <div class="sidebar-menu-section">
+            <p class="sidebar-menu-title">Configuration</p>
+            <div class="space-y-0.5">
+                <a class="sidebar-menu-item {{if eq .ActivePage "forms"}}active{{end}}" href="/forms">
+                    <i data-lucide="file-text" class="h-4 w-4"></i>
+                    Forms
+                    {{if .FormCount}}<span class="badge">{{.FormCount}}</span>{{end}}
+                </a>
+            </div>
+        </div>
+
+        <!-- Section: Integrations -->
+        <div class="sidebar-menu-section">
+            <p class="sidebar-menu-title">Integrations</p>
+            <div class="space-y-0.5">
+                <a class="sidebar-menu-item {{if eq .ActivePage "api_tokens"}}active{{end}}" href="/api-tokens">
+                    <i data-lucide="key" class="h-4 w-4"></i>
+                    Agent Tokens
+                </a>
+            </div>
+        </div>
+
+        <!-- Section: System -->
+        <div class="sidebar-menu-section">
+            <p class="sidebar-menu-title">System</p>
+            <a class="sidebar-menu-item {{if eq .ActivePage "metrics"}}active{{end}}" href="/metrics">
+                <i data-lucide="activity" class="h-4 w-4"></i>
+                System Metrics
+            </a>
+        </div>
+
+        <!-- Section: Management -->
+        <div class="sidebar-menu-section">
+            <p class="sidebar-menu-title">Management</p>
+            <div class="space-y-0.5">
+                <a class="sidebar-menu-item {{if eq .ActivePage "workspaces"}}active{{end}}" href="/workspaces">
+                    <i data-lucide="box" class="h-4 w-4"></i>
+                    Workspaces
+                    {{if .WorkspaceCount}}<span class="badge">{{.WorkspaceCount}}</span>{{end}}
+                </a>
+                {{if .CanManageUsers}}
+                <a class="sidebar-menu-item {{if eq .ActivePage "users"}}active{{end}}" href="/users">
+                    <i data-lucide="users" class="h-4 w-4"></i>
+                    Users
+                    {{if .UserCount}}<span class="badge">{{.UserCount}}</span>{{end}}
+                </a>
+                {{end}}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Instance inspector at bottom -->
+    <div class="sidebar-footer">
+        <a href="/instance" class="sidebar-footer-btn {{if eq .ActivePage "instance"}}active{{end}}">
+            <i data-lucide="scan-search" class="h-4 w-4"></i>
+            Instance
+        </a>
+        {{end}}
+    </div>
+</aside>
+
+<script>
+function toggleMobileMenu() {
+    var sidebar = document.getElementById('layout-sidebar');
+    var overlay = document.getElementById('sidebar-overlay');
+    var isOpen = sidebar.classList.contains('show');
+
+    if (isOpen) {
+        sidebar.classList.remove('show');
+        overlay.classList.remove('show');
+        document.body.style.overflow = '';
+    } else {
+        sidebar.classList.add('show');
+        overlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+}
+</script>
+{{end}}

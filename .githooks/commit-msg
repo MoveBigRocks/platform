@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# commit-msg hook to prevent AI assistant attribution in commit messages
+
+COMMIT_MSG_FILE=$1
+
+if [ ! -f "$COMMIT_MSG_FILE" ]; then
+	exit 0
+fi
+
+# Fail on common AI-assistant attribution signatures.
+if grep -qiE "(generated with|co-authored-by:.*claude|co-authored-by:.*anthropic|co-authored-by|claude\s*code|anthropic|🤖)" "$COMMIT_MSG_FILE"; then
+	echo "ERROR: Commit message contains AI assistant attribution."
+	echo "Remove AI assistant references from commit messages."
+	echo "Commit messages should not reference AI assistants."
+	exit 1
+fi
+
+exit 0

@@ -1,0 +1,152 @@
+/* Custom CSS for Move Big Rocks */
+
+/* Smooth transitions for HTMX swaps */
+.htmx-swapping {
+    opacity: 0;
+    transition: opacity 200ms ease-out;
+}
+
+.htmx-settling {
+    opacity: 1;
+    transition: opacity 200ms ease-in;
+}
+
+/* Loading indicators */
+.htmx-request .htmx-indicator {
+    display: inline;
+}
+
+.htmx-indicator {
+    display: none;
+}
+
+/* Toast notifications positioning */
+.toast {
+    pointer-events: auto;
+}
+
+/* Code blocks in communications */
+.prose code {
+    @apply bg-base-200 px-1 py-0.5 rounded text-sm;
+}
+
+.prose pre {
+    @apply bg-base-200 p-4 rounded-lg overflow-x-auto;
+}
+
+/* Stack trace styling */
+.mockup-code pre[data-prefix]::before {
+    content: attr(data-prefix);
+    @apply inline-block text-right;
+}
+
+/* Avatar placeholders */
+.avatar.placeholder > div {
+    @apply flex items-center justify-center;
+}
+
+/* Responsive table improvements */
+@media (max-width: 768px) {
+    .table {
+        font-size: 0.875rem;
+    }
+
+    .table th,
+    .table td {
+        padding: 0.5rem;
+    }
+}
+
+/* Custom scrollbar for sidebar */
+.drawer-side::-webkit-scrollbar {
+    width: 8px;
+}
+
+.drawer-side::-webkit-scrollbar-track {
+    @apply bg-base-300;
+}
+
+.drawer-side::-webkit-scrollbar-thumb {
+    @apply bg-base-content/20 rounded;
+}
+
+.drawer-side::-webkit-scrollbar-thumb:hover {
+    @apply bg-base-content/30;
+}
+
+/* Status badge animations */
+.badge {
+    transition: all 0.2s ease;
+}
+
+/* Focus styles for better accessibility */
+*:focus-visible {
+    @apply ring-2 ring-primary ring-offset-2 ring-offset-base-100 outline-none;
+}
+
+/* Loading skeleton */
+.skeleton {
+    @apply animate-pulse bg-base-300 rounded;
+}
+
+/* Empty state styling */
+.empty-state {
+    @apply flex flex-col items-center justify-center p-12 text-center;
+}
+
+.empty-state svg {
+    @apply w-24 h-24 opacity-30 mb-4;
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+    @apply fixed inset-0 bg-black/50 z-40;
+}
+
+/* Improved form styling */
+.form-control label {
+    @apply font-medium;
+}
+
+/* Better link hover states */
+a.link {
+    @apply transition-colors duration-200;
+}
+
+/* Notification badge pulse */
+.indicator-item.badge {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* HTMX error state */
+.htmx-request.htmx-error {
+    @apply text-error;
+}
+
+/* Smooth page transitions */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Print styles */
+@media print {
+    .drawer-side,
+    .navbar,
+    .btn,
+    nav {
+        display: none !important;
+    }
+
+    .drawer-content {
+        margin-left: 0 !important;
+    }
+}

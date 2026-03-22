@@ -1,0 +1,648 @@
+{{define "form_builder.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Form Builder - {{if .Form}}{{.Form.Name}}{{else}}New Form{{end}} - Move Big Rocks Admin</title>
+    {{template "head"}}
+    <style>
+        .builder-container { display: grid; grid-template-columns: 220px 1fr 280px; height: calc(100vh - 120px); }
+
+        /* Field Palette */
+        .field-palette { background: #f8fafc; border-right: 1px solid #e5e7eb; padding: 1rem; overflow-y: auto; }
+        .palette-section { margin-bottom: 1.5rem; }
+        .palette-section-title { font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; margin-bottom: 0.5rem; }
+        .field-type { padding: 0.625rem 0.75rem; background: white; border: 1px solid #e5e7eb; border-radius: 6px;
+                      margin-bottom: 0.375rem; cursor: grab; display: flex; align-items: center; gap: 0.5rem;
+                      font-size: 0.875rem; transition: all 0.15s; }
+        .field-type:hover { border-color: #3b82f6; background: #eff6ff; }
+        .field-type.dragging { opacity: 0.5; transform: scale(0.95); }
+        .field-type-icon { width: 1.25rem; text-align: center; color: #6b7280; }
+
+        /* Canvas */
+        .form-canvas { padding: 1.5rem; overflow-y: auto; background: #f1f5f9; }
+        .canvas-form { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                       padding: 1.5rem; max-width: 640px; margin: 0 auto; min-height: 300px; }
+        .canvas-empty { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 3rem; text-align: center; color: #94a3b8; }
+        .form-field { padding: 0.875rem; border: 2px solid transparent; border-radius: 6px; margin-bottom: 0.5rem;
+                      cursor: pointer; position: relative; transition: all 0.15s; }
+        .form-field:hover { border-color: #93c5fd; background: #f8fafc; }
+        .form-field.selected { border-color: #3b82f6; background: #eff6ff; }
+        .form-field.drag-over { border-color: #10b981; border-style: dashed; background: #ecfdf5; }
+        .field-drag-handle { position: absolute; left: -20px; top: 50%; transform: translateY(-50%);
+                             cursor: grab; color: #94a3b8; opacity: 0; transition: opacity 0.15s; }
+        .form-field:hover .field-drag-handle { opacity: 1; }
+        .field-delete { position: absolute; right: 4px; top: 4px; color: #ef4444; cursor: pointer;
+                        opacity: 0; font-size: 1rem; padding: 0.25rem; border-radius: 4px; transition: all 0.15s; }
+        .field-delete:hover { background: #fee2e2; }
+        .form-field:hover .field-delete { opacity: 1; }
+
+        /* Properties Panel */
+        .properties-panel { background: white; border-left: 1px solid #e5e7eb; padding: 1rem; overflow-y: auto; }
+        .prop-section { margin-bottom: 1.25rem; }
+        .prop-section-title { font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem; color: #374151; }
+        .prop-label { font-size: 0.75rem; color: #6b7280; margin-bottom: 0.25rem; }
+        .prop-input { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8125rem; }
+        .prop-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
+        .prop-checkbox { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; cursor: pointer; }
+        .prop-checkbox input { cursor: pointer; }
+
+        /* Toolbar */
+        .builder-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem;
+                          background: white; border-bottom: 1px solid #e5e7eb; }
+        .toolbar-title { font-weight: 600; display: flex; align-items: center; gap: 0.75rem; }
+        .toolbar-btn { padding: 0.5rem 0.875rem; border-radius: 6px; border: 1px solid #d1d5db;
+                       background: white; cursor: pointer; font-size: 0.8125rem; display: inline-flex;
+                       align-items: center; gap: 0.375rem; transition: all 0.15s; }
+        .toolbar-btn:hover { background: #f3f4f6; }
+        .toolbar-btn-primary { background: #3b82f6; color: white; border-color: #3b82f6; }
+        .toolbar-btn-primary:hover { background: #2563eb; }
+
+        /* Preview styles */
+        .preview-field label { display: block; font-weight: 500; margin-bottom: 0.25rem; font-size: 0.875rem; }
+        .preview-field input, .preview-field textarea, .preview-field select {
+            width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem; }
+        .preview-field input:disabled, .preview-field textarea:disabled, .preview-field select:disabled {
+            background: #f9fafb; cursor: default; }
+        .preview-field .field-description { font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem; }
+        .preview-field .required-star { color: #ef4444; margin-left: 0.125rem; }
+
+        /* Options editor */
+        .option-row { display: flex; gap: 0.5rem; margin-bottom: 0.375rem; align-items: center; }
+        .option-row input { flex: 1; }
+        .option-remove { color: #ef4444; cursor: pointer; padding: 0.25rem; }
+        .add-option-btn { font-size: 0.75rem; color: #3b82f6; cursor: pointer; padding: 0.25rem 0; }
+        .add-option-btn:hover { text-decoration: underline; }
+
+        /* Tabs */
+        .panel-tabs { display: flex; border-bottom: 1px solid #e5e7eb; margin: -1rem -1rem 1rem -1rem; }
+        .panel-tab { flex: 1; padding: 0.625rem; text-align: center; font-size: 0.75rem; font-weight: 500;
+                     cursor: pointer; border-bottom: 2px solid transparent; color: #6b7280; }
+        .panel-tab:hover { color: #374151; }
+        .panel-tab.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+
+        /* Workflow designer */
+        .workflow-states { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .workflow-state { padding: 0.5rem 0.75rem; background: #f3f4f6; border-radius: 6px; font-size: 0.8125rem;
+                         cursor: pointer; border: 2px solid transparent; }
+        .workflow-state.active { border-color: #3b82f6; background: #eff6ff; }
+        .workflow-state.start { border-left: 3px solid #10b981; }
+        .workflow-state.end { border-left: 3px solid #f59e0b; }
+    </style>
+</head>
+<body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+    {{template "sidebar" .}}
+
+    <main id="layout-content">
+        {{template "topbar" .}}
+
+        <!-- Toolbar -->
+        <div class="builder-toolbar">
+            <div class="toolbar-title">
+                <a href="/forms" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="arrow-left" class="h-4 w-4"></i>
+                </a>
+                <input type="text" id="form-name" class="border-0 bg-transparent text-lg font-semibold focus:outline-none focus:ring-0"
+                       value="{{if .Form}}{{.Form.Name}}{{else}}Untitled Form{{end}}" placeholder="Form Name">
+            </div>
+            <div class="flex gap-2">
+                <button class="toolbar-btn" onclick="previewForm()">
+                    <i data-lucide="eye" class="h-4 w-4"></i>
+                    Preview
+                </button>
+                <button class="toolbar-btn toolbar-btn-primary" onclick="saveForm()">
+                    <i data-lucide="save" class="h-4 w-4"></i>
+                    Save
+                </button>
+            </div>
+        </div>
+
+        <div class="builder-container">
+            <!-- Field Palette -->
+            <div class="field-palette">
+                <div class="palette-section">
+                    <div class="palette-section-title">Input Fields</div>
+                    <div class="field-type" draggable="true" data-type="text">
+                        <span class="field-type-icon">Aa</span> Text
+                    </div>
+                    <div class="field-type" draggable="true" data-type="textarea">
+                        <span class="field-type-icon">&#182;</span> Long Text
+                    </div>
+                    <div class="field-type" draggable="true" data-type="email">
+                        <span class="field-type-icon">@</span> Email
+                    </div>
+                    <div class="field-type" draggable="true" data-type="number">
+                        <span class="field-type-icon">#</span> Number
+                    </div>
+                    <div class="field-type" draggable="true" data-type="phone">
+                        <span class="field-type-icon">&#9742;</span> Phone
+                    </div>
+                    <div class="field-type" draggable="true" data-type="date">
+                        <span class="field-type-icon">&#128197;</span> Date
+                    </div>
+                </div>
+
+                <div class="palette-section">
+                    <div class="palette-section-title">Selection</div>
+                    <div class="field-type" draggable="true" data-type="select">
+                        <span class="field-type-icon">&#9660;</span> Dropdown
+                    </div>
+                    <div class="field-type" draggable="true" data-type="radio">
+                        <span class="field-type-icon">&#9673;</span> Single Choice
+                    </div>
+                    <div class="field-type" draggable="true" data-type="checkbox">
+                        <span class="field-type-icon">&#9745;</span> Checkbox
+                    </div>
+                    <div class="field-type" draggable="true" data-type="checkboxes">
+                        <span class="field-type-icon">&#9745;</span> Multiple Choice
+                    </div>
+                </div>
+
+                <div class="palette-section">
+                    <div class="palette-section-title">Layout</div>
+                    <div class="field-type" draggable="true" data-type="heading">
+                        <span class="field-type-icon">H</span> Heading
+                    </div>
+                    <div class="field-type" draggable="true" data-type="paragraph">
+                        <span class="field-type-icon">&#182;</span> Text Block
+                    </div>
+                    <div class="field-type" draggable="true" data-type="divider">
+                        <span class="field-type-icon">&mdash;</span> Divider
+                    </div>
+                </div>
+
+                <div class="palette-section">
+                    <div class="palette-section-title">Advanced</div>
+                    <div class="field-type" draggable="true" data-type="file">
+                        <span class="field-type-icon">&#128206;</span> File Upload
+                    </div>
+                    <div class="field-type" draggable="true" data-type="hidden">
+                        <span class="field-type-icon">&#128065;</span> Hidden Field
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Canvas -->
+            <div class="form-canvas">
+                <div class="canvas-form" id="form-canvas">
+                    <div class="canvas-empty" id="empty-canvas">
+                        <i data-lucide="layout-grid" class="h-12 w-12 mx-auto mb-3 text-gray-300"></i>
+                        <p class="font-medium">Drag fields here</p>
+                        <p class="text-sm mt-1">Build your form by dragging fields from the left panel</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Properties Panel -->
+            <div class="properties-panel">
+                <div class="panel-tabs">
+                    <div class="panel-tab active" data-tab="field" onclick="switchTab('field')">Field</div>
+                    <div class="panel-tab" data-tab="form" onclick="switchTab('form')">Form</div>
+                </div>
+
+                <!-- Field Properties -->
+                <div id="field-tab">
+                    <div id="no-selection" class="text-gray-400 text-center py-8 text-sm">
+                        <i data-lucide="mouse-pointer-click" class="h-8 w-8 mx-auto mb-2"></i>
+                        Select a field to edit
+                    </div>
+
+                    <div id="field-properties" style="display: none;">
+                        <div class="prop-section">
+                            <div class="prop-section-title">Label</div>
+                            <input type="text" class="prop-input" id="prop-label" placeholder="Field label" oninput="updateField('title', this.value)">
+                        </div>
+
+                        <div class="prop-section">
+                            <div class="prop-section-title">Placeholder</div>
+                            <input type="text" class="prop-input" id="prop-placeholder" placeholder="Placeholder text" oninput="updateField('placeholder', this.value)">
+                        </div>
+
+                        <div class="prop-section">
+                            <div class="prop-section-title">Help Text</div>
+                            <input type="text" class="prop-input" id="prop-description" placeholder="Help text below field" oninput="updateField('description', this.value)">
+                        </div>
+
+                        <div class="prop-section">
+                            <div class="prop-section-title">Validation</div>
+                            <label class="prop-checkbox">
+                                <input type="checkbox" id="prop-required" onchange="updateField('required', this.checked)">
+                                Required field
+                            </label>
+                        </div>
+
+                        <div class="prop-section" id="options-section" style="display: none;">
+                            <div class="prop-section-title">Options</div>
+                            <div id="options-list"></div>
+                            <div class="add-option-btn" onclick="addOption()">+ Add option</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Properties -->
+                <div id="form-tab" style="display: none;">
+                    <div class="prop-section">
+                        <div class="prop-section-title">URL Slug</div>
+                        <input type="text" class="prop-input" id="form-slug" placeholder="my-form" value="{{if .Form}}{{.Form.Slug}}{{end}}">
+                    </div>
+
+                    <div class="prop-section">
+                        <div class="prop-section-title">Description</div>
+                        <textarea class="prop-input" id="form-description" rows="2" placeholder="Form description">{{if .Form}}{{.Form.Description}}{{end}}</textarea>
+                    </div>
+
+                    <div class="prop-section">
+                        <div class="prop-section-title">Status</div>
+                        <select class="prop-input" id="form-status">
+                            <option value="draft" {{if and .Form (eq .Form.Status "draft")}}selected{{end}}>Draft</option>
+                            <option value="active" {{if and .Form (eq .Form.Status "active")}}selected{{end}}>Active</option>
+                            <option value="inactive" {{if and .Form (eq .Form.Status "inactive")}}selected{{end}}>Inactive</option>
+                        </select>
+                    </div>
+
+                    <div class="prop-section">
+                        <div class="prop-section-title">Settings</div>
+                        <label class="prop-checkbox" style="margin-bottom: 0.5rem;">
+                            <input type="checkbox" id="form-public" {{if and .Form .Form.IsPublic}}checked{{end}}>
+                            Public form (no login required)
+                        </label>
+                        <label class="prop-checkbox" style="margin-bottom: 0.5rem;">
+                            <input type="checkbox" id="form-captcha" {{if and .Form .Form.RequiresCaptcha}}checked{{end}}>
+                            Require CAPTCHA
+                        </label>
+                        <label class="prop-checkbox">
+                            <input type="checkbox" id="form-create-case" {{if or (not .Form) .Form.AutoCreateCase}}checked{{end}}>
+                            Create support case on submit
+                        </label>
+                    </div>
+
+                    <div class="prop-section">
+                        <div class="prop-section-title">Success Message</div>
+                        <textarea class="prop-input" id="form-success" rows="2" placeholder="Thank you for your submission!">{{if .Form}}{{.Form.SubmissionMessage}}{{end}}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    // Form state
+    let formId = '{{if .Form}}{{.Form.ID}}{{end}}';
+    let workspaceId = '{{.WorkspaceID}}';
+    let formFields = [];
+    let selectedFieldIndex = null;
+    let fieldIdCounter = 0;
+
+    // Field type definitions
+    const fieldTypes = {
+        text: { type: 'string', title: 'Text Field', inputType: 'text' },
+        textarea: { type: 'string', title: 'Long Text', inputType: 'textarea' },
+        email: { type: 'string', title: 'Email', format: 'email', inputType: 'email' },
+        number: { type: 'number', title: 'Number', inputType: 'number' },
+        phone: { type: 'string', title: 'Phone', inputType: 'tel' },
+        date: { type: 'string', title: 'Date', format: 'date', inputType: 'date' },
+        select: { type: 'string', title: 'Dropdown', inputType: 'select', options: ['Option 1', 'Option 2'] },
+        radio: { type: 'string', title: 'Single Choice', inputType: 'radio', options: ['Option 1', 'Option 2'] },
+        checkbox: { type: 'boolean', title: 'Checkbox', inputType: 'checkbox' },
+        checkboxes: { type: 'array', title: 'Multiple Choice', inputType: 'checkboxes', options: ['Option 1', 'Option 2'] },
+        heading: { type: 'null', title: 'Section Heading', inputType: 'heading' },
+        paragraph: { type: 'null', title: 'Add descriptive text here', inputType: 'paragraph' },
+        divider: { type: 'null', title: '', inputType: 'divider' },
+        file: { type: 'string', title: 'File Upload', format: 'data-url', inputType: 'file' },
+        hidden: { type: 'string', title: 'Hidden Field', inputType: 'hidden' }
+    };
+
+    // Initialize drag and drop
+    function initDragDrop() {
+        document.querySelectorAll('.field-type').forEach(el => {
+            el.addEventListener('dragstart', handleDragStart);
+            el.addEventListener('dragend', handleDragEnd);
+        });
+
+        const canvas = document.getElementById('form-canvas');
+        canvas.addEventListener('dragover', handleDragOver);
+        canvas.addEventListener('drop', handleDrop);
+        canvas.addEventListener('dragleave', handleDragLeave);
+    }
+
+    function handleDragStart(e) {
+        e.target.classList.add('dragging');
+        e.dataTransfer.setData('text/plain', e.target.dataset.type);
+        e.dataTransfer.effectAllowed = 'copy';
+    }
+
+    function handleDragEnd(e) {
+        e.target.classList.remove('dragging');
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        const canvas = document.getElementById('form-canvas');
+        canvas.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+        if (!e.relatedTarget || !document.getElementById('form-canvas').contains(e.relatedTarget)) {
+            document.getElementById('form-canvas').classList.remove('drag-over');
+        }
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        document.getElementById('form-canvas').classList.remove('drag-over');
+        const fieldType = e.dataTransfer.getData('text/plain');
+        if (fieldType && fieldTypes[fieldType]) {
+            addField(fieldType);
+        }
+    }
+
+    function addField(type) {
+        const template = JSON.parse(JSON.stringify(fieldTypes[type]));
+        template.id = 'field_' + (++fieldIdCounter);
+        template.fieldType = type;
+        formFields.push(template);
+
+        renderFields();
+        selectField(formFields.length - 1);
+    }
+
+    function renderFields() {
+        const canvas = document.getElementById('form-canvas');
+        const emptyState = document.getElementById('empty-canvas');
+
+        if (formFields.length === 0) {
+            if (!emptyState) {
+                canvas.innerHTML = `
+                    <div class="canvas-empty" id="empty-canvas">
+                        <i data-lucide="layout-grid" class="h-12 w-12 mx-auto mb-3 text-gray-300"></i>
+                        <p class="font-medium">Drag fields here</p>
+                        <p class="text-sm mt-1">Build your form by dragging fields from the left panel</p>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+            return;
+        }
+
+        let html = '';
+        formFields.forEach((field, index) => {
+            html += renderFieldPreview(field, index);
+        });
+        canvas.innerHTML = html;
+        lucide.createIcons();
+
+        // Reapply selection
+        if (selectedFieldIndex !== null && selectedFieldIndex < formFields.length) {
+            const el = document.querySelector(`[data-index="${selectedFieldIndex}"]`);
+            if (el) el.classList.add('selected');
+        }
+    }
+
+    function renderFieldPreview(field, index) {
+        const isSelected = index === selectedFieldIndex;
+        let inputHtml = '';
+
+        switch (field.inputType) {
+            case 'textarea':
+                inputHtml = `<textarea class="prop-input" placeholder="${field.placeholder || ''}" disabled rows="2"></textarea>`;
+                break;
+            case 'select':
+                inputHtml = `<select class="prop-input" disabled><option>Select...</option></select>`;
+                break;
+            case 'radio':
+            case 'checkboxes':
+                const opts = field.options || ['Option 1', 'Option 2'];
+                const inputType = field.inputType === 'radio' ? 'radio' : 'checkbox';
+                inputHtml = opts.map(o => `<label class="prop-checkbox" style="margin-bottom: 0.25rem;"><input type="${inputType}" disabled> ${o}</label>`).join('');
+                break;
+            case 'checkbox':
+                inputHtml = `<label class="prop-checkbox"><input type="checkbox" disabled> ${field.title}</label>`;
+                break;
+            case 'heading':
+                return `<div class="form-field${isSelected ? ' selected' : ''}" data-index="${index}" onclick="selectField(${index})">
+                    <span class="field-drag-handle">&#8942;&#8942;</span>
+                    <span class="field-delete" onclick="deleteField(${index}, event)">&times;</span>
+                    <h3 style="font-size: 1.125rem; font-weight: 600;">${field.title}</h3>
+                </div>`;
+            case 'paragraph':
+                return `<div class="form-field${isSelected ? ' selected' : ''}" data-index="${index}" onclick="selectField(${index})">
+                    <span class="field-drag-handle">&#8942;&#8942;</span>
+                    <span class="field-delete" onclick="deleteField(${index}, event)">&times;</span>
+                    <p style="color: #6b7280;">${field.title}</p>
+                </div>`;
+            case 'divider':
+                return `<div class="form-field${isSelected ? ' selected' : ''}" data-index="${index}" onclick="selectField(${index})" style="padding: 0.5rem;">
+                    <span class="field-drag-handle">&#8942;&#8942;</span>
+                    <span class="field-delete" onclick="deleteField(${index}, event)">&times;</span>
+                    <hr style="border-color: #e5e7eb;">
+                </div>`;
+            case 'hidden':
+                return `<div class="form-field${isSelected ? ' selected' : ''}" data-index="${index}" onclick="selectField(${index})" style="background: #f3f4f6;">
+                    <span class="field-drag-handle">&#8942;&#8942;</span>
+                    <span class="field-delete" onclick="deleteField(${index}, event)">&times;</span>
+                    <div style="font-size: 0.75rem; color: #9ca3af;"><i data-lucide="eye-off" class="h-3 w-3 inline"></i> Hidden: ${field.title}</div>
+                </div>`;
+            default:
+                inputHtml = `<input type="${field.inputType || 'text'}" class="prop-input" placeholder="${field.placeholder || ''}" disabled>`;
+        }
+
+        const showLabel = !['heading', 'paragraph', 'divider', 'checkbox', 'hidden'].includes(field.inputType);
+
+        return `<div class="form-field preview-field${isSelected ? ' selected' : ''}" data-index="${index}" onclick="selectField(${index})">
+            <span class="field-drag-handle">&#8942;&#8942;</span>
+            <span class="field-delete" onclick="deleteField(${index}, event)">&times;</span>
+            ${showLabel ? `<label>${field.title || 'Untitled'}${field.required ? '<span class="required-star">*</span>' : ''}</label>` : ''}
+            ${inputHtml}
+            ${field.description ? `<p class="field-description">${field.description}</p>` : ''}
+        </div>`;
+    }
+
+    function selectField(index) {
+        selectedFieldIndex = index;
+        document.querySelectorAll('.form-field').forEach(f => f.classList.remove('selected'));
+        const el = document.querySelector(`[data-index="${index}"]`);
+        if (el) el.classList.add('selected');
+
+        document.getElementById('no-selection').style.display = 'none';
+        document.getElementById('field-properties').style.display = 'block';
+
+        const field = formFields[index];
+        document.getElementById('prop-label').value = field.title || '';
+        document.getElementById('prop-placeholder').value = field.placeholder || '';
+        document.getElementById('prop-description').value = field.description || '';
+        document.getElementById('prop-required').checked = field.required || false;
+
+        // Show options section for select/radio/checkboxes
+        const optionsSection = document.getElementById('options-section');
+        if (['select', 'radio', 'checkboxes'].includes(field.inputType)) {
+            optionsSection.style.display = 'block';
+            renderOptions(field.options || []);
+        } else {
+            optionsSection.style.display = 'none';
+        }
+
+        // Switch to field tab
+        switchTab('field');
+    }
+
+    function updateField(prop, value) {
+        if (selectedFieldIndex === null) return;
+        formFields[selectedFieldIndex][prop] = value;
+        renderFields();
+    }
+
+    function deleteField(index, event) {
+        event.stopPropagation();
+        formFields.splice(index, 1);
+        if (selectedFieldIndex === index) {
+            selectedFieldIndex = null;
+            document.getElementById('no-selection').style.display = 'block';
+            document.getElementById('field-properties').style.display = 'none';
+        } else if (selectedFieldIndex > index) {
+            selectedFieldIndex--;
+        }
+        renderFields();
+    }
+
+    function renderOptions(options) {
+        const container = document.getElementById('options-list');
+        container.innerHTML = options.map((opt, i) =>
+            `<div class="option-row">
+                <input type="text" class="prop-input" value="${opt}" onchange="updateOption(${i}, this.value)">
+                <span class="option-remove" onclick="removeOption(${i})">&times;</span>
+            </div>`
+        ).join('');
+    }
+
+    function addOption() {
+        if (selectedFieldIndex === null) return;
+        if (!formFields[selectedFieldIndex].options) {
+            formFields[selectedFieldIndex].options = [];
+        }
+        formFields[selectedFieldIndex].options.push('New Option');
+        renderOptions(formFields[selectedFieldIndex].options);
+        renderFields();
+    }
+
+    function updateOption(index, value) {
+        if (selectedFieldIndex === null) return;
+        formFields[selectedFieldIndex].options[index] = value;
+        renderFields();
+    }
+
+    function removeOption(index) {
+        if (selectedFieldIndex === null) return;
+        formFields[selectedFieldIndex].options.splice(index, 1);
+        renderOptions(formFields[selectedFieldIndex].options);
+        renderFields();
+    }
+
+    function switchTab(tab) {
+        document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+        document.getElementById('field-tab').style.display = tab === 'field' ? 'block' : 'none';
+        document.getElementById('form-tab').style.display = tab === 'form' ? 'block' : 'none';
+    }
+
+    function previewForm() {
+        alert('Preview feature coming soon');
+    }
+
+    function saveForm() {
+        const name = document.getElementById('form-name').value;
+        const slug = document.getElementById('form-slug').value || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+        // Build JSON schema from fields
+        const properties = {};
+        const required = [];
+        formFields.forEach(field => {
+            if (field.inputType === 'heading' || field.inputType === 'paragraph' || field.inputType === 'divider') {
+                return; // Skip layout elements
+            }
+            const propName = field.id;
+            properties[propName] = {
+                type: field.type,
+                title: field.title,
+                inputType: field.inputType
+            };
+            if (field.format) properties[propName].format = field.format;
+            if (field.placeholder) properties[propName].placeholder = field.placeholder;
+            if (field.description) properties[propName].description = field.description;
+            if (field.options) properties[propName].enum = field.options;
+            if (field.required) required.push(propName);
+        });
+
+        const formData = {
+            name: name,
+            slug: slug,
+            description: document.getElementById('form-description').value,
+            workspace_id: workspaceId,
+            status: document.getElementById('form-status').value,
+            is_public: document.getElementById('form-public').checked,
+            requires_captcha: document.getElementById('form-captcha').checked,
+            auto_create_case: document.getElementById('form-create-case').checked,
+            submission_message: document.getElementById('form-success').value,
+            schema_data: {
+                type: 'object',
+                properties: properties,
+                required: required
+            },
+            fields: formFields.map((f, i) => ({
+                name: f.id,
+                type: f.inputType,
+                label: f.title,
+                required: f.required || false,
+                order: i,
+                options: f.options ? f.options.map((o, j) => ({ value: o, label: o, order: j })) : []
+            }))
+        };
+
+        const url = formId ? `/admin/actions/forms/${formId}` : '/admin/actions/forms';
+        const method = formId ? 'PUT' : 'POST';
+
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(formData)
+        }).then(response => {
+            if (response.ok) {
+                window.location.href = '/forms';
+            } else {
+                response.json().then(err => alert('Error: ' + (err.error || 'Failed to save')));
+            }
+        }).catch(err => alert('Network error: ' + err.message));
+    }
+
+    // Load existing form data
+    {{if .Form}}
+    (function loadFormData() {
+        const schema = {{.Form.SchemaData | json}};
+        if (schema && schema.properties) {
+            Object.entries(schema.properties).forEach(([key, prop]) => {
+                formFields.push({
+                    id: key,
+                    type: prop.type,
+                    title: prop.title || key,
+                    inputType: prop.inputType || 'text',
+                    format: prop.format,
+                    placeholder: prop.placeholder,
+                    description: prop.description,
+                    options: prop.enum,
+                    required: (schema.required || []).includes(key),
+                    fieldType: prop.inputType || 'text'
+                });
+                fieldIdCounter++;
+            });
+            renderFields();
+        }
+    })();
+    {{end}}
+
+    // Initialize
+    initDragDrop();
+    lucide.createIcons();
+    </script>
+</body>
+</html>
+{{end}}

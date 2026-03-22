@@ -1,0 +1,279 @@
+{{define "dashboard.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Dashboard - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <!-- Scrollable Content -->
+            <div id="layout-main">
+                <div class="max-w-7xl mx-auto space-y-8">
+
+                    {{if .PartialLoadError}}
+                    <div class="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm">
+                        {{.PartialLoadError}}
+                    </div>
+                    {{end}}
+
+                    <!-- Key Metrics Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Workspaces Card -->
+                        <div class="metric-card">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="metric-card-icon indigo">
+                                    <i data-lucide="box" class="h-4 w-4"></i>
+                                </div>
+                                <span class="trend-badge positive">
+                                    <i data-lucide="trending-up" class="h-3 w-3"></i> 12%
+                                </span>
+                            </div>
+                            <p class="text-sm font-medium text-zinc-500">Workspaces</p>
+                            <p class="text-3xl font-semibold tracking-tight text-zinc-900 mt-1">{{if .Stats}}{{.Stats.WorkspaceCount}}{{else}}0{{end}}</p>
+                        </div>
+
+                        <!-- Total Users Card -->
+                        <div class="metric-card">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="metric-card-icon emerald">
+                                    <i data-lucide="users" class="h-4 w-4"></i>
+                                </div>
+                                <span class="trend-badge positive">
+                                    <i data-lucide="trending-up" class="h-3 w-3"></i> 4%
+                                </span>
+                            </div>
+                            <p class="text-sm font-medium text-zinc-500">Total Users</p>
+                            <p class="text-3xl font-semibold tracking-tight text-zinc-900 mt-1">{{if .Stats}}{{.Stats.UserCount}}{{else}}0{{end}}</p>
+                        </div>
+
+                        <!-- Open Cases Card -->
+                        <div class="metric-card">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="metric-card-icon amber">
+                                    <i data-lucide="inbox" class="h-4 w-4"></i>
+                                </div>
+                                <span class="trend-badge neutral">No change</span>
+                            </div>
+                            <p class="text-sm font-medium text-zinc-500">Open Cases</p>
+                            <p class="text-3xl font-semibold tracking-tight text-zinc-900 mt-1">{{if .Stats}}{{.Stats.OpenCases}}{{else}}0{{end}}</p>
+                        </div>
+
+                        <!-- Errors Card -->
+                        <div class="metric-card">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="metric-card-icon blue">
+                                    <i data-lucide="alert-octagon" class="h-4 w-4"></i>
+                                </div>
+                                <span class="text-xs font-medium text-zinc-500">{{if .Stats}}{{printf "%.1f" .Stats.ErrorRate1h}}/min avg{{else}}0.0/min avg{{end}}</span>
+                            </div>
+                            <p class="text-sm font-medium text-zinc-500">Errors (24h)</p>
+                            <p class="text-3xl font-semibold tracking-tight text-zinc-900 mt-1">{{if .Stats}}{{.Stats.ErrorsIngested24h}}{{else}}0{{end}}</p>
+                        </div>
+                    </div>
+
+                    <!-- Mid Section: Activity & Quick Actions -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                        <!-- Recent Activity -->
+                        <div class="section-card flex flex-col h-full">
+                            <div class="section-card-header">
+                                <h3 class="section-card-title">Recent Activity</h3>
+                                <button class="btn-link text-sm font-medium">View all</button>
+                            </div>
+                            <div class="section-card-body">
+                                {{if .RecentActivity}}
+                                    {{range $index, $activity := .RecentActivity}}
+                                    <div class="timeline-item {{if eq $index 0}}pb-6{{else}}pt-6{{end}}">
+                                        <div class="timeline-dot {{if eq $index 0}}active{{else}}inactive{{end}}"></div>
+                                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start">
+                                            <div>
+                                                <p class="text-base text-zinc-900 font-medium">{{.Description}}</p>
+                                                <p class="text-sm text-zinc-500 mt-1">{{if .Details}}{{.Details}}{{else}}Activity recorded{{end}}</p>
+                                            </div>
+                                            <span class="text-xs text-zinc-400 mt-1 sm:mt-0 font-medium whitespace-nowrap">{{.Timestamp.Format "Jan 02, 15:04"}}</span>
+                                        </div>
+                                    </div>
+                                    {{end}}
+                                {{else}}
+                                <div class="timeline-item">
+                                    <div class="timeline-dot active"></div>
+                                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start">
+                                        <div>
+                                            <p class="text-base text-zinc-900 font-medium">System initialized</p>
+                                            <p class="text-sm text-zinc-500 mt-1">Admin panel ready for use.</p>
+                                        </div>
+                                        <span class="text-xs text-zinc-400 mt-1 sm:mt-0 font-medium whitespace-nowrap">Just now</span>
+                                    </div>
+                                </div>
+                                {{end}}
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="section-card flex flex-col h-full">
+                            <div class="section-card-header">
+                                <h3 class="section-card-title">Quick Actions</h3>
+                            </div>
+                            <div class="section-card-body">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <a href="/metrics" class="quick-action-btn">
+                                        <div class="icon-wrapper">
+                                            <i data-lucide="bar-chart-2" class="h-5 w-5"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-zinc-900">View Metrics</p>
+                                            <p class="text-xs text-zinc-500 mt-0.5">Inspect platform telemetry</p>
+                                        </div>
+                                    </a>
+
+                                    <a href="/workspaces" class="quick-action-btn">
+                                        <div class="icon-wrapper">
+                                            <i data-lucide="layout" class="h-5 w-5"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-zinc-900">Manage Spaces</p>
+                                            <p class="text-xs text-zinc-500 mt-0.5">Edit configurations</p>
+                                        </div>
+                                    </a>
+
+                                    {{if .CanManageUsers}}
+                                    <a href="/users" class="quick-action-btn">
+                                        <div class="icon-wrapper">
+                                            <i data-lucide="users" class="h-5 w-5"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-zinc-900">View Users</p>
+                                            <p class="text-xs text-zinc-500 mt-0.5">Manage permissions</p>
+                                        </div>
+                                    </a>
+                                    {{end}}
+
+                                    <a href="/health" class="quick-action-btn">
+                                        <div class="icon-wrapper">
+                                            <i data-lucide="activity" class="h-5 w-5"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-zinc-900">System Health</p>
+                                            <p class="text-xs text-zinc-500 mt-0.5">Diagnostics</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{if .ExtensionWidgets}}
+                    <div class="section-card">
+                        <div class="section-card-header">
+                            <h3 class="section-card-title">Extensions</h3>
+                        </div>
+                        <div class="section-card-body">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {{range .ExtensionWidgets}}
+                                <a href="{{.Href}}" class="quick-action-btn">
+                                    <div class="icon-wrapper">
+                                        <i data-lucide="{{if .Icon}}{{.Icon}}{{else}}puzzle{{end}}" class="h-5 w-5"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-zinc-900">{{.Title}}</p>
+                                        <p class="text-xs text-zinc-500 mt-0.5">{{if .Description}}{{.Description}}{{else}}Open extension page{{end}}</p>
+                                    </div>
+                                </a>
+                                {{end}}
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+
+                    <!-- System Status -->
+                    <div class="section-card mb-10">
+                        <div class="section-card-header">
+                            <h3 class="section-card-title">System Status</h3>
+                            {{if .SystemHealth}}
+                            {{$allHealthy := true}}
+                            {{range .SystemHealth}}{{if ne .Status "healthy"}}{{$allHealthy = false}}{{end}}{{end}}
+                            {{if $allHealthy}}
+                            <span class="status-badge success">All Systems Operational</span>
+                            {{else}}
+                            <span class="status-badge" style="background: rgb(254 249 195); color: rgb(161 98 7);">Some Issues Detected</span>
+                            {{end}}
+                            {{else}}
+                            <span class="status-badge success">All Systems Operational</span>
+                            {{end}}
+                        </div>
+                        <div class="section-card-body">
+                            {{if .SystemHealth}}
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-6">
+                                {{range .SystemHealth}}
+                                <div class="status-item">
+                                    <div class="status-dot {{if eq .Status "healthy"}}healthy{{else if eq .Status "degraded"}}degraded{{else}}unhealthy{{end}}">
+                                        {{if eq .Status "healthy"}}<span class="ping"></span>{{end}}
+                                        <span class="dot"></span>
+                                    </div>
+                                    <span class="text-sm font-medium text-zinc-900 capitalize">{{.Component}}</span>
+                                    <span class="text-xs mt-1 font-medium {{if eq .Status "healthy"}}text-green-600{{else if eq .Status "degraded"}}text-yellow-600{{else}}text-red-600{{end}}">
+                                        {{if eq .Status "healthy"}}Healthy{{else if eq .Status "degraded"}}Degraded{{else}}Down{{end}}
+                                    </span>
+                                    {{if .Details}}
+                                    {{if .Details.pending_jobs}}
+                                    <span class="text-xs text-zinc-400 mt-1">{{.Details.pending_jobs}} pending</span>
+                                    {{end}}
+                                    {{end}}
+                                </div>
+                                {{end}}
+                            </div>
+                            {{else}}
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-6">
+                                <div class="status-item">
+                                    <div class="status-dot healthy">
+                                        <span class="ping"></span>
+                                        <span class="dot"></span>
+                                    </div>
+                                    <span class="text-sm font-medium text-zinc-900">Storage</span>
+                                    <span class="text-xs text-green-600 mt-1 font-medium">Healthy</span>
+                                </div>
+                                <div class="status-item">
+                                    <div class="status-dot healthy">
+                                        <span class="dot"></span>
+                                    </div>
+                                    <span class="text-sm font-medium text-zinc-900">Workers</span>
+                                    <span class="text-xs text-green-600 mt-1 font-medium">Healthy</span>
+                                </div>
+                                <div class="status-item">
+                                    <div class="status-dot healthy">
+                                        <span class="dot"></span>
+                                    </div>
+                                    <span class="text-sm font-medium text-zinc-900">Job Queue</span>
+                                    <span class="text-xs text-green-600 mt-1 font-medium">Healthy</span>
+                                </div>
+                                <div class="status-item">
+                                    <div class="status-dot healthy">
+                                        <span class="dot"></span>
+                                    </div>
+                                    <span class="text-sm font-medium text-zinc-900">Event Bus</span>
+                                    <span class="text-xs text-green-600 mt-1 font-medium">Healthy</span>
+                                </div>
+                                <div class="status-item">
+                                    <div class="status-dot healthy">
+                                        <span class="dot"></span>
+                                    </div>
+                                    <span class="text-sm font-medium text-zinc-900">API</span>
+                                    <span class="text-xs text-green-600 mt-1 font-medium">Healthy</span>
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </body>
+</html>
+{{end}}

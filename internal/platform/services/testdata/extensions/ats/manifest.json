@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "slug": "ats",
+  "name": "Applicant Tracking",
+  "version": "1.0.0",
+  "publisher": "DemandOps",
+  "kind": "product",
+  "scope": "workspace",
+  "risk": "standard",
+  "runtimeClass": "bundle",
+  "storageClass": "shared_primitives_only",
+  "description": "Reference ATS fixture for extension runtime tests.",
+  "workspacePlan": {
+    "mode": "provision_dedicated_workspace",
+    "name": "Hiring",
+    "slug": "hiring",
+    "description": "Dedicated workspace for recruiting operations."
+  },
+  "permissions": [
+    "case:read",
+    "case:write",
+    "contact:read",
+    "contact:write",
+    "form:write",
+    "automation:write"
+  ],
+  "queues": [
+    {
+      "slug": "general-applications",
+      "name": "General Applications",
+      "description": "Default queue for incoming applications."
+    },
+    {
+      "slug": "talent-pool",
+      "name": "Talent Pool",
+      "description": "Reusable pool for promising candidates."
+    }
+  ],
+  "forms": [
+    {
+      "slug": "job-application",
+      "name": "Job Application",
+      "description": "Public form used by the careers site to create candidate cases.",
+      "status": "active",
+      "isPublic": true,
+      "requiresAuth": false,
+      "allowMultiple": true,
+      "collectEmail": true,
+      "autoCreateCase": true,
+      "autoCasePriority": "normal",
+      "autoCaseType": "web",
+      "autoTags": [
+        "ats",
+        "candidate",
+        "applied"
+      ],
+      "submissionMessage": "Thanks for applying.",
+      "theme": "ats-careers",
+      "schema": {
+        "type": "object",
+        "required": [
+          "full_name",
+          "email",
+          "role_slug"
+        ],
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "format": "email"
+          },
+          "role_slug": {
+            "type": "string",
+            "title": "Role"
+          }
+        }
+      }
+    }
+  ],
+  "automationRules": [
+    {
+      "key": "ext.demandops.ats.application_received_tag",
+      "title": "ATS application form",
+      "description": "Add a review tag to new ATS cases created through the application form.",
+      "isActive": true,
+      "priority": 50,
+      "maxExecutionsPerHour": 500,
+      "maxExecutionsPerDay": 5000,
+      "conditions": {
+        "operator": "and",
+        "conditions": [
+          {
+            "type": "event",
+            "field": "trigger",
+            "operator": "equals",
+            "value": "case_created"
+          },
+          {
+            "type": "field",
+            "field": "form_slug",
+            "operator": "equals",
+            "value": "job-application"
+          }
+        ]
+      },
+      "actions": {
+        "actions": [
+          {
+            "type": "add_tag",
+            "value": "ats-review"
+          }
+        ]
+      }
+    }
+  ],
+  "artifactSurfaces": [
+    {
+      "name": "website",
+      "description": "Published public careers site content for the ATS extension.",
+      "seedAssetPath": "templates/careers"
+    },
+    {
+      "name": "admin-ui",
+      "description": "Published admin experience content for the ATS extension.",
+      "seedAssetPath": "templates/admin"
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "careers-home",
+      "class": "public_page",
+      "mountPath": "/careers",
+      "methods": [
+        "GET"
+      ],
+      "auth": "public",
+      "workspaceBinding": "none",
+      "artifactSurface": "website",
+      "artifactPath": "index.html"
+    },
+    {
+      "name": "careers-apply",
+      "class": "public_page",
+      "mountPath": "/careers/apply",
+      "methods": [
+        "GET"
+      ],
+      "auth": "public",
+      "workspaceBinding": "none",
+      "artifactSurface": "website",
+      "artifactPath": "apply.html"
+    },
+    {
+      "name": "ats-admin-dashboard",
+      "class": "admin_page",
+      "mountPath": "/admin/extensions/ats",
+      "methods": [
+        "GET"
+      ],
+      "auth": "session",
+      "workspaceBinding": "workspace_from_session",
+      "artifactSurface": "admin-ui",
+      "artifactPath": "dashboard.html"
+    }
+  ],
+  "adminNavigation": [
+    {
+      "name": "ats-dashboard",
+      "section": "Extensions",
+      "title": "ATS",
+      "icon": "briefcase-business",
+      "endpoint": "ats-admin-dashboard",
+      "activePage": "ats"
+    }
+  ]
+}

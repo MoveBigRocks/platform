@@ -1,0 +1,120 @@
+{{define "login.html"}}
+<!doctype html>
+<html lang="en" class="group/html">
+    <head>
+        <title>Admin Login - Move Big Rocks</title>
+        {{template "head"}}
+        <style>
+            @keyframes fade-in-up {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .animate-fade-in-up {
+                animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+            @keyframes shimmer {
+                0% { background-position: -1000px 0; }
+                100% { background-position: 1000px 0; }
+            }
+            /* Logo for login - clean on white */
+            .login-logo {
+                width: 120px;
+                height: 120px;
+                object-fit: contain;
+            }
+            .hp-field {
+                position: absolute;
+                left: -10000px;
+                width: 1px;
+                height: 1px;
+                opacity: 0;
+            }
+        </style>
+    </head>
+
+    <body class="bg-[#F5F5F7] min-h-screen flex items-center justify-center p-4 text-gray-600">
+
+        <!-- Card Container -->
+        <div class="w-full max-w-[420px] bg-white rounded-2xl shadow-[0_20px_40px_-12px_rgba(0,0,0,0.06)] border border-gray-200/60 overflow-hidden animate-fade-in-up">
+
+            <div class="px-8 py-10 space-y-8">
+
+                <!-- Header -->
+                <div class="text-center space-y-4">
+                    <div class="flex justify-center mb-4">
+                        <img src="/static/images/puffer-fish-logo.png" alt="Move Big Rocks logo" class="login-logo">
+                    </div>
+                    <div class="flex items-center justify-center">
+                        <img src="/static/images/text-logo.png" alt="Move Big Rocks" class="h-7 w-auto">
+                    </div>
+                </div>
+
+                {{if .Error}}
+                <!-- Error Box -->
+                <div class="group relative overflow-hidden bg-red-50/50 border border-red-100 rounded-xl p-4 transition-all duration-300">
+                    <div class="flex gap-4">
+                        <div class="shrink-0 mt-0.5">
+                            <div class="bg-red-100 rounded-full p-1.5 text-red-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-sm font-medium text-red-900 tracking-tight">Error</p>
+                            <p class="text-sm text-red-800/70 leading-relaxed font-normal">{{.Error}}</p>
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+
+                {{if .Success}}
+                <!-- Success Box -->
+                <div class="group relative overflow-hidden bg-blue-50/50 border border-blue-100 rounded-xl p-4 transition-all duration-300">
+                    <div class="flex gap-4">
+                        <div class="shrink-0 mt-0.5">
+                            <div class="bg-blue-100 rounded-full p-1.5 text-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-sm font-medium text-blue-900 tracking-tight">Check your inbox</p>
+                            <p class="text-sm text-blue-800/70 leading-relaxed font-normal">{{.Success}}</p>
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+
+                <!-- Login Form -->
+                <form method="POST" action="/login" class="space-y-6">
+                    <!-- Form nonce to prevent duplicate submissions -->
+                    <input type="hidden" name="form_nonce" value="{{.FormNonce}}">
+                    <!-- Preserve return_to for OAuth flow redirect after login -->
+                    {{if .ReturnTo}}<input type="hidden" name="return_to" value="{{.ReturnTo}}">{{end}}
+                    <input type="text" id="honeypot" name="honeypot" class="hp-field" autocomplete="off" tabindex="-1" aria-hidden="true">
+
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700 ml-1" for="email">
+                            Email Address
+                        </label>
+                        <div class="relative group">
+                            <input type="email" id="email" name="email" placeholder="operator@movebigrocks.com" class="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 text-gray-900 text-base rounded-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all duration-200 placeholder:text-gray-400 font-normal shadow-sm group-hover:border-gray-300" required autofocus>
+                            <div class="absolute left-3.5 top-3.5 text-gray-400 group-focus-within:text-blue-600 transition-colors duration-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="group w-full relative bg-[#0071E3] hover:bg-[#0077ED] text-white font-medium py-3.5 px-4 rounded-lg shadow-sm transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 overflow-hidden tracking-wide text-sm">
+                        <span class="relative z-10">Send Magic Link</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="relative z-10 transition-transform duration-300 group-hover:translate-x-0.5 opacity-90"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+
+                        <!-- Subtle sheen effect -->
+                        <div class="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
+                    </button>
+                </form>
+
+            </div>
+        </div>
+
+    </body>
+</html>
+{{end}}

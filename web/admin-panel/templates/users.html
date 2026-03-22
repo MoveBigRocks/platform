@@ -1,0 +1,369 @@
+{{define "users.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Users - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="max-w-7xl mx-auto space-y-6">
+
+                    <!-- Actions Bar -->
+                    <div class="flex items-center justify-end">
+                        <button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" onclick="showCreateUserModal()">
+                            <i data-lucide="user-plus" class="h-4 w-4"></i>
+                            Create User
+                        </button>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="section-card">
+                        <div class="p-4">
+                            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                <div class="flex-1 relative">
+                                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400"></i>
+                                    <input type="text" placeholder="Search users..." class="w-full pl-10 pr-4 py-2 text-sm border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" id="searchInput">
+                                </div>
+                                <select class="px-3 py-2 text-sm border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white" id="roleFilter">
+                                    <option value="">All Roles</option>
+                                <option value="super_admin">Super Admin</option>
+                                <option value="admin">Admin</option>
+                                <option value="operator">Operator</option>
+                                <option value="none">No Instance Role</option>
+                                </select>
+                                <select class="px-3 py-2 text-sm border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white" id="statusFilter">
+                                    <option value="">All Status</option>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                    <option value="locked">Locked</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Users Grid -->
+                    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" id="usersGrid">
+                        {{if .Users}}
+                            {{range .Users}}
+                            <div class="section-card user-card"
+                                 data-name="{{.Name}}"
+                                 data-email="{{.Email}}"
+                                 data-role="{{if .InstanceRole}}{{.InstanceRole}}{{else}}none{{end}}"
+                                 data-status="{{if .IsActive}}{{if .IsLocked}}locked{{else if .EmailVerified}}active{{else}}unverified{{end}}{{else}}inactive{{end}}">
+                                <div class="p-5">
+                                    <!-- User Header -->
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <div class="h-12 w-12 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-semibold text-lg uppercase">
+                                                {{slice .Name 0 1}}
+                                            </div>
+                                            <div class="min-w-0">
+                                                <h3 class="font-medium text-zinc-900 truncate">{{.Name}}</h3>
+                                                <p class="text-sm text-zinc-500 truncate">{{.Email}}</p>
+                                            </div>
+                                        </div>
+                                        <!-- Status Badge -->
+                                        {{if .IsActive}}
+                                            {{if .IsLocked}}
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Locked</span>
+                                            {{else if .EmailVerified}}
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Active</span>
+                                            {{else}}
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">Unverified</span>
+                                            {{end}}
+                                        {{else}}
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-600">Inactive</span>
+                                        {{end}}
+                                    </div>
+
+                                    <!-- User Info -->
+                                    <div class="mt-4 space-y-2">
+                                        <div class="flex items-center justify-between text-sm">
+                                            <span class="text-zinc-500">Instance Role</span>
+                                            {{if .InstanceRole}}
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">{{.InstanceRole}}</span>
+                                            {{else}}
+                                                <span class="text-zinc-400">None</span>
+                                            {{end}}
+                                        </div>
+                                        <div class="flex items-center justify-between text-sm">
+                                            <span class="text-zinc-500">Workspaces</span>
+                                            <span class="text-zinc-900">{{if .WorkspaceCount}}{{.WorkspaceCount}}{{else}}0{{end}}</span>
+                                        </div>
+                                        <div class="flex items-center justify-between text-sm">
+                                            <span class="text-zinc-500">Last Login</span>
+                                            {{if .LastLoginAt}}
+                                                <span class="text-zinc-900">{{.LastLoginAt.Format "Jan 02, 15:04"}}</span>
+                                            {{else}}
+                                                <span class="text-zinc-400">Never</span>
+                                            {{end}}
+                                        </div>
+                                    </div>
+
+                                    <!-- Actions -->
+                                    <div class="flex items-center gap-2 mt-4 pt-4 border-t border-zinc-100">
+                                        <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-md transition-colors" onclick="editUser('{{.ID}}')">
+                                            <i data-lucide="edit" class="h-4 w-4"></i>
+                                            Edit
+                                        </button>
+                                        <button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-md transition-colors" onclick="manageUserWorkspaces('{{.ID}}')">
+                                            <i data-lucide="building-2" class="h-4 w-4"></i>
+                                            Workspaces
+                                        </button>
+                                        {{if not .IsActive}}
+                                        <button class="p-1.5 text-green-600 hover:bg-green-50 rounded-md transition-colors" onclick="toggleUserStatus('{{.ID}}', true)" title="Activate">
+                                            <i data-lucide="check" class="h-4 w-4"></i>
+                                        </button>
+                                        {{else}}
+                                        <button class="p-1.5 text-yellow-600 hover:bg-yellow-50 rounded-md transition-colors" onclick="toggleUserStatus('{{.ID}}', false)" title="Deactivate">
+                                            <i data-lucide="x" class="h-4 w-4"></i>
+                                        </button>
+                                        {{end}}
+                                    </div>
+                                </div>
+                            </div>
+                            {{end}}
+                        {{else}}
+                            <div class="col-span-full">
+                                <div class="section-card">
+                                    <div class="flex flex-col items-center text-center py-12">
+                                        <div class="h-16 w-16 rounded-full bg-zinc-100 flex items-center justify-center">
+                                            <i data-lucide="users" class="h-8 w-8 text-zinc-400"></i>
+                                        </div>
+                                        <p class="mt-4 text-zinc-500">No users found</p>
+                                        <button class="inline-flex items-center gap-2 px-4 py-2 mt-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" onclick="showCreateUserModal()">
+                                            Create First User
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Create/Edit User Modal -->
+        <dialog id="userModal" class="modal">
+            <div class="modal-box">
+                <h3 class="text-lg font-semibold text-zinc-900 mb-6" id="modalTitle">Create User</h3>
+                <form id="userForm" method="POST">
+                    <input type="hidden" id="userId" name="id">
+
+                    <div class="mb-4">
+                        <label class="form-label" for="userName">Name</label>
+                        <input type="text" name="name" id="userName" class="form-input" placeholder="John Doe" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label" for="userEmail">Email</label>
+                        <input type="email" name="email" id="userEmail" class="form-input" placeholder="john@example.com" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label" for="userInstanceRole">Instance Role</label>
+                        <select name="instance_role" id="userInstanceRole" class="form-input">
+                            <option value="">No Instance Role (Workspace User Only)</option>
+                            <option value="super_admin">Super Admin (full platform)</option>
+                            <option value="admin">Admin (full platform + user management)</option>
+                            <option value="operator">Operator (platform operations, no user management)</option>
+                        </select>
+                        <p class="form-hint">User management is available only to super_admin and admin roles.</p>
+                    </div>
+
+                    <div class="mb-4 flex items-center justify-between">
+                        <label class="form-label mb-0" for="userIsActive">Active</label>
+                        <input type="checkbox" name="is_active" id="userIsActive" class="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-600" checked>
+                    </div>
+
+                    <div class="mb-4 flex items-center justify-between">
+                        <label class="form-label mb-0" for="userEmailVerified">Email Verified</label>
+                        <input type="checkbox" name="email_verified" id="userEmailVerified" class="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-600">
+                    </div>
+
+                    <div class="modal-action">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('userModal').close()">Cancel</button>
+                        <button type="submit" class="btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </dialog>
+
+        <script>
+        function showCreateUserModal() {
+            document.getElementById('modalTitle').textContent = 'Create User';
+            document.getElementById('userForm').reset();
+            document.getElementById('userId').value = '';
+            document.getElementById('userModal').showModal();
+        }
+
+        async function editUser(id) {
+            try {
+                const response = await fetch(`/admin/actions/users/${id}`, {
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch user details');
+                }
+
+                const user = await response.json();
+
+                document.getElementById('modalTitle').textContent = 'Edit User';
+                document.getElementById('userId').value = user.id;
+                document.getElementById('userName').value = user.name || '';
+                document.getElementById('userEmail').value = user.email || '';
+                document.getElementById('userInstanceRole').value = user.instance_role || '';
+                document.getElementById('userIsActive').checked = user.is_active;
+                document.getElementById('userEmailVerified').checked = user.email_verified;
+
+                document.getElementById('userModal').showModal();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function manageUserWorkspaces(id) {
+            try {
+                const response = await fetch(`/admin/actions/users/${id}/workspaces`, {
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch workspace assignments');
+                }
+
+                const data = await response.json();
+                const workspaces = data.workspaces || [];
+
+                let content = '<h3 class="text-lg font-semibold text-zinc-900 mb-6">Workspace Assignments</h3>';
+                if (workspaces.length === 0) {
+                    content += '<p class="text-zinc-500">No workspace assignments</p>';
+                } else {
+                    content += '<div class="space-y-2">';
+                    for (const ws of workspaces) {
+                        content += `<div class="flex items-center justify-between p-3 bg-zinc-100 rounded-lg">
+                            <span class="text-zinc-900 font-medium">${ws.workspace_name}</span>
+                            <span class="chip">${ws.role}</span>
+                        </div>`;
+                    }
+                    content += '</div>';
+                }
+                content += '<div class="modal-action"><button class="btn-secondary" onclick="this.closest(\'dialog\').close()">Close</button></div>';
+
+                const modal = document.createElement('dialog');
+                modal.className = 'modal';
+                modal.innerHTML = `<div class="modal-box">${content}</div>`;
+                document.body.appendChild(modal);
+                modal.showModal();
+                modal.addEventListener('close', () => modal.remove());
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function toggleUserStatus(id, activate) {
+            try {
+                const response = await fetch(`/admin/actions/users/${id}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ is_active: activate })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update user status');
+                }
+
+                window.location.reload();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('userForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            const userId = data.id;
+            delete data.id;
+
+            data.is_active = formData.has('is_active');
+            data.email_verified = formData.has('email_verified');
+
+            if (!data.instance_role) {
+                delete data.instance_role;
+            }
+
+            const url = userId ? `/admin/actions/users/${userId}` : '/admin/actions/users';
+            const method = userId ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to save user');
+                }
+
+                window.location.reload();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        // Search and filter
+        document.getElementById('searchInput').addEventListener('input', filterUsers);
+        document.getElementById('roleFilter').addEventListener('change', filterUsers);
+        document.getElementById('statusFilter').addEventListener('change', filterUsers);
+
+        function filterUsers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const roleFilter = document.getElementById('roleFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            document.querySelectorAll('.user-card').forEach(card => {
+                const name = card.dataset.name?.toLowerCase() || '';
+                const email = card.dataset.email?.toLowerCase() || '';
+                const role = card.dataset.role || '';
+                const status = card.dataset.status || '';
+
+                let show = true;
+
+                if (searchTerm && !name.includes(searchTerm) && !email.includes(searchTerm)) {
+                    show = false;
+                }
+
+                if (roleFilter && role !== roleFilter) {
+                    show = false;
+                }
+
+                if (statusFilter && status !== statusFilter) {
+                    show = false;
+                }
+
+                card.style.display = show ? '' : 'none';
+            });
+        }
+        </script>
+    </body>
+</html>
+{{end}}

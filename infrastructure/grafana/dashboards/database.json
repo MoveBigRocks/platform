@@ -1,0 +1,26 @@
+{
+  "uid": "mbr-database",
+  "title": "Database",
+  "tags": ["mbr", "database"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1, "title": "Heap Objects", "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [{"expr": "go_memstats_heap_objects", "legendFormat": "objects", "refId": "A"}]
+    },
+    {
+      "id": 2, "title": "Memory Allocations", "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "targets": [
+        {"expr": "rate(go_memstats_mallocs_total[5m])", "legendFormat": "mallocs/s", "refId": "A"},
+        {"expr": "rate(go_memstats_frees_total[5m])", "legendFormat": "frees/s", "refId": "B"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ops"}}
+    }
+  ],
+  "schemaVersion": 39
+}

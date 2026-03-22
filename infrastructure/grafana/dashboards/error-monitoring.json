@@ -1,0 +1,15 @@
+{
+  "uid": "mbr-error-monitoring",
+  "title": "Error Monitoring",
+  "tags": ["mbr", "errors"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1, "title": "Error Tracking", "type": "text",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "options": {"content": "# Error Monitoring\n\nError rate metrics will be displayed once error-specific instrumentation is added.\n\nApplication logs are available via: `journalctl -u mbr-blue -f`", "mode": "markdown"}
+    }
+  ],
+  "schemaVersion": 39
+}

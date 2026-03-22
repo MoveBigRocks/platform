@@ -1,0 +1,15 @@
+{
+  "uid": "mbr-support-metrics",
+  "title": "Support Metrics",
+  "tags": ["mbr", "support"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1, "title": "Support Metrics", "type": "text",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "options": {"content": "# Support Metrics\n\nCase and ticket metrics will be displayed once support-specific instrumentation is added.\n\nTo track support metrics, instrument case creation and resolution in your handlers.", "mode": "markdown"}
+    }
+  ],
+  "schemaVersion": 39
+}

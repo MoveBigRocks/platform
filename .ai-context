@@ -1,0 +1,144 @@
+# Move Big Rocks AI Context
+
+## What is Move Big Rocks
+
+Move Big Rocks is a context engineering platform for operational teams. It is
+agent-first, but the problem it solves is bigger than "give an agent some
+tools." Most organisations are adopting Claude Code, Codex, and similar agents
+on top of fragmented operational systems and fragmented context. Work lives
+across separate products. Strategy, goals, plans, prompts, and runbooks live
+across decks, docs, chats, tickets, and local folders. Humans compensate with
+Slack, meetings, and alignment rituals; agents compensate with brittle local
+context and side-channel automation.
+
+That failure mode existed before agentic work, but agentic work makes it more
+urgent. Agents are becoming team members. Agentic flows are becoming normal.
+More people can build useful code and operational software quickly, but they
+still need somewhere coherent to deploy, operate, share, review, and govern
+that work. Without a shared operational core, the result is not less
+complexity. It is more busy work, more tool sprawl, and more invisible local
+systems.
+
+Companies that want durable value from AI need this kind of new operating
+system for work rather than another layer on top of the old fragmented stack.
+
+Move Big Rocks puts service catalog, forms, queues, conversations, cases,
+structured Markdown knowledge, strategic context, automation, analytics,
+contacts, and extensions into one system for operations-heavy teams. One
+machine contract gives agents shared context across all of that work. One admin
+surface gives humans visibility into what agents are doing. Single Go service
+with PostgreSQL plus Git-backed artifacts.
+
+Concept spec libraries group related specs by team type. Knowledge resources
+are the filled-in instances. Forms and concepts can be private to one team,
+shared across teams within a workspace, or published across workspaces.
+
+## What this file is
+
+This file is the **primary repo-level AI operating context** for implementation work.
+It does not replace product documentation, and it does not override narrower workflow instructions such as `CLAUDE.md`; it points to the current canonical source(s) and required verification steps.
+
+## Source-of-truth stack (authoritative order)
+
+1. `docs/ARCHITECTURE.md` – canonical behavior and system shape
+2. `docs/adr/` – rationale for architectural choices
+3. `docs/RFCs/` – planned or proposed changes
+4. `docs/vision.md` – product direction and roadmap
+5. `tests` + code – definitive behavioral verification
+
+`docs/ARCHITECTURE.md` is the application behavior source.
+ADRs are decision records and are **not** a substitute for system behavior documentation.
+
+## Core concepts
+
+- **Agent-first**: AI agents are first-class principals alongside human users. Agent identity, scoped permissions, and audit trails are core to the platform.
+- **MCP native**: Agents connect via Model Context Protocol (SSE/HTTP). Tools are workspace-scoped and permission-checked.
+- **Extensions as agent skills**: Extensions are separate processes that add capabilities. They consume events via the outbox table and call GraphQL for data access. Each extension can register MCP tools that appear in the agent's tool set.
+- **Human oversight**: The admin panel provides visibility into agent activity. Automation rules can enforce policies on agent actions (auto-approve vs require human approval).
+- **Structured concepts**: `ConceptSpec` and Markdown `KnowledgeResource` instances hold RFCs, templates, constraints, skills, strategic context, delivery context, and extension-defined models in one shared system. Concept spec libraries group related specs by team type or domain and can be shared across workspaces; knowledge resources remain local to each workspace.
+- **Workspace boundary**: a workspace is the logical and security boundary
+  inside an instance. It isolates teams, data, policies, extensions, and
+  agent/runtime access from other workspaces.
+- **Forms are structured request capture**: `FormSpec` defines what
+  information must be collected before work is accepted, routed, or acted on;
+  `PublicFormSubmission` is a collected instance of that spec. Teams can use
+  forms internally or share them across teams and workspaces. The product and
+  code both use "forms" consistently.
+- **The Strategic Context Stack is explicit**: purpose, vision, mission, goals, strategy, bets, OKRs, and KPIs are distinct layers with different jobs; milestone goals and workstreams sit below that stack as the delivery layer.
+- **Strategic and delivery context are contextual, not central**: Move Big Rocks can replace meaningful slices of Confluence and Jira for operations-heavy teams by keeping goals, strategies, bets, OKRs, KPIs, milestone goals, workstreams, queues, catalog, forms, conversations, and cases linked together, but it is not trying to become a generic planning suite.
+- **Typed references**: Markdown may use typed references like `@goal/...`, `@strategy/...`, `@milestone/...`, `@workstream/...`, `@queue/...`, and `@catalog/...`, while the canonical relation graph stays in structured metadata.
+- **Execution loop**: the stack governs the milestone artefact; agents should help run proof synthesis against current evidence and keep drive beating drift.
+- **Durable work-thread model**: a case owns the durable work thread for work,
+  decisions, approvals, summaries, and follow-up; linked conversations remain
+  related interaction context rather than replacing the case.
+- **Delegated routing is real**: agents may hand off cases and conversations
+  between teams through the CLI on behalf of their human when policy allows it;
+  this should be modeled as an action on the work object, with `queue_item`
+  following as a routing projection. The policy should be explicit on workspace
+  membership constraints rather than implied by generic write permissions.
+
+## Before proposing issues or findings
+
+For any suspected bug, gap, or drift:
+
+1. Confirm the behavior is documented in `docs/ARCHITECTURE.md`
+2. Read the corresponding implementation path in `cmd`, `internal`, and `pkg`
+3. Confirm expected behavior in the relevant test files (including integration where applicable)
+4. If behavior is correct but documentation is stale, update docs; if code is wrong, adjust code and tests
+
+## What changed (truth to align on now)
+
+- **Tenant model**: workspace isolation is enforced by application context, explicit `workspace_id` query scoping, and PostgreSQL RLS helpers such as `public.current_workspace_id()`.
+- **Storage model**: PostgreSQL is the only supported runtime database. Primary stores are in `internal/infrastructure/stores/sql` with interfaces in `internal/infrastructure/stores/shared`.
+- **Persistence shape**: core tables live in bounded-context PostgreSQL schemas such as `core_platform`, `core_service`, `core_automation`, `core_knowledge`, and `core_extension_runtime`.
+- **Migration ownership**: core migrations are authored under `migrations/postgres/` and tracked in `public.schema_migrations`. Service-backed extensions own the SQL for their `ext_*` schemas and applied extension schema versions are tracked in `core_extension_runtime.schema_migration_history`.
+- **Baseline reset rule**: the current pre-publication PostgreSQL baseline already folds transition-only schema changes back into the owning migration files. Recreate pre-reset databases instead of carrying them across the reset.
+- **Identifier contract**: relational row primary keys are PostgreSQL-native `UUID` columns with `uuidv7()` defaults. Application-generated IDs remain reserved for public IDs, slugs, tokens, request IDs, correlation IDs, event IDs, and similar cross-process identifiers.
+- **Event model**: publish/consume path is defined in `pkg/eventbus/*`, `internal/infrastructure/outbox/*`, and `internal/workers/*`.
+- **Routing**: API entry and route registration is in `cmd/api/main.go` and `internal/infrastructure/routing/*`; handler behavior lives in owning-context handlers.
+- **Worker orchestration**: event consumers are in `internal/workers/` and context-specific handlers.
+- **Agent model**: agents are first-class principals in `internal/platform/domain/agent.go` with `hat_*` tokens, workspace membership, and fine-grained permissions.
+- **MCP server**: SSE transport in `internal/mcp/http_handler.go`, tools in `internal/mcp/tools.go`, OAuth 2.1 in `internal/mcp/oauth/`.
+- **Analytics**: privacy-first web analytics lives in `internal/analytics/` with public ingest/script routes and an extension-owned PostgreSQL schema per `docs/RFCs/RFC-0003-web-analytics.md`.
+- **Knowledge layering**: concept spec libraries can be built in by core, registered instance-wide, provided by extensions, or published across workspaces; actual knowledge and strategic-context instances remain scoped to one workspace and its teams.
+
+## Test discipline
+
+- Use the Makefile targets for routine checks:
+  - `make test-all`
+  - `make test-integration`
+  - `make test-coverage`
+- `docs/testing-strategy.md` contains the test design model and conventions.
+- Prefer real PostgreSQL-backed stores in tests over mock-only approaches unless the dependency is external.
+
+## Documentation policy
+
+- Keep one narrative for system behavior in `docs/ARCHITECTURE.md`.
+- Keep decision rationale in `docs/adr/` and `docs/RFCs/`.
+- Keep product direction in `docs/vision.md`.
+- Don't introduce duplicate architecture narrative files; route updates to those two buckets.
+- Keep test documentation in `docs/testing-strategy.md` (and package `_test.go` conventions in-code).
+
+## Change workflow (recommended)
+
+1. Define or adjust behavior in `docs/ARCHITECTURE.md` when user-visible behavior changes.
+2. Update `docs/ARCHITECTURE.md` for behavior/feature changes.
+3. Implement in code under the owning context (`internal/*` + `cmd/api/*` + `pkg/*` as needed).
+4. Add/update tests in owning package and integration/e2e coverage where required.
+5. If decision context changed, update/create ADR or RFC as appropriate.
+
+## Architecture scope decision (explicit)
+
+Do not move behavioral documentation into ADRs only.
+
+- **Keep `docs/ARCHITECTURE.md`** as the single high-level application behavior document.
+- Use ADRs for **why** choices were made, not for operational walkthroughs.
+
+## Key anchors
+
+- `docs/ARCHITECTURE.md` – what the system does
+- `docs/vision.md` – where the product is heading
+- `docs/adr/README.md` – ADR index and intent
+- `docs/RFCs/README.md` – RFC index and intent
+- `internal` / `pkg` / `cmd` – executable truth for runtime behavior
+- `tests` and `internal/*_test.go` – executable assertions of behavior

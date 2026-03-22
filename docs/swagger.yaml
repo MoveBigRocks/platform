@@ -1,0 +1,1152 @@
+swagger: "2.0"
+info:
+  title: Move Big Rocks API
+  description: |
+    Self-hosted operations software for support workflows, agent access, and installable extensions.
+
+    ## Authentication
+    Move Big Rocks uses magic link authentication. Request a magic link via email, then use the session cookie for authenticated requests.
+
+    ## Multi-Tenant Architecture
+    All workspace-scoped endpoints require authentication and workspace context. Admin endpoints require instance operator privileges.
+
+    ## Optional Extensions
+    Move Big Rocks core provides shared primitives such as workspaces, cases, contacts, forms, attachments, automation, and agent access.
+    Optional first-party extensions may add Sentry-compatible error tracking, web analytics, and other specialized product surfaces.
+
+    ## API Surface
+    The stable REST contract for webhooks/forms runs on `api.movebigrocks.com`.
+    Internal admin workflow routes below are on `admin.movebigrocks.com/admin/actions`; these are non-contractual admin UI internals.
+    Admin GraphQL helpers use `POST /admin/graphql` (session-authenticated admin pages), while `api.movebigrocks.com` uses `/graphql` for agent and CLI traffic.
+    `api.movebigrocks.com` serves `/graphql` for agent and CLI traffic.
+  version: "1.0.0"
+  contact:
+    name: API Support
+    email: support@movebigrocks.com
+  license:
+    name: Proprietary
+    url: https://movebigrocks.com/license
+  termsOfService: https://movebigrocks.com/terms
+
+host: api.movebigrocks.com
+basePath: /
+schemes:
+  - https
+
+securityDefinitions:
+  SessionCookie:
+    type: apiKey
+    in: cookie
+    name: mbr_session
+    description: Session cookie obtained after magic link verification
+  BearerAuth:
+    type: apiKey
+    in: header
+    name: Authorization
+    description: 'Bearer token format: "Bearer {jwt_token}"'
+
+tags:
+  - name: Authentication
+    description: Magic link authentication and session management
+  - name: Admin - Workspaces
+    description: Instance operator workspace management (requires operator privileges)
+  - name: Admin - Users
+    description: Instance admin user management (requires admin or super_admin)
+  - name: Admin - Analytics
+    description: Instance-wide analytics and statistics (requires operator privileges)
+  - name: Webhooks
+    description: External service webhook endpoints
+  - name: Health
+    description: Service health and readiness checks
+
+paths:
+  # ==================== Health Endpoints ====================
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Detailed health check
+      description: Returns detailed health status including all component checks
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Service is healthy or degraded
+          schema:
+            $ref: '#/definitions/HealthResponse'
+        503:
+          description: Service is unhealthy
+          schema:
+            $ref: '#/definitions/HealthResponse'
+
+  /health/live:
+    get:
+      tags:
+        - Health
+      summary: Liveness probe
+      description: Simple liveness check - returns OK if service is running
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Service is alive
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: ok
+
+  /health/ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: Checks if service can handle requests
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Service is ready
+          schema:
+            $ref: '#/definitions/HealthResponse'
+        503:
+          description: Service is not ready
+          schema:
+            $ref: '#/definitions/HealthResponse'
+
+  /metrics:
+    get:
+      tags:
+        - Health
+      summary: Prometheus metrics
+      description: Returns Prometheus-formatted metrics for monitoring
+      produces:
+        - text/plain
+      responses:
+        200:
+          description: Prometheus metrics
+
+  # ==================== Authentication Endpoints ====================
+  /auth/magic-link:
+    post:
+      tags:
+        - Authentication
+      summary: Request magic link
+      description: |
+        Sends a magic link to the provided email address for passwordless authentication.
+        Returns success even if email doesn't exist (prevents enumeration attacks).
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+            properties:
+              email:
+                type: string
+                format: email
+                example: user@example.com
+      responses:
+        200:
+          description: Magic link request processed
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Magic link sent! Check your email."
+        400:
+          description: Invalid email address
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /auth/verify-magic-link:
+    get:
+      tags:
+        - Authentication
+      summary: Verify magic link token
+      description: Verifies the magic link token and creates a session. Sets session cookie on success.
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: token
+          type: string
+          required: true
+          description: Magic link token from email
+      responses:
+        200:
+          description: Authentication successful
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Authentication successful
+              redirect:
+                type: string
+                example: /dashboard
+              context:
+                $ref: '#/definitions/Context'
+              contexts:
+                type: array
+                items:
+                  $ref: '#/definitions/Context'
+        400:
+          description: Invalid magic link
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        401:
+          description: Expired or invalid token
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /auth/context:
+    get:
+      tags:
+        - Authentication
+      summary: Get current session context
+      description: Returns the user's current session context and available contexts
+      security:
+        - SessionCookie: []
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Current context information
+          schema:
+            type: object
+            properties:
+              current_context:
+                $ref: '#/definitions/Context'
+              available_contexts:
+                type: array
+                items:
+                  $ref: '#/definitions/Context'
+              user:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  email:
+                    type: string
+                  name:
+                    type: string
+        401:
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /auth/switch-context:
+    post:
+      tags:
+        - Authentication
+      summary: Switch session context
+      description: Switch between instance admin and workspace contexts
+      security:
+        - SessionCookie: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - type
+            properties:
+              type:
+                type: string
+                enum: [instance, workspace]
+                description: Context type to switch to
+              workspace_id:
+                type: string
+                description: Required when type is "workspace"
+      responses:
+        200:
+          description: Context switched successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              current_context:
+                $ref: '#/definitions/Context'
+              redirect:
+                type: string
+        400:
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        403:
+          description: Access denied to requested context
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout
+      description: Invalidates the current session and clears the session cookie
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Logged out successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Logged out successfully
+
+  # ==================== Admin Workspace Endpoints ====================
+  /admin/actions/workspaces:
+    post:
+      tags:
+        - Admin - Workspaces
+      summary: Create workspace
+      description: Creates a new workspace (requires operator privileges)
+      security:
+        - SessionCookie: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/CreateWorkspaceRequest'
+      responses:
+        201:
+          description: Workspace created
+          schema:
+            $ref: '#/definitions/Workspace'
+        400:
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        403:
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /admin/actions/workspaces/{id}:
+    get:
+      tags:
+        - Admin - Workspaces
+      summary: Get workspace
+      description: Returns a single workspace by ID (requires operator privileges)
+      security:
+        - SessionCookie: []
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+          description: Workspace ID
+      responses:
+        200:
+          description: Workspace details
+          schema:
+            $ref: '#/definitions/Workspace'
+        404:
+          description: Workspace not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+    put:
+      tags:
+        - Admin - Workspaces
+      summary: Update workspace
+      description: Updates a workspace (requires operator privileges)
+      security:
+        - SessionCookie: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/UpdateWorkspaceRequest'
+      responses:
+        200:
+          description: Workspace updated
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        400:
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+    delete:
+      tags:
+        - Admin - Workspaces
+      summary: Delete workspace
+      description: Deletes a workspace (requires operator privileges)
+      security:
+        - SessionCookie: []
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+      responses:
+        200:
+          description: Workspace deleted
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+
+  # ==================== Admin User Endpoints ====================
+  /admin/actions/users:
+    post:
+      tags:
+        - Admin - Users
+      summary: Create user
+      description: Creates a new user (requires admin role)
+      security:
+        - SessionCookie: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/CreateUserRequest'
+      responses:
+        201:
+          description: User created
+          schema:
+            $ref: '#/definitions/User'
+        400:
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /admin/actions/users/{id}:
+    get:
+      tags:
+        - Admin - Users
+      summary: Get user
+      description: Returns a single user by ID (requires admin role)
+      security:
+        - SessionCookie: []
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+      responses:
+        200:
+          description: User details
+          schema:
+            $ref: '#/definitions/User'
+        404:
+          description: User not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+    put:
+      tags:
+        - Admin - Users
+      summary: Update user
+      description: Updates a user (requires admin role)
+      security:
+        - SessionCookie: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/UpdateUserRequest'
+      responses:
+        200:
+          description: User updated
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+
+    delete:
+      tags:
+        - Admin - Users
+      summary: Delete user
+      description: Deletes a user (requires admin role)
+      security:
+        - SessionCookie: []
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+      responses:
+        200:
+          description: User deleted
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+
+  /admin/actions/users/{id}/status:
+    patch:
+      tags:
+        - Admin - Users
+      summary: Update user status
+      description: Activates or deactivates a user (requires admin role)
+      security:
+        - SessionCookie: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              is_active:
+                type: boolean
+      responses:
+        200:
+          description: Status updated
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+
+  /admin/actions/users/{id}/workspaces:
+    get:
+      tags:
+        - Admin - Users
+      summary: Get user workspaces
+      description: Returns all workspaces a user belongs to (requires admin role)
+      security:
+        - SessionCookie: []
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+      responses:
+        200:
+          description: User workspaces
+          schema:
+            type: object
+            properties:
+              workspaces:
+                type: array
+                items:
+                  $ref: '#/definitions/WorkspaceRole'
+              count:
+                type: integer
+
+  # ==================== Error Monitoring API Contract ====================
+  # Error monitoring is currently exposed via GraphQL/workspace flows and is not documented
+  # as a stable REST path set in this Swagger document.
+
+  # ==================== Webhooks ====================
+  /v1/webhooks/postmark/{secret}/inbound:
+    post:
+      tags:
+        - Webhooks
+      summary: Postmark inbound email webhook
+      description: Receives inbound emails from Postmark and creates support cases
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: secret
+          type: string
+          required: true
+          description: Webhook secret token
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            description: Postmark inbound email payload
+      responses:
+        200:
+          description: Email accepted
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: accepted
+              email_id:
+                type: string
+        401:
+          description: Invalid webhook secret
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /v1/webhooks/postmark/{secret}/bounce:
+    post:
+      tags:
+        - Webhooks
+      summary: Postmark bounce webhook
+      description: Receives bounce notifications from Postmark
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: secret
+          type: string
+          required: true
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            description: Postmark bounce payload
+      responses:
+        200:
+          description: Bounce processed
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+              email_id:
+                type: string
+        401:
+          description: Invalid webhook secret
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /v1/webhooks/postmark/{secret}/delivery:
+    post:
+      tags:
+        - Webhooks
+      summary: Postmark delivery webhook
+      description: Receives delivery confirmations from Postmark
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: secret
+          type: string
+          required: true
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            description: Postmark delivery payload
+      responses:
+        200:
+          description: Delivery processed
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+              email_id:
+                type: string
+        401:
+          description: Invalid webhook secret
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+# ==================== Definitions ====================
+definitions:
+  ErrorResponse:
+    type: object
+    properties:
+      error:
+        type: object
+        properties:
+          type:
+            type: string
+          message:
+            type: string
+          code:
+            type: string
+          details:
+            type: object
+      timestamp:
+        type: string
+        format: date-time
+      request_id:
+        type: string
+      path:
+        type: string
+
+  Context:
+    type: object
+    properties:
+      type:
+        type: string
+        enum: [instance, workspace]
+      workspace_id:
+        type: string
+      workspace_name:
+        type: string
+      role:
+        type: string
+
+  HealthResponse:
+    type: object
+    properties:
+      status:
+        type: string
+        enum: [healthy, degraded, unhealthy]
+      timestamp:
+        type: string
+        format: date-time
+      components:
+        type: object
+        additionalProperties:
+          type: object
+          properties:
+            status:
+              type: string
+            message:
+              type: string
+
+  Workspace:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+      description:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      updated_at:
+        type: string
+        format: date-time
+
+  CreateWorkspaceRequest:
+    type: object
+    required:
+      - name
+      - slug
+    properties:
+      name:
+        type: string
+        example: My Company
+      slug:
+        type: string
+        example: my-company
+      description:
+        type: string
+
+  UpdateWorkspaceRequest:
+    type: object
+    required:
+      - name
+      - slug
+    properties:
+      name:
+        type: string
+      slug:
+        type: string
+      description:
+        type: string
+
+  User:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      email:
+        type: string
+      instance_role:
+        type: string
+      is_active:
+        type: boolean
+      email_verified:
+        type: boolean
+      created_at:
+        type: string
+        format: date-time
+      updated_at:
+        type: string
+        format: date-time
+
+  CreateUserRequest:
+    type: object
+    required:
+      - name
+      - email
+    properties:
+      name:
+        type: string
+      email:
+        type: string
+        format: email
+      instance_role:
+        type: string
+        enum: [instance_admin, instance_user]
+      is_active:
+        type: boolean
+        default: true
+      email_verified:
+        type: boolean
+        default: false
+
+  UpdateUserRequest:
+    type: object
+    required:
+      - name
+      - email
+    properties:
+      name:
+        type: string
+      email:
+        type: string
+        format: email
+      instance_role:
+        type: string
+      is_active:
+        type: boolean
+      email_verified:
+        type: boolean
+
+  WorkspaceRole:
+    type: object
+    properties:
+      workspace_id:
+        type: string
+      workspace_name:
+        type: string
+      role:
+        type: string
+
+  DashboardStats:
+    type: object
+    properties:
+      total_workspaces:
+        type: integer
+      total_users:
+        type: integer
+      total_projects:
+        type: integer
+      total_issues:
+        type: integer
+      active_issues:
+        type: integer
+      events_today:
+        type: integer
+
+  Project:
+    type: object
+    properties:
+      id:
+        type: string
+      workspace_id:
+        type: string
+      team_id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+      platform:
+        type: string
+      environment:
+        type: string
+      status:
+        type: string
+      dsn:
+        type: string
+      public_key:
+        type: string
+      secret_key:
+        type: string
+      events_per_hour:
+        type: integer
+      storage_quota_mb:
+        type: integer
+      retention_days:
+        type: integer
+      created_at:
+        type: string
+        format: date-time
+      updated_at:
+        type: string
+        format: date-time
+
+  CreateProjectRequest:
+    type: object
+    required:
+      - name
+      - slug
+      - platform
+    properties:
+      name:
+        type: string
+        example: My App
+      slug:
+        type: string
+        example: my-app
+      platform:
+        type: string
+        example: javascript
+      team_id:
+        type: string
+      environment:
+        type: string
+        example: production
+
+  UpdateProjectRequest:
+    type: object
+    properties:
+      name:
+        type: string
+      platform:
+        type: string
+      environment:
+        type: string
+      events_per_hour:
+        type: integer
+      storage_quota_mb:
+        type: integer
+      retention_days:
+        type: integer
+      status:
+        type: string
+        enum: [active, disabled]
+
+  ProjectKey:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      public:
+        type: string
+      secret:
+        type: string
+      projectId:
+        type: string
+      isActive:
+        type: boolean
+      dsn:
+        type: object
+        properties:
+          secret:
+            type: string
+          public:
+            type: string
+
+  ProjectStats:
+    type: object
+    properties:
+      project_id:
+        type: string
+      time_range:
+        type: object
+        properties:
+          start:
+            type: string
+            format: date-time
+          end:
+            type: string
+            format: date-time
+      events:
+        type: integer
+      issues:
+        type: integer
+      error_rate:
+        type: number
+        description: Events per hour
+      new_issues:
+        type: integer
+      resolved:
+        type: integer
+      errors_by_level:
+        type: object
+        additionalProperties:
+          type: integer
+
+  Issue:
+    type: object
+    properties:
+      id:
+        type: string
+      project_id:
+        type: string
+      workspace_id:
+        type: string
+      fingerprint:
+        type: string
+      title:
+        type: string
+      message:
+        type: string
+      level:
+        type: string
+        enum: [error, warning, info, debug, fatal]
+      status:
+        type: string
+        enum: [unresolved, resolved, ignored]
+      event_count:
+        type: integer
+      user_count:
+        type: integer
+      first_seen:
+        type: string
+        format: date-time
+      last_seen:
+        type: string
+        format: date-time
+      assigned_to:
+        type: string
+      resolved_at:
+        type: string
+        format: date-time
+      resolved_by:
+        type: string
+      tags:
+        type: object
+        additionalProperties:
+          type: string
+
+  UpdateIssueRequest:
+    type: object
+    properties:
+      status:
+        type: string
+        enum: [unresolved, resolved, ignored]
+      assigned_to:
+        type: string
+      tags:
+        type: object
+        additionalProperties:
+          type: string
+
+  ErrorEvent:
+    type: object
+    properties:
+      id:
+        type: string
+      project_id:
+        type: string
+      issue_id:
+        type: string
+      timestamp:
+        type: string
+        format: date-time
+      platform:
+        type: string
+      level:
+        type: string
+      message:
+        type: string
+      exception:
+        type: object
+        properties:
+          type:
+            type: string
+          value:
+            type: string
+          stacktrace:
+            type: array
+            items:
+              type: object
+              properties:
+                filename:
+                  type: string
+                function:
+                  type: string
+                lineno:
+                  type: integer
+                colno:
+                  type: integer
+      contexts:
+        type: object
+      tags:
+        type: object
+        additionalProperties:
+          type: string
+      user:
+        type: object
+        properties:
+          id:
+            type: string
+          email:
+            type: string
+          ip_address:
+            type: string
+      request:
+        type: object
+        properties:
+          url:
+            type: string
+          method:
+            type: string
+          headers:
+            type: object

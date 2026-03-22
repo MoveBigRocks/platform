@@ -1,0 +1,229 @@
+{{define "rules.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Automations - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+        <style>
+            .rule-icon {
+                width: 2.5rem;
+                height: 2.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 0.5rem;
+                background: rgb(238 242 255);
+                color: rgb(79 70 229);
+            }
+            .rule-icon.inactive {
+                background: rgb(244 244 245);
+                color: rgb(161 161 170);
+            }
+            .status-pill {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.25rem 0.625rem;
+                font-size: 0.75rem;
+                font-weight: 500;
+                border-radius: 9999px;
+            }
+            .status-pill.active { background: rgb(220 252 231); color: rgb(22 101 52); }
+            .status-pill.inactive { background: rgb(244 244 245); color: rgb(82 82 91); }
+            .priority-pill {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.25rem 0.625rem;
+                font-size: 0.75rem;
+                font-weight: 500;
+                border-radius: 9999px;
+            }
+            .priority-pill.high { background: rgb(254 226 226); color: rgb(185 28 28); }
+            .priority-pill.normal { background: rgb(254 249 195); color: rgb(161 98 7); }
+            .priority-pill.low { background: rgb(244 244 245); color: rgb(82 82 91); }
+            .empty-state {
+                padding: 4rem 2rem;
+                text-align: center;
+            }
+            .empty-state-icon {
+                width: 4rem;
+                height: 4rem;
+                margin: 0 auto 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 9999px;
+                background: rgb(244 244 245);
+                color: rgb(161 161 170);
+            }
+            .info-box {
+                display: flex;
+                gap: 1rem;
+                padding: 1rem 1.25rem;
+                background: rgb(239 246 255);
+                border: 1px solid rgb(191 219 254);
+                border-radius: 0.75rem;
+                margin-top: 1.5rem;
+            }
+            .info-box-icon {
+                flex-shrink: 0;
+                color: rgb(59 130 246);
+            }
+            .action-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.25rem;
+                padding: 0.125rem 0.375rem;
+                font-size: 0.625rem;
+                font-weight: 500;
+                border-radius: 0.25rem;
+                background: rgb(244 244 245);
+                color: rgb(82 82 91);
+                margin-right: 0.25rem;
+            }
+            .stat-value {
+                font-size: 0.875rem;
+                font-weight: 600;
+                color: rgb(24 24 27);
+            }
+            .stat-label {
+                font-size: 0.75rem;
+                color: rgb(113 113 122);
+            }
+        </style>
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="max-w-7xl mx-auto space-y-6">
+
+                    <!-- Automations Table Card -->
+                    <div class="section-card">
+                        <div class="section-card-header">
+                            <div>
+                                <h3 class="section-card-title">Automations</h3>
+                                <p class="text-sm text-zinc-500 mt-1">{{if .TotalRules}}{{.TotalRules}} automations{{else}}No automations{{end}} across all workspaces</p>
+                            </div>
+                            <a href="/rules/new" class="btn-primary">
+                                <i data-lucide="plus" class="h-4 w-4"></i>
+                                New Automation
+                            </a>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="responsive-table">
+                                <thead>
+                                    <tr>
+                                        <th>Automation</th>
+                                        <th>Workspace</th>
+                                        <th>Status</th>
+                                        <th>Priority</th>
+                                        <th>Actions</th>
+                                        <th>Executions</th>
+                                        <th>Success Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{if .Rules}}
+                                        {{range .Rules}}
+                                        <tr onclick="window.location='/rules/{{.ID}}'">
+                                            <td class="mobile-header">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="rule-icon {{if not .IsActive}}inactive{{end}}">
+                                                        <i data-lucide="zap" class="h-5 w-5"></i>
+                                                    </div>
+                                                    <div>
+                                                        <a href="/rules/{{.ID}}" class="font-medium text-zinc-900 hover:text-indigo-600 max-w-md truncate block">{{.Name}}</a>
+                                                        {{if .Description}}
+                                                        <div class="text-sm text-zinc-500 max-w-md truncate">{{.Description}}</div>
+                                                        {{end}}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td data-label="Workspace">
+                                                <span class="chip">{{index $.WorkspaceNames .WorkspaceID}}</span>
+                                            </td>
+                                            <td data-label="Status">
+                                                {{if .IsActive}}
+                                                    <span class="status-pill active">Active</span>
+                                                {{else}}
+                                                    <span class="status-pill inactive">Inactive</span>
+                                                {{end}}
+                                            </td>
+                                            <td data-label="Priority">
+                                                {{if eq .Priority 1}}
+                                                    <span class="priority-pill high">High</span>
+                                                {{else if eq .Priority 2}}
+                                                    <span class="priority-pill normal">Normal</span>
+                                                {{else}}
+                                                    <span class="priority-pill low">Low</span>
+                                                {{end}}
+                                            </td>
+                                            <td data-label="Actions">
+                                                <div class="flex flex-wrap gap-1">
+                                                    {{range $type, $_ := .Actions}}
+                                                        <span class="action-badge">{{$type}}</span>
+                                                    {{end}}
+                                                    {{if not .Actions}}
+                                                        <span class="text-xs text-zinc-400">No actions</span>
+                                                    {{end}}
+                                                </div>
+                                            </td>
+                                            <td data-label="Executions">
+                                                <span class="stat-value">{{.TotalExecutions}}</span>
+                                            </td>
+                                            <td data-label="Success Rate">
+                                                {{if gt .TotalExecutions 0}}
+                                                    <span class="stat-value">{{printf "%.1f" .SuccessRate}}%</span>
+                                                {{else}}
+                                                    <span class="text-xs text-zinc-400">N/A</span>
+                                                {{end}}
+                                            </td>
+                                        </tr>
+                                        {{end}}
+                                    {{else}}
+                                        <tr>
+                                            <td colspan="7">
+                                                <div class="empty-state">
+                                                    <div class="empty-state-icon">
+                                                        <i data-lucide="zap" class="h-8 w-8"></i>
+                                                    </div>
+                                                    <h3 class="text-lg font-semibold text-zinc-900">No automations</h3>
+                                                    <p class="text-zinc-500 mt-1">Create automations to handle cases, assignments, notifications, and multi-step workflows</p>
+                                                    <a href="/rules/new" class="btn-primary mt-4">
+                                                        <i data-lucide="plus" class="h-4 w-4"></i>
+                                                        Create First Automation
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Info Box -->
+                    <div class="info-box">
+                        <div class="info-box-icon">
+                            <i data-lucide="info" class="h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-zinc-900">About Automations</h4>
+                            <p class="text-sm text-zinc-600 mt-0.5">
+                                Automations process cases based on conditions you define. They can assign cases to team members,
+                                change priorities, add tags, send notifications, or escalate urgent issues. Automations run
+                                when cases are created or updated.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </body>
+</html>
+{{end}}

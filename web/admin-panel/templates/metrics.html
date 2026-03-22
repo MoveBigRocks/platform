@@ -1,0 +1,275 @@
+{{define "metrics.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>System Metrics - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="max-w-7xl mx-auto space-y-6">
+
+                    <!-- Quick Stats -->
+                    <div class="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                        <div class="metric-card">
+                            <div class="flex items-center gap-3">
+                                <div class="metric-card-icon indigo">
+                                    <i data-lucide="zap" class="h-4 w-4"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-zinc-500 font-medium">Monitoring</p>
+                                    <p class="text-lg font-semibold text-zinc-900">7 Dashboards</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="flex items-center gap-3">
+                                <div class="metric-card-icon emerald">
+                                    <i data-lucide="server" class="h-4 w-4"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-zinc-500 font-medium">Data Source</p>
+                                    <p class="text-lg font-semibold text-zinc-900">Prometheus</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="flex items-center gap-3">
+                                <div class="metric-card-icon amber">
+                                    <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-zinc-500 font-medium">Refresh Rate</p>
+                                    <p class="text-lg font-semibold text-zinc-900">10-30s</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="flex items-center gap-3">
+                                <div class="metric-card-icon blue">
+                                    <i data-lucide="clock" class="h-4 w-4"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-zinc-500 font-medium">Retention</p>
+                                    <p class="text-lg font-semibold text-zinc-900">30 Days</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard Tabs -->
+                    <div class="section-card p-1">
+                        <div class="flex flex-wrap gap-1">
+                            <button class="tab-btn active" onclick="showDashboard('api-performance')">
+                                <i data-lucide="gauge" class="h-4 w-4"></i>
+                                API Performance
+                            </button>
+                            <button class="tab-btn" onclick="showDashboard('error-monitoring')">
+                                <i data-lucide="alert-circle" class="h-4 w-4"></i>
+                                Error Monitoring
+                            </button>
+                            <button class="tab-btn" onclick="showDashboard('workers')">
+                                <i data-lucide="cog" class="h-4 w-4"></i>
+                                Workers
+                            </button>
+                            <button class="tab-btn" onclick="showDashboard('database')">
+                                <i data-lucide="database" class="h-4 w-4"></i>
+                                Database
+                            </button>
+                            <button class="tab-btn" onclick="showDashboard('storage')">
+                                <i data-lucide="hard-drive" class="h-4 w-4"></i>
+                                Storage
+                            </button>
+                            <button class="tab-btn" onclick="showDashboard('support-metrics')">
+                                <i data-lucide="headset" class="h-4 w-4"></i>
+                                Support Metrics
+                            </button>
+                            <button class="tab-btn" onclick="showDashboard('tracing')">
+                                <i data-lucide="activity" class="h-4 w-4"></i>
+                                Distributed Tracing
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard Container -->
+                    <div class="section-card overflow-hidden" id="grafana-container">
+                        <!-- Loading state -->
+                        <div id="grafana-loading" class="flex flex-col items-center justify-center min-h-[500px] text-zinc-500">
+                            <div class="h-8 w-8 border-2 border-zinc-300 border-t-indigo-600 rounded-full animate-spin"></div>
+                            <p class="mt-4">Connecting to Grafana...</p>
+                        </div>
+
+                        <!-- Error state (shown when Grafana unavailable) -->
+                        <div id="grafana-error" class="hidden flex flex-col items-center justify-center min-h-[500px] text-zinc-500">
+                            <div class="h-16 w-16 rounded-full bg-zinc-100 flex items-center justify-center">
+                                <i data-lucide="server-off" class="h-8 w-8 text-zinc-400"></i>
+                            </div>
+                            <p class="mt-4 text-lg font-medium text-zinc-900">Grafana Unavailable</p>
+                            <p class="mt-2 text-sm max-w-md text-center">
+                                The Grafana metrics service is not currently responding.
+                                This may be temporary - try refreshing in a moment.
+                            </p>
+                            <button onclick="checkGrafana()" class="inline-flex items-center gap-2 px-4 py-2 mt-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                                <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+                                Retry Connection
+                            </button>
+                        </div>
+
+                        <!-- Dashboard iframes (shown when Grafana available) -->
+                        <div id="grafana-dashboards" class="hidden">
+                            <iframe
+                                id="api-performance"
+                                class="dashboard-iframe active"
+                                data-src="/grafana/d/mbr-api-performance/mbr-api-performance?orgId=1&kiosk=tv&theme=light"
+                                frameborder="0">
+                            </iframe>
+                            <iframe
+                                id="error-monitoring"
+                                class="dashboard-iframe hidden"
+                                data-src="/grafana/d/mbr-error-monitoring/mbr-error-monitoring?orgId=1&kiosk=tv&theme=light"
+                                frameborder="0">
+                            </iframe>
+                            <iframe
+                                id="workers"
+                                class="dashboard-iframe hidden"
+                                data-src="/grafana/d/mbr-workers/mbr-workers?orgId=1&kiosk=tv&theme=light"
+                                frameborder="0">
+                            </iframe>
+                            <iframe
+                                id="database"
+                                class="dashboard-iframe hidden"
+                                data-src="/grafana/d/mbr-database/mbr-database?orgId=1&kiosk=tv&theme=light"
+                                frameborder="0">
+                            </iframe>
+                            <iframe
+                                id="storage"
+                                class="dashboard-iframe hidden"
+                                data-src="/grafana/d/mbr-storage/mbr-storage?orgId=1&kiosk=tv&theme=light"
+                                frameborder="0">
+                            </iframe>
+                            <iframe
+                                id="support-metrics"
+                                class="dashboard-iframe hidden"
+                                data-src="/grafana/d/mbr-support-metrics/mbr-support-metrics?orgId=1&kiosk=tv&theme=light"
+                                frameborder="0">
+                            </iframe>
+                            <iframe
+                                id="tracing"
+                                class="dashboard-iframe hidden"
+                                data-src="/grafana/d/mbr-tracing/distributed-tracing?orgId=1&kiosk=tv&theme=light"
+                                frameborder="0">
+                            </iframe>
+                        </div>
+                    </div>
+
+                    <!-- Help Text -->
+                    <div class="section-card p-4 flex items-start gap-3">
+                        <div class="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="info" class="h-4 w-4 text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-zinc-900">About System Metrics</h3>
+                            <p class="text-sm text-zinc-500 mt-1">
+                                These dashboards show real-time technical performance metrics collected by Prometheus.
+                                Dashboards update automatically every 10-30 seconds.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <script>
+            // Check if Grafana is available
+            function checkGrafana() {
+                var loadingEl = document.getElementById('grafana-loading');
+                var errorEl = document.getElementById('grafana-error');
+                var dashboardsEl = document.getElementById('grafana-dashboards');
+
+                // Show loading
+                loadingEl.classList.remove('hidden');
+                errorEl.classList.add('hidden');
+                dashboardsEl.classList.add('hidden');
+
+                // Check Grafana health via public status endpoint
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', '/grafana-status', true);
+                xhr.timeout = 5000;
+
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        // Grafana is available - load dashboards
+                        loadingEl.classList.add('hidden');
+                        dashboardsEl.classList.remove('hidden');
+                        loadDashboardIframes();
+                    } else {
+                        // Grafana returned error
+                        showGrafanaError();
+                    }
+                };
+
+                xhr.onerror = function() {
+                    showGrafanaError();
+                };
+
+                xhr.ontimeout = function() {
+                    showGrafanaError();
+                };
+
+                xhr.send();
+            }
+
+            function showGrafanaError() {
+                document.getElementById('grafana-loading').classList.add('hidden');
+                document.getElementById('grafana-error').classList.remove('hidden');
+                document.getElementById('grafana-dashboards').classList.add('hidden');
+            }
+
+            function loadDashboardIframes() {
+                // Only load the ACTIVE iframe to avoid rate limiting
+                // Other iframes load lazily when their tab is clicked
+                var activeIframe = document.querySelector('.dashboard-iframe.active[data-src]');
+                if (activeIframe && !activeIframe.src) {
+                    activeIframe.src = activeIframe.getAttribute('data-src');
+                }
+            }
+
+            function showDashboard(dashboardId) {
+                // Hide all iframes
+                document.querySelectorAll('.dashboard-iframe').forEach(function(iframe) {
+                    iframe.classList.add('hidden');
+                    iframe.classList.remove('active');
+                });
+
+                // Remove active state from all tabs
+                document.querySelectorAll('.tab-btn').forEach(function(tab) {
+                    tab.classList.remove('active');
+                });
+
+                // Show selected iframe
+                var iframe = document.getElementById(dashboardId);
+                if (iframe) {
+                    iframe.classList.remove('hidden');
+                    iframe.classList.add('active');
+                    // Load iframe if not already loaded
+                    if (!iframe.src && iframe.getAttribute('data-src')) {
+                        iframe.src = iframe.getAttribute('data-src');
+                    }
+                }
+
+                // Activate clicked tab
+                event.target.closest('.tab-btn').classList.add('active');
+            }
+
+            // Check Grafana on page load
+            document.addEventListener('DOMContentLoaded', checkGrafana);
+        </script>
+    </body>
+</html>
+{{end}}

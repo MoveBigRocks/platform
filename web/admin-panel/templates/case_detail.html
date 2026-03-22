@@ -1,0 +1,427 @@
+{{define "case_detail.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>{{.PageTitle}} - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+        <style>
+            /* Custom scrollbar */
+            .conversation-scroll::-webkit-scrollbar { width: 6px; }
+            .conversation-scroll::-webkit-scrollbar-track { background: transparent; }
+            .conversation-scroll::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 3px; }
+
+            /* Custom select arrow */
+            .custom-select {
+                appearance: none;
+                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+                background-position: right 0.5rem center;
+                background-repeat: no-repeat;
+                background-size: 1.5em 1.5em;
+                padding-right: 2.5rem;
+            }
+        </style>
+    </head>
+
+    <body class="bg-zinc-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col min-w-0 bg-white">
+
+            <!-- Top Header -->
+            <header class="h-14 border-b border-zinc-200 flex items-center justify-between px-6 flex-shrink-0 bg-white">
+                <div class="flex items-center gap-4 min-w-0 flex-1">
+                    <a href="/cases" class="text-zinc-400 hover:text-zinc-600 transition-colors flex-shrink-0">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </a>
+                    <div class="h-5 w-px bg-zinc-200 flex-shrink-0"></div>
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="text-zinc-400 font-medium text-sm flex-shrink-0">{{.Case.CaseID}}</span>
+                        <h2 class="text-base font-semibold tracking-tight text-zinc-900 truncate">{{.Case.Subject}}</h2>
+                        {{if eq .Case.Status "new"}}
+                            <span class="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium border border-blue-100/50 flex-shrink-0">New</span>
+                        {{else if eq .Case.Status "open"}}
+                            <span class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium border border-amber-100/50 flex-shrink-0">Open</span>
+                        {{else if eq .Case.Status "pending"}}
+                            <span class="px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 text-xs font-medium border border-yellow-100/50 flex-shrink-0">Pending</span>
+                        {{else if eq .Case.Status "resolved"}}
+                            <span class="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-xs font-medium border border-green-100/50 flex-shrink-0">Resolved</span>
+                        {{else if eq .Case.Status "closed"}}
+                            <span class="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 text-xs font-medium flex-shrink-0">Closed</span>
+                        {{else}}
+                            <span class="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 text-xs font-medium flex-shrink-0">{{.Case.Status}}</span>
+                        {{end}}
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 flex-shrink-0">
+                    {{if not .IsWorkspaceScoped}}
+                    {{if and (ne .Case.Status "resolved") (ne .Case.Status "closed")}}
+                    <form method="POST" action="/cases/{{.Case.ID}}/resolve" class="inline">
+                        <button type="submit" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-zinc-200 text-zinc-700 text-sm font-medium rounded-md hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-sm">
+                            <i data-lucide="check" class="w-4 h-4 text-green-600"></i>
+                            Resolve
+                        </button>
+                    </form>
+                    {{end}}
+                    {{if eq .Case.Status "resolved"}}
+                    <form method="POST" action="/cases/{{.Case.ID}}/close" class="inline">
+                        <button type="submit" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-zinc-200 text-zinc-700 text-sm font-medium rounded-md hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-sm">
+                            <i data-lucide="archive" class="w-4 h-4"></i>
+                            Close
+                        </button>
+                    </form>
+                    {{end}}
+                    {{if or (eq .Case.Status "resolved") (eq .Case.Status "closed")}}
+                    <form method="POST" action="/cases/{{.Case.ID}}/reopen" class="inline">
+                        <button type="submit" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-zinc-200 text-zinc-700 text-sm font-medium rounded-md hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-sm">
+                            <i data-lucide="refresh-cw" class="w-4 h-4 text-amber-600"></i>
+                            Reopen
+                        </button>
+                    </form>
+                    {{end}}
+                    {{end}}
+                </div>
+            </header>
+
+            <div class="flex-1 flex min-h-0">
+                <!-- Conversation Area -->
+                <div class="flex-1 flex flex-col min-w-0">
+                    <!-- Scrollable Messages -->
+                    <div class="flex-1 overflow-y-auto conversation-scroll p-6 pb-4">
+                        <div class="max-w-3xl mx-auto space-y-6">
+
+                            <!-- Date Separator -->
+                            <div class="flex items-center justify-center">
+                                <span class="text-xs font-medium text-zinc-400 bg-zinc-100 px-3 py-1 rounded-full">{{formatDate .Case.CreatedAt "Jan 02, 2006"}}</span>
+                            </div>
+
+                            <!-- Initial Description (Customer Message) -->
+                            {{if .Case.Description}}
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 mt-1">
+                                    <div class="w-8 h-8 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-600 text-xs font-medium">
+                                        {{if .Case.ContactName}}{{slice .Case.ContactName 0 1}}{{else}}C{{end}}
+                                    </div>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-baseline justify-between">
+                                        <h3 class="text-sm font-medium text-zinc-900">
+                                            {{if .Case.ContactName}}{{.Case.ContactName}}{{else}}Customer{{end}}
+                                            <span class="text-zinc-400 font-normal ml-1">&lt;{{.Case.ContactEmail}}&gt;</span>
+                                        </h3>
+                                        <span class="text-xs text-zinc-400">{{formatDate .Case.CreatedAt "15:04"}}</span>
+                                    </div>
+                                    <div class="mt-1.5 text-sm text-zinc-700 leading-relaxed bg-zinc-50 p-4 rounded-lg border border-zinc-100 whitespace-pre-wrap">{{.Case.Description}}</div>
+                                </div>
+                            </div>
+                            {{end}}
+
+                            <!-- Communications Timeline -->
+                            {{range .Communications}}
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 mt-1">
+                                    {{if eq .Direction "inbound"}}
+                                    <div class="w-8 h-8 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-600 text-xs font-medium">
+                                        {{if .FromName}}{{slice .FromName 0 1}}{{else}}C{{end}}
+                                    </div>
+                                    {{else if .IsInternal}}
+                                    <div class="w-8 h-8 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700">
+                                        <i data-lucide="lock" class="w-4 h-4"></i>
+                                    </div>
+                                    {{else}}
+                                    <div class="w-8 h-8 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700">
+                                        <i data-lucide="headphones" class="w-4 h-4"></i>
+                                    </div>
+                                    {{end}}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-baseline justify-between">
+                                        <h3 class="text-sm font-medium text-zinc-900">
+                                            {{if .FromName}}{{.FromName}}{{else if eq .Direction "inbound"}}Customer{{else}}Support Team{{end}}
+                                            {{if and (eq .Direction "inbound") .FromEmail}}
+                                            <span class="text-zinc-400 font-normal ml-1">&lt;{{.FromEmail}}&gt;</span>
+                                            {{end}}
+                                        </h3>
+                                        <span class="text-xs text-zinc-400">{{formatDate .CreatedAt "15:04"}}</span>
+                                    </div>
+                                    {{if .Subject}}<div class="text-sm font-medium text-zinc-600 mt-0.5">{{.Subject}}</div>{{end}}
+                                    <div class="mt-1 text-sm text-zinc-700 leading-relaxed {{if .IsInternal}}bg-amber-50 p-3 rounded-lg border border-amber-100{{else if eq .Direction "inbound"}}bg-zinc-50 p-3 rounded-lg border border-zinc-100{{end}} whitespace-pre-wrap">{{.Body}}</div>
+                                    {{if and (ne .Direction "inbound") (not .IsInternal)}}
+                                    <div class="mt-2 flex gap-2">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                                            <i data-lucide="mail-check" class="w-3 h-3 mr-1"></i> Sent via Email
+                                        </span>
+                                    </div>
+                                    {{end}}
+                                    {{if .IsInternal}}
+                                    <div class="mt-2 flex gap-2">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                                            <i data-lucide="lock" class="w-3 h-3 mr-1"></i> Internal Note
+                                        </span>
+                                    </div>
+                                    {{end}}
+                                </div>
+                            </div>
+                            {{end}}
+
+                            {{if and (not .Case.Description) (not .Communications)}}
+                            <div class="text-center py-12">
+                                <div class="h-12 w-12 mx-auto rounded-full bg-zinc-100 flex items-center justify-center mb-3">
+                                    <i data-lucide="message-square-off" class="h-6 w-6 text-zinc-400"></i>
+                                </div>
+                                <p class="text-zinc-500">No communications yet</p>
+                            </div>
+                            {{end}}
+
+                        </div>
+                    </div>
+
+                    <!-- Sticky Composer -->
+                    {{if and (not .IsWorkspaceScoped) (ne .Case.Status "closed") (ne .Case.Status "resolved")}}
+                    <div class="flex-shrink-0 bg-white border-t border-zinc-200 p-4">
+                        <div class="max-w-3xl mx-auto">
+                            <div class="border border-zinc-200 rounded-lg shadow-sm bg-white focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all overflow-hidden">
+                                <!-- Composer Tabs -->
+                                <div class="flex items-center gap-1 border-b border-zinc-100 bg-zinc-50/50 px-2 py-2">
+                                    <button type="button" id="reply-tab" onclick="showReplyForm()" class="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-white shadow-sm border border-zinc-200 rounded-md">Reply to Customer</button>
+                                    <button type="button" id="note-tab" onclick="showNoteForm()" class="px-3 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 rounded-md transition-colors">Internal Note</button>
+                                </div>
+
+                                <!-- Reply Form -->
+                                <form id="reply-form" method="POST" action="/cases/{{.Case.ID}}/reply">
+                                    <textarea name="body" rows="3" required
+                                        class="w-full p-3 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none resize-none border-0"
+                                        placeholder="Type your reply here..."></textarea>
+
+                                    <!-- Composer Toolbar -->
+                                    <div class="flex items-center justify-between px-3 py-2 bg-white border-t border-zinc-100">
+                                        <div class="flex items-center gap-1">
+                                            <button type="button" class="p-1.5 text-zinc-400 hover:text-zinc-600 rounded hover:bg-zinc-100 transition-colors" title="Attach file">
+                                                <i data-lucide="paperclip" class="w-4 h-4"></i>
+                                            </button>
+                                            <button type="button" class="p-1.5 text-zinc-400 hover:text-zinc-600 rounded hover:bg-zinc-100 transition-colors" title="Add emoji">
+                                                <i data-lucide="smile" class="w-4 h-4"></i>
+                                            </button>
+                                        </div>
+                                        <button type="submit" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors shadow-sm">
+                                            Send Reply
+                                            <i data-lucide="send" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <!-- Note Form (hidden by default) -->
+                                <form id="note-form" method="POST" action="/cases/{{.Case.ID}}/note" class="hidden">
+                                    <textarea name="body" rows="3" required
+                                        class="w-full p-3 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none resize-none border-0 bg-amber-50/50"
+                                        placeholder="Add an internal note (not visible to customer)..."></textarea>
+
+                                    <!-- Composer Toolbar -->
+                                    <div class="flex items-center justify-between px-3 py-2 bg-amber-50/30 border-t border-amber-100">
+                                        <div class="flex items-center gap-2 text-xs text-amber-600">
+                                            <i data-lucide="lock" class="w-3 h-3"></i>
+                                            Only visible to your team
+                                        </div>
+                                        <button type="submit" class="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors shadow-sm">
+                                            Add Note
+                                            <i data-lucide="sticky-note" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+
+                <!-- Right Sidebar -->
+                <aside class="w-72 flex-shrink-0 bg-zinc-50 border-l border-zinc-200 overflow-y-auto hidden lg:block">
+
+                    <!-- Contact Section -->
+                    <div class="p-4 border-b border-zinc-100">
+                        <h4 class="text-xs font-semibold text-zinc-900 uppercase tracking-wide mb-3">Contact</h4>
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-9 h-9 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-zinc-500 shadow-sm">
+                                <span class="font-medium text-sm">{{if .Case.ContactName}}{{slice .Case.ContactName 0 1}}{{else}}C{{end}}</span>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="text-sm font-medium text-zinc-900 truncate">{{if .Case.ContactName}}{{.Case.ContactName}}{{else}}Customer{{end}}</div>
+                                <div class="text-xs text-zinc-500">{{.WorkspaceName}}</div>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="group flex flex-col">
+                                <label class="text-[11px] font-medium text-zinc-500 mb-0.5">Email</label>
+                                <div class="text-sm text-zinc-900 truncate">{{.Case.ContactEmail}}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Case Properties Section -->
+                    <div class="p-4 border-b border-zinc-100">
+                        <h4 class="text-xs font-semibold text-zinc-900 uppercase tracking-wide mb-3">Properties</h4>
+                        {{if .IsWorkspaceScoped}}
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between gap-3">
+                                <span class="text-zinc-500">Assignee</span>
+                                <span class="text-zinc-900">{{if .AssignedUserName}}{{.AssignedUserName}}{{else}}Unassigned{{end}}</span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-zinc-500">Status</span>
+                                <span class="text-zinc-900 capitalize">{{.Case.Status}}</span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-zinc-500">Priority</span>
+                                <span class="text-zinc-900 capitalize">{{.Case.Priority}}</span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-zinc-500">Category</span>
+                                <span class="text-zinc-900">{{if .Case.Category}}{{.Case.Category}}{{else}}-{{end}}</span>
+                            </div>
+                        </div>
+                        {{else}}
+                        <div class="space-y-3">
+
+                            <!-- Assignee -->
+                            <form method="POST" action="/cases/{{.Case.ID}}/assign" class="space-y-1">
+                                <label class="text-[11px] font-medium text-zinc-500 block">Assignee</label>
+                                <select name="user_id" onchange="this.form.submit()" class="custom-select w-full bg-white border border-zinc-200 text-zinc-900 text-sm rounded-md pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm hover:border-zinc-300 transition-colors">
+                                    <option value="">Unassigned</option>
+                                    {{range .Users}}
+                                    <option value="{{.ID}}" {{if eq $.Case.AssigneeID .ID}}selected{{end}}>{{.Name}}</option>
+                                    {{end}}
+                                </select>
+                            </form>
+
+                            <!-- Status -->
+                            <form method="POST" action="/cases/{{.Case.ID}}/status" class="space-y-1">
+                                <label class="text-[11px] font-medium text-zinc-500 block">Status</label>
+                                <select name="status" onchange="this.form.submit()" class="custom-select w-full bg-white border border-zinc-200 text-zinc-900 text-sm rounded-md pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm hover:border-zinc-300 transition-colors">
+                                    {{range .StatusOptions}}
+                                    <option value="{{.}}" {{if eq $.Case.Status .}}selected{{end}}>{{.}}</option>
+                                    {{end}}
+                                </select>
+                            </form>
+
+                            <!-- Priority -->
+                            <form method="POST" action="/cases/{{.Case.ID}}/priority" class="space-y-1">
+                                <label class="text-[11px] font-medium text-zinc-500 block">Priority</label>
+                                <select name="priority" onchange="this.form.submit()" class="custom-select w-full bg-white border border-zinc-200 text-zinc-900 text-sm rounded-md pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm hover:border-zinc-300 transition-colors">
+                                    {{range .PriorityOptions}}
+                                    <option value="{{.}}" {{if eq $.Case.Priority .}}selected{{end}}>{{.}}</option>
+                                    {{end}}
+                                </select>
+                            </form>
+
+                            <!-- Category -->
+                            <form method="POST" action="/cases/{{.Case.ID}}/category" class="space-y-1">
+                                <label class="text-[11px] font-medium text-zinc-500 block">Category</label>
+                                <input type="text" name="category" value="{{.Case.Category}}"
+                                    class="w-full bg-white border border-zinc-200 text-zinc-900 text-sm rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm hover:border-zinc-300 transition-colors"
+                                    placeholder="e.g., billing, technical"
+                                    onchange="this.form.submit()">
+                            </form>
+
+                        </div>
+                        {{end}}
+                    </div>
+
+                    <!-- Tags Section -->
+                    <div class="p-4 border-b border-zinc-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-xs font-semibold text-zinc-900 uppercase tracking-wide">Tags</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 mb-3">
+                            {{range .Case.Tags}}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-zinc-200/50 text-zinc-600 border border-zinc-200">
+                                {{.}}
+                                {{if not $.IsWorkspaceScoped}}
+                                <form method="POST" action="/cases/{{$.Case.ID}}/tag/{{.}}" class="inline ml-1">
+                                    <input type="hidden" name="_method" value="DELETE">
+                                    <button type="submit" class="text-zinc-400 hover:text-zinc-600">
+                                        <i data-lucide="x" class="w-3 h-3"></i>
+                                    </button>
+                                </form>
+                                {{end}}
+                            </span>
+                            {{end}}
+                        </div>
+                        {{if not .IsWorkspaceScoped}}
+                        <form method="POST" action="/cases/{{.Case.ID}}/tag" class="flex gap-2">
+                            <input type="text" name="tag" required
+                                class="flex-1 min-w-0 bg-white border border-zinc-200 text-zinc-900 text-sm rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                                placeholder="Add tag...">
+                            <button type="submit" class="px-2 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded transition-colors">
+                                Add
+                            </button>
+                        </form>
+                        {{end}}
+                    </div>
+
+                    <!-- Linked Issues -->
+                    {{if .LinkedIssues}}
+                    <div class="p-4 border-b border-zinc-100">
+                        <h4 class="text-xs font-semibold text-zinc-900 uppercase tracking-wide mb-3">Linked Issues</h4>
+                        <div class="space-y-2">
+                            {{range .LinkedIssues}}
+                            <a href="{{$.IssuesBasePath}}/{{.ID}}" class="block p-2 rounded-md border border-zinc-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-colors">
+                                <div class="font-medium text-xs text-zinc-900 truncate">{{.Title}}</div>
+                                <div class="flex items-center gap-1.5 mt-1">
+                                    {{if eq .Status "unresolved"}}
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">Unresolved</span>
+                                    {{else}}
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">Resolved</span>
+                                    {{end}}
+                                </div>
+                            </a>
+                            {{end}}
+                        </div>
+                    </div>
+                    {{end}}
+
+                    <!-- Metadata Footer -->
+                    <div class="p-4">
+                        <div class="space-y-1.5 text-xs text-zinc-400">
+                            <div class="flex items-center justify-between">
+                                <span>Created</span>
+                                <span>{{formatDate .Case.CreatedAt "Jan 02, 2006"}}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span>Channel</span>
+                                <span>{{.Case.Channel}}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span>Messages</span>
+                                <span>{{.Case.MessageCount}}</span>
+                            </div>
+                            {{if .Case.FirstResponseAt}}
+                            <div class="flex items-center justify-between">
+                                <span>First Response</span>
+                                <span>{{formatDate .Case.FirstResponseAt "Jan 02, 15:04"}}</span>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+
+                </aside>
+            </div>
+        </main>
+
+        <script>
+            function showReplyForm() {
+                document.getElementById('reply-form').classList.remove('hidden');
+                document.getElementById('note-form').classList.add('hidden');
+                document.getElementById('reply-tab').className = 'px-3 py-1.5 text-xs font-medium text-indigo-700 bg-white shadow-sm border border-zinc-200 rounded-md';
+                document.getElementById('note-tab').className = 'px-3 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 rounded-md transition-colors';
+            }
+
+            function showNoteForm() {
+                document.getElementById('note-form').classList.remove('hidden');
+                document.getElementById('reply-form').classList.add('hidden');
+                document.getElementById('note-tab').className = 'px-3 py-1.5 text-xs font-medium text-amber-700 bg-white shadow-sm border border-amber-200 rounded-md';
+                document.getElementById('reply-tab').className = 'px-3 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 rounded-md transition-colors';
+            }
+        </script>
+    </body>
+</html>
+{{end}}

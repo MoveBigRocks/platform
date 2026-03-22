@@ -1,0 +1,213 @@
+{{define "applications.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Applications - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+        <style>
+            .app-grid {
+                display: grid;
+                gap: 1rem;
+                grid-template-columns: repeat(1, 1fr);
+            }
+            @media (min-width: 768px) {
+                .app-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+            @media (min-width: 1024px) {
+                .app-grid {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+            }
+            .app-card {
+                background: white;
+                border-radius: 0.75rem;
+                border: 1px solid rgb(228 228 231);
+                padding: 1.25rem;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+                transition: box-shadow 0.2s, border-color 0.2s;
+            }
+            .app-card:hover {
+                box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+                border-color: rgb(199 210 254);
+            }
+            .app-icon {
+                width: 3rem;
+                height: 3rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 0.75rem;
+            }
+            .app-icon.active { background: rgb(220 252 231); color: rgb(22 101 52); }
+            .app-icon.paused { background: rgb(254 249 195); color: rgb(161 98 7); }
+            .app-icon.disabled { background: rgb(244 244 245); color: rgb(82 82 91); }
+            .status-dot {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.375rem;
+                padding: 0.25rem 0.625rem;
+                font-size: 0.75rem;
+                font-weight: 500;
+                border-radius: 9999px;
+            }
+            .status-dot.active { background: rgb(220 252 231); color: rgb(22 101 52); }
+            .status-dot.paused { background: rgb(254 249 195); color: rgb(161 98 7); }
+            .status-dot.disabled { background: rgb(244 244 245); color: rgb(82 82 91); }
+            .app-stats {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+                margin-top: 1rem;
+                padding-top: 1rem;
+                border-top: 1px solid rgb(244 244 245);
+            }
+            .app-stat-label {
+                font-size: 0.75rem;
+                color: rgb(113 113 122);
+            }
+            .app-stat-value {
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: rgb(24 24 27);
+                margin-top: 0.125rem;
+            }
+            .app-stat-value.mono {
+                font-family: ui-monospace, monospace;
+                font-size: 0.75rem;
+            }
+            .empty-state {
+                padding: 4rem 2rem;
+                text-align: center;
+                background: white;
+                border-radius: 0.75rem;
+                border: 1px solid rgb(228 228 231);
+            }
+            .empty-state-icon {
+                width: 4rem;
+                height: 4rem;
+                margin: 0 auto 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 9999px;
+                background: rgb(244 244 245);
+                color: rgb(161 161 170);
+            }
+            .info-box {
+                display: flex;
+                gap: 1rem;
+                padding: 1rem 1.25rem;
+                background: rgb(239 246 255);
+                border: 1px solid rgb(191 219 254);
+                border-radius: 0.75rem;
+                margin-top: 1.5rem;
+            }
+            .info-box-icon {
+                flex-shrink: 0;
+                color: rgb(59 130 246);
+            }
+        </style>
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="max-w-7xl mx-auto space-y-6">
+
+                    <!-- Header -->
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm text-zinc-500">{{if .TotalApplications}}{{.TotalApplications}} applications{{else}}No applications{{end}}{{if .IsWorkspaceScoped}} in this workspace{{else}} across all workspaces{{end}}</p>
+                        <a href="{{.ApplicationsBasePath}}/new" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                            <i data-lucide="plus" class="h-4 w-4"></i>
+                            New Application
+                        </a>
+                    </div>
+
+                    <!-- Applications Grid -->
+                    {{if .Applications}}
+                    <div class="app-grid">
+                        {{range .Applications}}
+                        <a href="{{$.ApplicationsBasePath}}/{{.ID}}" class="app-card block">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="app-icon {{.Status}}">
+                                        <i data-lucide="app-window" class="h-6 w-6"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-zinc-900">{{.Name}}</h3>
+                                        <p class="text-sm text-zinc-500">{{.WorkspaceName}}</p>
+                                    </div>
+                                </div>
+                                {{if eq .Status "active"}}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Active</span>
+                                {{else if eq .Status "paused"}}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Paused</span>
+                                {{else if eq .Status "disabled"}}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-600">Disabled</span>
+                                {{else}}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-600">{{.Status}}</span>
+                                {{end}}
+                            </div>
+
+                            <div class="app-stats">
+                                <div>
+                                    <p class="app-stat-label">Platform</p>
+                                    <p class="app-stat-value">{{if .Platform}}{{.Platform}}{{else}}-{{end}}</p>
+                                </div>
+                                <div>
+                                    <p class="app-stat-label">Environment</p>
+                                    <p class="app-stat-value">{{if .Environment}}{{.Environment}}{{else}}-{{end}}</p>
+                                </div>
+                                <div>
+                                    <p class="app-stat-label">Events</p>
+                                    <p class="app-stat-value">{{.EventCount}}</p>
+                                </div>
+                                <div>
+                                    <p class="app-stat-label">Slug</p>
+                                    <p class="app-stat-value mono">{{.Slug}}</p>
+                                </div>
+                            </div>
+                        </a>
+                        {{end}}
+                    </div>
+                    {{else}}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <i data-lucide="app-window" class="h-8 w-8"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-zinc-900">No applications found</h3>
+                        <p class="text-zinc-500 mt-1 max-w-md mx-auto">
+                            Create your first application to start monitoring errors from your services.
+                        </p>
+                        <a href="{{.ApplicationsBasePath}}/new" class="inline-flex items-center gap-2 px-4 py-2 mt-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                            <i data-lucide="plus" class="h-4 w-4"></i>
+                            Create First Application
+                        </a>
+                    </div>
+                    {{end}}
+
+                    <!-- Info Box -->
+                    <div class="info-box">
+                        <div class="info-box-icon">
+                            <i data-lucide="info" class="h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-zinc-900">About Monitored Applications</h4>
+                            <p class="text-sm text-zinc-600 mt-0.5">
+                                Applications (also called Projects) are monitored services that send error data to the platform using the Sentry-compatible SDK. Each application has a unique DSN that clients use to report errors.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </body>
+</html>
+{{end}}

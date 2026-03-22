@@ -1,0 +1,234 @@
+{{define "workspaces.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Workspaces - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="max-w-7xl mx-auto space-y-6">
+
+                    <!-- Actions Bar -->
+                    <div class="flex items-center justify-end">
+                        <button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" onclick="showCreateWorkspaceModal()">
+                            <i data-lucide="plus" class="h-4 w-4"></i>
+                            Create Workspace
+                        </button>
+                    </div>
+
+                    <!-- Workspaces Table -->
+                    <div class="section-card">
+                        <div class="overflow-x-auto">
+                            <table class="responsive-table">
+                                <thead>
+                                    <tr>
+                                        <th>Workspace</th>
+                                        <th>Slug</th>
+                                        <th>Members</th>
+                                        <th>Cases</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{if .Workspaces}}
+                                        {{range .Workspaces}}
+                                        <tr>
+                                            <td class="mobile-header">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="h-10 w-10 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-medium text-sm uppercase">
+                                                        {{slice .Name 0 2}}
+                                                    </div>
+                                                    <div>
+                                                        <div class="font-medium text-zinc-900">{{.Name}}</div>
+                                                        {{if .Description}}
+                                                        <div class="text-sm text-zinc-500">{{.Description}}</div>
+                                                        {{end}}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td data-label="Slug">
+                                                <code class="text-xs bg-zinc-100 px-2 py-1 rounded text-zinc-600">{{.Slug}}</code>
+                                            </td>
+                                            <td data-label="Members" class="text-sm text-zinc-600">{{if .MemberCount}}{{.MemberCount}}{{else}}0{{end}}</td>
+                                            <td data-label="Cases" class="text-sm text-zinc-600">{{if .CaseCount}}{{.CaseCount}}{{else}}0{{end}}</td>
+                                            <td data-label="Created" class="text-sm text-zinc-500">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
+                                            <td class="mobile-actions">
+                                                <div class="flex items-center gap-1">
+                                                    <a href="/app/{{.ID}}/cases" class="p-2 text-zinc-400 hover:text-zinc-600 transition-colors rounded-md hover:bg-zinc-100" title="Open App">
+                                                        <i data-lucide="external-link" class="h-4 w-4"></i>
+                                                    </a>
+                                                    <button class="p-2 text-zinc-400 hover:text-zinc-600 transition-colors rounded-md hover:bg-zinc-100" onclick="editWorkspace('{{.ID}}')" title="Edit">
+                                                        <i data-lucide="edit" class="h-4 w-4"></i>
+                                                    </button>
+                                                    <button class="p-2 text-zinc-400 hover:text-red-600 transition-colors rounded-md hover:bg-red-50" onclick="deleteWorkspace('{{.ID}}', '{{.Name}}')" title="Delete">
+                                                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {{end}}
+                                    {{else}}
+                                        <tr>
+                                            <td colspan="6" class="px-6 py-12 text-center">
+                                                <div class="flex flex-col items-center gap-3">
+                                                    <div class="h-16 w-16 rounded-full bg-zinc-100 flex items-center justify-center">
+                                                        <i data-lucide="building-2" class="h-8 w-8 text-zinc-400"></i>
+                                                    </div>
+                                                    <p class="text-zinc-500">No workspaces found</p>
+                                                    <button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors" onclick="showCreateWorkspaceModal()">
+                                                        Create First Workspace
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Create/Edit Workspace Modal -->
+        <dialog id="workspaceModal" class="modal">
+            <div class="modal-box">
+                <h3 class="text-lg font-semibold text-zinc-900 mb-6" id="modalTitle">Create Workspace</h3>
+                <form id="workspaceForm" method="POST">
+                    <input type="hidden" id="workspaceId" name="id">
+
+                    <div class="mb-4">
+                        <label class="form-label" for="workspaceName">Workspace Name</label>
+                        <input type="text" name="name" id="workspaceName" class="form-input" placeholder="My Workspace" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label" for="workspaceSlug">Slug</label>
+                        <input type="text" name="slug" id="workspaceSlug" class="form-input" placeholder="my-workspace" required>
+                        <p class="form-hint">Used in URLs (lowercase, hyphenated)</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label" for="workspaceDescription">Description</label>
+                        <textarea name="description" id="workspaceDescription" class="form-input min-h-[80px]" placeholder="Optional description"></textarea>
+                    </div>
+
+                    <div class="modal-action">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('workspaceModal').close()">Cancel</button>
+                        <button type="submit" class="btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </dialog>
+
+        <script>
+        // Auto-generate slug from name
+        document.getElementById('workspaceName').addEventListener('input', function(e) {
+            const name = e.target.value;
+            const slug = name.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .trim();
+            document.getElementById('workspaceSlug').value = slug;
+        });
+
+        function showCreateWorkspaceModal() {
+            document.getElementById('modalTitle').textContent = 'Create Workspace';
+            document.getElementById('workspaceForm').reset();
+            document.getElementById('workspaceId').value = '';
+            document.getElementById('workspaceModal').showModal();
+        }
+
+        async function editWorkspace(id) {
+            try {
+                const response = await fetch(`/admin/actions/workspaces/${id}`, {
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch workspace details');
+                }
+
+                const workspace = await response.json();
+
+                // Populate form with workspace data
+                document.getElementById('modalTitle').textContent = 'Edit Workspace';
+                document.getElementById('workspaceId').value = workspace.id;
+                document.getElementById('workspaceName').value = workspace.name || '';
+                document.getElementById('workspaceSlug').value = workspace.slug || '';
+                document.getElementById('workspaceDescription').value = workspace.description || '';
+
+                document.getElementById('workspaceModal').showModal();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function deleteWorkspace(id, name) {
+            if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/actions/workspaces/${id}`, {
+                    method: 'DELETE',
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete workspace');
+                }
+
+                window.location.reload();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('workspaceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            const workspaceId = data.id;
+            delete data.id;
+
+            const url = workspaceId
+                ? `/admin/actions/workspaces/${workspaceId}`
+                : '/admin/actions/workspaces';
+            const method = workspaceId ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to save workspace');
+                }
+
+                window.location.reload();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+        </script>
+    </body>
+</html>
+{{end}}

@@ -1,0 +1,174 @@
+{{define "analytics_setup.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Setup Analytics - Move Big Rocks Admin Panel</title>
+        {{template "head"}}
+        <style>
+            .step-indicator { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 2rem; }
+            .step { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: rgb(161 161 170); }
+            .step.active { color: rgb(79 70 229); font-weight: 600; }
+            .step.done { color: rgb(22 163 74); }
+            .step-line { width: 3rem; height: 2px; background: rgb(228 228 231); }
+            .step-line.done { background: rgb(22 163 74); }
+            .step-dot { width: 1.5rem; height: 1.5rem; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
+            .step-dot.hollow { border: 2px solid rgb(228 228 231); }
+            .step-dot.active { background: rgb(79 70 229); color: white; }
+            .step-dot.done { background: rgb(22 163 74); color: white; }
+            .snippet-box { background: rgb(24 24 27); color: rgb(228 228 231); border-radius: 0.5rem; padding: 1rem; font-family: ui-monospace, monospace; font-size: 0.8125rem; position: relative; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+            .copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; padding: 0.25rem 0.75rem; background: rgb(63 63 70); color: white; border: none; border-radius: 0.375rem; font-size: 0.75rem; cursor: pointer; }
+            .copy-btn:hover { background: rgb(82 82 91); }
+            .verify-box { text-align: center; padding: 3rem 2rem; background: rgb(249 250 251); border: 1px solid rgb(228 228 231); border-radius: 0.75rem; }
+            .verify-box.success { background: rgb(240 253 244); border-color: rgb(187 247 208); }
+            .spinner { display: inline-block; width: 2rem; height: 2rem; border: 3px solid rgb(228 228 231); border-top-color: rgb(79 70 229); border-radius: 50%; animation: spin 0.8s linear infinite; }
+            @keyframes spin { to { transform: rotate(360deg); } }
+        </style>
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="max-w-2xl mx-auto space-y-6">
+
+                    <!-- Step Indicator -->
+                    <div class="step-indicator">
+                        <div class="step done" id="step1-label"><span class="step-dot done">&#10003;</span> Add property</div>
+                        <div class="step-line done" id="line1"></div>
+                        <div class="step active" id="step2-label"><span class="step-dot active">2</span> Install snippet</div>
+                        <div class="step-line" id="line2"></div>
+                        <div class="step" id="step3-label"><span class="step-dot hollow">3</span> Verify</div>
+                    </div>
+
+                    <!-- Step 2: Install Snippet -->
+                    <div id="step-snippet">
+                        <h2 class="text-xl font-semibold text-zinc-900">Install tracking snippet</h2>
+                        <p class="text-sm text-zinc-500 mt-1 mb-4">Paste this snippet in the <code>&lt;head&gt;</code> of your website.</p>
+
+                        <div class="snippet-box" id="snippet-code">Loading...</div>
+
+                        <p class="text-sm text-zinc-500 mt-4">After adding the snippet, click "Verify" to check that it's working correctly.</p>
+
+                        <div class="flex justify-end gap-3 mt-6">
+                            <a href="{{.AnalyticsPropertiesPath}}" class="px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors">&larr; Back</a>
+                            <button onclick="goToVerify()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">Verify installation &rarr;</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Verify -->
+                    <div id="step-verify" style="display:none;">
+                        <h2 class="text-xl font-semibold text-zinc-900">Verify installation</h2>
+                        <p class="text-sm text-zinc-500 mt-1 mb-4">Open your website in another tab and come back here.</p>
+
+                        <div class="verify-box" id="verify-box">
+                            <div class="spinner" id="verify-spinner"></div>
+                            <p class="text-zinc-600 mt-4" id="verify-text">Checking if events are being received...</p>
+                        </div>
+
+                        <div class="flex justify-end gap-3 mt-6" id="verify-actions">
+                            <button onclick="goToSnippet()" class="px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors">&larr; Back</button>
+                            <a href="{{.AnalyticsPropertyPath}}" class="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-800 transition-colors">Skip, go to dashboard &rarr;</a>
+                        </div>
+
+                        <div id="verify-success-actions" style="display:none;" class="flex justify-end mt-6">
+                            <a href="{{.AnalyticsPropertyPath}}" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">Go to dashboard &rarr;</a>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+
+        <script>
+        var PROPERTY_ID = '{{.PropertyID}}';
+        var ANALYTICS_BASE_PATH = '{{.AnalyticsBasePath}}';
+        var verifyTimer = null;
+
+        function analyticsApi(path) {
+            return fetch(ANALYTICS_BASE_PATH + '/api' + path, {
+                method: 'GET',
+                credentials: 'same-origin'
+            }).then(function(r) {
+                return r.json().then(function(data) {
+                    if (!r.ok) throw new Error(data.error || 'Analytics request failed');
+                    return data;
+                });
+            });
+        }
+
+        function loadSnippet() {
+            analyticsApi('/properties/' + PROPERTY_ID)
+            .then(function(res) {
+                if (res.property) {
+                    var box = document.getElementById('snippet-code');
+                    var snippet = res.property.snippetHtml;
+                    box.textContent = snippet;
+                    var btn = document.createElement('button');
+                    btn.className = 'copy-btn';
+                    btn.textContent = 'Copy';
+                    btn.onclick = function() {
+                        navigator.clipboard.writeText(snippet).then(function() {
+                            btn.textContent = 'Copied!';
+                            setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+                        });
+                    };
+                    box.appendChild(btn);
+                }
+            });
+        }
+
+        function goToVerify() {
+            document.getElementById('step-snippet').style.display = 'none';
+            document.getElementById('step-verify').style.display = '';
+            // Update step indicators
+            document.getElementById('step2-label').className = 'step done';
+            document.getElementById('step2-label').querySelector('.step-dot').className = 'step-dot done';
+            document.getElementById('step2-label').querySelector('.step-dot').innerHTML = '&#10003;';
+            document.getElementById('line2').className = 'step-line done';
+            document.getElementById('step3-label').className = 'step active';
+            document.getElementById('step3-label').querySelector('.step-dot').className = 'step-dot active';
+            startVerification();
+        }
+
+        function goToSnippet() {
+            document.getElementById('step-verify').style.display = 'none';
+            document.getElementById('step-snippet').style.display = '';
+            if (verifyTimer) { clearInterval(verifyTimer); verifyTimer = null; }
+            // Reset step indicators
+            document.getElementById('step2-label').className = 'step active';
+            document.getElementById('step2-label').querySelector('.step-dot').className = 'step-dot active';
+            document.getElementById('step2-label').querySelector('.step-dot').textContent = '2';
+            document.getElementById('line2').className = 'step-line';
+            document.getElementById('step3-label').className = 'step';
+            document.getElementById('step3-label').querySelector('.step-dot').className = 'step-dot hollow';
+        }
+
+        function startVerification() {
+            checkVerification();
+            verifyTimer = setInterval(checkVerification, 5000);
+        }
+
+        function checkVerification() {
+            analyticsApi('/properties/' + PROPERTY_ID + '/verify')
+            .then(function(res) {
+                if (res.verified) {
+                    if (verifyTimer) { clearInterval(verifyTimer); verifyTimer = null; }
+                    var box = document.getElementById('verify-box');
+                    box.className = 'verify-box success';
+                    document.getElementById('verify-spinner').style.display = 'none';
+                    document.getElementById('verify-text').innerHTML = '<span style="font-size:1.5rem;color:rgb(22 163 74);">&#10003; Success!</span><br><br>Your installation is working. We\'re now counting visitors.';
+                    document.getElementById('verify-actions').style.display = 'none';
+                    document.getElementById('verify-success-actions').style.display = 'flex';
+                    setTimeout(function() { window.location.href = ANALYTICS_BASE_PATH + '/' + PROPERTY_ID; }, 3000);
+                }
+            });
+        }
+
+        loadSnippet();
+        </script>
+    </body>
+</html>
+{{end}}

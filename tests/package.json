@@ -1,0 +1,15 @@
+{
+  "name": "mbr-sentry-integration-tests",
+  "version": "1.0.0",
+  "description": "Integration tests for Move Big Rocks Sentry SDK compatibility",
+  "private": true,
+  "scripts": {
+    "test": "node sentry_sdk_integration_test.js",
+    "test:node": "node sentry_sdk_integration_test.js",
+    "test:python": "python3 sentry_sdk_integration_test.py"
+  },
+  "dependencies": {
+    "@sentry/node": "^7.100.0",
+    "axios": "^1.6.0"
+  }
+}

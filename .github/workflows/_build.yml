@@ -1,0 +1,208 @@
+name: Build
+
+on:
+  workflow_call:
+    outputs:
+      version:
+        description: "Version that was built"
+        value: ${{ jobs.build.outputs.version }}
+      git_sha:
+        description: "Git SHA of the build"
+        value: ${{ jobs.build.outputs.sha }}
+      api_digest:
+        description: "Digest of API binary artifact"
+        value: ${{ jobs.build.outputs.api_digest }}
+      migrations_digest:
+        description: "Digest of migrations artifact"
+        value: ${{ jobs.build.outputs.migrations_digest }}
+      manifest_digest:
+        description: "Digest of release manifest"
+        value: ${{ jobs.build.outputs.manifest_digest }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_BASE: movebigrocks/mbr
+
+jobs:
+  build:
+    name: Build & Push Artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+      sha: ${{ github.sha }}
+      api_digest: ${{ steps.push-api.outputs.digest }}
+      migrations_digest: ${{ steps.push-migrations.outputs.digest }}
+      manifest_digest: ${{ steps.push-manifest.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.0'
+          cache-dependency-path: go.sum
+
+      - name: Install ORAS
+        run: |
+          VERSION="1.2.3"
+          curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz"
+          tar -xzf "oras_${VERSION}_linux_amd64.tar.gz"
+          sudo mv oras /usr/local/bin/
+          oras version
+
+      - name: Calculate version from git
+        id: version
+        run: |
+          if git describe --tags --exact-match 2>/dev/null; then
+            VERSION=$(git describe --tags --exact-match)
+          elif git describe --tags 2>/dev/null; then
+            VERSION=$(git describe --tags --always)
+          else
+            VERSION="v0.0.0-$(git rev-parse --short HEAD)"
+          fi
+
+          GIT_COMMIT=$(git rev-parse --short HEAD)
+          BUILD_DATE=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "GIT_COMMIT=$GIT_COMMIT" >> $GITHUB_OUTPUT
+          echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_OUTPUT
+
+          echo "Building version: $VERSION (commit: $GIT_COMMIT)"
+
+      - name: Build binary
+        run: |
+          mkdir -p build
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-s -w -X main.Version=${{ steps.version.outputs.VERSION }} -X main.GitCommit=${{ steps.version.outputs.GIT_COMMIT }} -X 'main.BuildDate=${{ steps.version.outputs.BUILD_DATE }}'" \
+            -o build/mbr-server \
+            ./cmd/api
+
+      - name: Build admin tools
+        run: |
+          mkdir -p build/tools
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o build/tools/create-admin ./cmd/create-admin
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o build/tools/create-agent ./cmd/create-agent
+
+      - name: Prepare artifacts
+        run: |
+          # Prepare migrations
+          mkdir -p build/migrations
+          cp -r migrations/* build/migrations/
+
+          # Web assets (templates, static files) are embedded in the binary
+          # via go:embed (ADR-0019) — no separate packaging needed.
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push API binary as OCI artifact
+        id: push-api
+        run: |
+          cd build
+          # Create tarball with binary and tools (web assets are embedded in binary)
+          tar -czf mbr-services.tar.gz mbr-server tools/
+
+          oras push ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-services:${{ github.sha }} \
+            --artifact-type application/vnd.mbr.binary \
+            mbr-services.tar.gz:application/gzip
+
+          DIGEST=$(oras manifest fetch ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-services:${{ github.sha }} --descriptor | jq -r '.digest')
+          echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
+          echo "Pushed API binary with digest: ${DIGEST}"
+
+      - name: Push migrations as OCI artifact
+        id: push-migrations
+        run: |
+          cd build
+          tar -czf migrations.tar.gz -C migrations .
+
+          oras push ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-migrations:${{ github.sha }} \
+            --artifact-type application/vnd.mbr.migrations \
+            migrations.tar.gz:application/gzip
+
+          DIGEST=$(oras manifest fetch ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-migrations:${{ github.sha }} --descriptor | jq -r '.digest')
+          echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
+          echo "Pushed migrations with digest: ${DIGEST}"
+
+      - name: Create and push release manifest
+        id: push-manifest
+        run: |
+          cat > build/manifest.json << EOF
+          {
+            "version": "${{ steps.version.outputs.VERSION }}",
+            "git_sha": "${{ github.sha }}",
+            "git_commit": "${{ steps.version.outputs.GIT_COMMIT }}",
+            "build_date": "${{ steps.version.outputs.BUILD_DATE }}",
+            "artifacts": {
+              "services": {
+                "digest": "${{ steps.push-api.outputs.digest }}",
+                "ref": "${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-services@${{ steps.push-api.outputs.digest }}"
+              },
+              "migrations": {
+                "digest": "${{ steps.push-migrations.outputs.digest }}",
+                "ref": "${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-migrations@${{ steps.push-migrations.outputs.digest }}"
+              }
+            }
+          }
+          EOF
+
+          cd build
+          oras push ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-manifest:${{ github.sha }} \
+            --artifact-type application/vnd.mbr.manifest+json \
+            manifest.json:application/json
+
+          DIGEST=$(oras manifest fetch ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-manifest:${{ github.sha }} --descriptor | jq -r '.digest')
+          echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
+          echo "Pushed release manifest with digest: ${DIGEST}"
+
+      - name: Tag artifacts for latest build
+        run: |
+          SHA="${{ github.sha }}"
+
+          oras tag ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-services:$SHA latest
+          oras tag ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-migrations:$SHA latest
+          oras tag ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-manifest:$SHA latest
+
+          echo "Tagged core artifacts as latest"
+
+      - name: Create build summary
+        run: |
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ## Build Complete
+
+          **Version**: ${{ steps.version.outputs.VERSION }}
+          **Commit**: \`${{ steps.version.outputs.GIT_COMMIT }}\`
+          **Date**: ${{ steps.version.outputs.BUILD_DATE }}
+
+          ### OCI Artifacts
+
+          All artifacts pushed to \`${{ env.REGISTRY }}\`:
+
+          | Artifact | Repository | Digest |
+          |----------|------------|--------|
+          | Services | \`${{ env.IMAGE_BASE }}-services\` | \`${{ steps.push-api.outputs.digest }}\` |
+          | Migrations | \`${{ env.IMAGE_BASE }}-migrations\` | \`${{ steps.push-migrations.outputs.digest }}\` |
+          | Manifest | \`${{ env.IMAGE_BASE }}-manifest\` | \`${{ steps.push-manifest.outputs.digest }}\` |
+
+          ### Pull Commands
+
+          \`\`\`bash
+          # Pull specific version
+          oras pull ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-services:${{ github.sha }}
+
+          # Pull latest build
+          oras pull ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-services:latest
+          \`\`\`
+          EOF
