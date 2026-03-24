@@ -27,6 +27,8 @@ guide also fits any equivalent Ubuntu VPS.
 └──────────────────────────────────────────────────────────────┘
 ```
 
+**Note:** Ports 8080 and 8081 are defaults for blue/green slots. On shared hosts where those ports are already in use, update the port numbers in the systemd service files, Caddyfile, and deploy workflow accordingly.
+
 ## Deployment Model
 
 - the host runs one Move Big Rocks installation

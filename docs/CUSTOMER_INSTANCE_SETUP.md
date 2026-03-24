@@ -310,6 +310,12 @@ Use this rule:
 - if the software needs Move Big Rocks primitives, Move Big Rocks auth, or Move Big Rocks public routes, build it as an extension
 - if it is a standalone service, keep it in its own repo and integrate with Move Big Rocks
 
+## Deployment Notes
+
+- **GHCR packages must be public** for unauthenticated `oras pull` during deployment. If packages are private, the deploy workflow must authenticate with `REGISTRY_USERNAME` and `REGISTRY_TOKEN`.
+- **Ports 8080/8081 are defaults.** On shared hosts where another service already binds those ports, update the port numbers in the systemd service files, Caddyfile, and deploy workflow accordingly.
+- **PostgreSQL 18+ required.** The schema uses native UUIDv7 generation (`gen_random_uuid_v7()`), which requires PostgreSQL 18 or later.
+
 ## Success Checklist
 
 A setup is complete when all of these are true:
