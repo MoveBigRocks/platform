@@ -38,10 +38,6 @@ func (s *ErrorMonitoringStore) execContext(ctx context.Context, query string, ar
 	return s.db.Get(ctx).ExecContext(ctx, s.query(query), args...)
 }
 
-func (s *ErrorMonitoringStore) namedExecContext(ctx context.Context, query string, arg interface{}) (sql.Result, error) {
-	return s.db.Get(ctx).NamedExecContext(ctx, s.query(query), arg)
-}
-
 func (s *ErrorMonitoringStore) getContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
 	return s.db.Get(ctx).GetContext(ctx, dest, s.query(query), args...)
 }
