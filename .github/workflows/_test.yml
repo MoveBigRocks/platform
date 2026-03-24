@@ -15,7 +15,7 @@ jobs:
       passed: ${{ steps.unit_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' }}
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
