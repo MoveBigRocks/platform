@@ -136,10 +136,12 @@ The structured knowledge model works like this:
   `@strategy/...`, `@milestone/...`, `@workstream/...`, `@queue/...`, and
   `@catalog/...`; the canonical relation graph stays in structured metadata
 - the server-side database and artifact service remain the source of truth
-- `mbr` can materialize an ACL-filtered local checkout of the knowledge and
-  concept files a user or agent is allowed to see
-- local edits are validated against concept specs and permissions before they
-  are accepted back
+- `mbr` can materialize an ACL-filtered local checkout of the knowledge a user
+  or agent is allowed to see, including create, update, and delete sync back to
+  the server
+- local knowledge edits are validated against concept specs and permissions
+  before they are accepted back, and concept specs themselves expose register,
+  list, show, history, and diff workflows through `mbr concepts ...`
 
 The Strategic Context Stack should stay explicit: `purpose`, `vision`,
 `mission`, `goal`, `strategy`, `bet`, `okr`, and `kpi` have different jobs and

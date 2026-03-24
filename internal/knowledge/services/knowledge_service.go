@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	artifactservices "github.com/movebigrocks/platform/internal/artifacts/services"
 	apierrors "github.com/movebigrocks/platform/internal/infrastructure/errors"
@@ -23,6 +24,7 @@ import (
 
 type artifactService interface {
 	Write(ctx context.Context, params artifactservices.WriteParams) (*artifactservices.WriteResult, error)
+	Delete(ctx context.Context, params artifactservices.DeleteParams) (*artifactservices.DeleteResult, error)
 	History(ctx context.Context, repository artifactservices.RepositoryRef, relativePath string, limit int) ([]artifactservices.Revision, error)
 	Diff(ctx context.Context, repository artifactservices.RepositoryRef, relativePath, fromRef, toRef string) (string, string, string, error)
 }
@@ -154,6 +156,9 @@ func (s *KnowledgeService) CreateKnowledgeResource(ctx context.Context, params C
 
 	if err := resource.Validate(); err != nil {
 		return nil, apierrors.Wrap(err, apierrors.ErrorTypeValidation, "knowledge validation failed")
+	}
+	if err := s.validateKnowledgeResourceConceptRules(ctx, resource); err != nil {
+		return nil, err
 	}
 	if _, err := s.knowledgeStore.GetKnowledgeResourceBySlug(ctx, resource.WorkspaceID, resource.OwnerTeamID, resource.Surface, resource.Slug); err == nil {
 		return nil, apierrors.Newf(apierrors.ErrorTypeConflict, "knowledge resource %s already exists for team and surface", resource.Slug)
@@ -294,6 +299,9 @@ func (s *KnowledgeService) UpdateKnowledgeResource(ctx context.Context, resource
 	if err := resource.Validate(); err != nil {
 		return nil, apierrors.Wrap(err, apierrors.ErrorTypeValidation, "knowledge validation failed")
 	}
+	if err := s.validateKnowledgeResourceConceptRules(ctx, resource); err != nil {
+		return nil, err
+	}
 
 	existing, err := s.knowledgeStore.GetKnowledgeResourceBySlug(ctx, resource.WorkspaceID, resource.OwnerTeamID, resource.Surface, resource.Slug)
 	if err == nil && existing != nil && existing.ID != resource.ID {
@@ -321,6 +329,9 @@ func (s *KnowledgeService) ReviewKnowledgeResource(ctx context.Context, resource
 	resource.ReviewedAt = &now
 	resource.TrustLevel = knowledgedomain.KnowledgeResourceTrustLevelReviewed
 	resource.UpdatedAt = now
+	if err := s.validateKnowledgeResourceConceptRules(ctx, resource); err != nil {
+		return nil, err
+	}
 	if err := s.persistKnowledgeChange(ctx, resource, resource.ArtifactPath, "review"); err != nil {
 		return nil, err
 	}
@@ -349,6 +360,9 @@ func (s *KnowledgeService) PublishKnowledgeResource(ctx context.Context, resourc
 	resource.Status = knowledgedomain.KnowledgeResourceStatusActive
 	resource.UpdatedAt = now
 	resource.ArtifactPath = knowledgeArtifactPath(resource)
+	if err := s.validateKnowledgeResourceConceptRules(ctx, resource); err != nil {
+		return nil, err
+	}
 	if err := s.persistKnowledgeChange(ctx, resource, previousPath, "publish"); err != nil {
 		return nil, err
 	}
@@ -366,7 +380,52 @@ func (s *KnowledgeService) ShareKnowledgeResource(ctx context.Context, resourceI
 	}
 	resource.SharedWithTeamIDs = normalizeStringList(teamIDs)
 	resource.UpdatedAt = time.Now().UTC()
+	if err := s.validateKnowledgeResourceConceptRules(ctx, resource); err != nil {
+		return nil, err
+	}
 	if err := s.persistKnowledgeChange(ctx, resource, resource.ArtifactPath, "share"); err != nil {
+		return nil, err
+	}
+	return resource, nil
+}
+
+func (s *KnowledgeService) DeleteKnowledgeResource(ctx context.Context, resourceID, actorID string) (*knowledgedomain.KnowledgeResource, error) {
+	resource, err := s.GetKnowledgeResource(ctx, resourceID)
+	if err != nil {
+		return nil, err
+	}
+	if s.artifacts == nil {
+		return nil, apierrors.Newf(apierrors.ErrorTypeInternal, "artifact service not configured")
+	}
+
+	run := func(txCtx context.Context) error {
+		deleteResult, err := s.artifacts.Delete(txCtx, artifactservices.DeleteParams{
+			Repository:    artifactservices.WorkspaceRepository(resource.WorkspaceID),
+			RelativePath:  resource.ArtifactPath,
+			CommitMessage: knowledgeCommitMessage("delete", resource),
+			ActorID:       firstNonEmpty(strings.TrimSpace(actorID), resource.PublishedBy, resource.CreatedBy),
+		})
+		if err != nil {
+			return apierrors.Wrap(err, apierrors.ErrorTypeInternal, "delete knowledge artifact")
+		}
+		resource.RevisionRef = deleteResult.Ref
+		resource.UpdatedAt = time.Now().UTC()
+		if err := s.knowledgeStore.DeleteKnowledgeResource(txCtx, resource.WorkspaceID, resource.ID); err != nil {
+			if errors.Is(err, shared.ErrNotFound) {
+				return apierrors.NotFoundError("knowledge resource", resource.ID)
+			}
+			return apierrors.DatabaseError("delete knowledge resource", err)
+		}
+		return nil
+	}
+
+	if s.tx != nil {
+		if err := s.tx.WithTransaction(ctx, run); err != nil {
+			return nil, err
+		}
+		return resource, nil
+	}
+	if err := run(ctx); err != nil {
 		return nil, err
 	}
 	return resource, nil
@@ -613,6 +672,8 @@ func knowledgeCommitMessage(action string, resource *knowledgedomain.KnowledgeRe
 		return fmt.Sprintf("knowledge publish %s", resource.ArtifactPath)
 	case "share":
 		return fmt.Sprintf("knowledge share %s", resource.ArtifactPath)
+	case "delete":
+		return fmt.Sprintf("knowledge delete %s", resource.ArtifactPath)
 	default:
 		return fmt.Sprintf("knowledge update %s", resource.ArtifactPath)
 	}
@@ -692,6 +753,209 @@ func (s *KnowledgeService) lookupConceptSpec(ctx context.Context, workspaceID, k
 		return nil, apierrors.DatabaseError("get concept spec", err)
 	}
 	return spec, nil
+}
+
+func (s *KnowledgeService) validateKnowledgeResourceConceptRules(ctx context.Context, resource *knowledgedomain.KnowledgeResource) error {
+	if resource == nil {
+		return nil
+	}
+
+	spec, err := s.lookupConceptSpec(ctx, resource.WorkspaceID, resource.ConceptSpecKey, resource.ConceptSpecVersion)
+	if err != nil {
+		return err
+	}
+	if !shouldEnforceConceptSpecRules(spec) {
+		return nil
+	}
+
+	validationErrors := make([]apierrors.ValidationError, 0, 3)
+	if missing := missingConceptMetadataFields(spec.MetadataSchema, resource.Frontmatter); len(missing) > 0 {
+		validationErrors = append(validationErrors, apierrors.NewValidationError("frontmatter", fmt.Sprintf("concept spec %s@%s requires frontmatter fields: %s", spec.Key, spec.Version, strings.Join(missing, ", "))))
+	}
+	if missing := missingConceptSections(spec.SectionsSchema, resource); len(missing) > 0 {
+		validationErrors = append(validationErrors, apierrors.NewValidationError("body_markdown", fmt.Sprintf("concept spec %s@%s requires sections: %s", spec.Key, spec.Version, strings.Join(missing, ", "))))
+	}
+	if allowedStates := schemaStringList(spec.WorkflowSchema, "states"); len(allowedStates) > 0 && !matchesAnyLifecycleState(knowledgeLifecycleStateCandidates(resource), allowedStates) {
+		validationErrors = append(validationErrors, apierrors.NewValidationError("review_status", fmt.Sprintf("concept spec %s@%s allows workflow states: %s", spec.Key, spec.Version, strings.Join(allowedStates, ", "))))
+	}
+	if len(validationErrors) > 0 {
+		return apierrors.NewValidationErrors(validationErrors...)
+	}
+	return nil
+}
+
+func shouldEnforceConceptSpecRules(spec *knowledgedomain.ConceptSpec) bool {
+	if spec == nil {
+		return false
+	}
+	if spec.SourceKind != knowledgedomain.ConceptSpecSourceKindCore {
+		return true
+	}
+	return spec.MetadataSchema.GetBool("enforce") || spec.SectionsSchema.GetBool("enforce") || spec.WorkflowSchema.GetBool("enforce")
+}
+
+func missingConceptMetadataFields(schema shareddomain.TypedSchema, frontmatter shareddomain.TypedSchema) []string {
+	required := schemaRequiredFields(schema)
+	if len(required) == 0 {
+		return nil
+	}
+	values := frontmatter.ToMap()
+	missing := make([]string, 0, len(required))
+	for _, field := range required {
+		if !hasRequiredSchemaValue(values[field]) {
+			missing = append(missing, field)
+		}
+	}
+	sort.Strings(missing)
+	return missing
+}
+
+func missingConceptSections(schema shareddomain.TypedSchema, resource *knowledgedomain.KnowledgeResource) []string {
+	required := schemaRequiredFields(schema)
+	if len(required) == 0 || resource == nil {
+		return nil
+	}
+
+	headings := extractMarkdownSectionNames(resource.BodyMarkdown)
+	if strings.TrimSpace(resource.Summary) != "" {
+		headings["summary"] = struct{}{}
+	}
+
+	missing := make([]string, 0, len(required))
+	for _, section := range required {
+		if _, ok := headings[normalizeConceptSectionName(section)]; ok {
+			continue
+		}
+		missing = append(missing, section)
+	}
+	sort.Strings(missing)
+	return missing
+}
+
+func schemaRequiredFields(schema shareddomain.TypedSchema) []string {
+	required := schemaListValue(schema, "required")
+	if len(required) == 0 {
+		return nil
+	}
+	return normalizeStringList(required)
+}
+
+func schemaStringList(schema shareddomain.TypedSchema, key string) []string {
+	values := schemaListValue(schema, key)
+	if len(values) == 0 {
+		return nil
+	}
+	return normalizeStringList(values)
+}
+
+func schemaListValue(schema shareddomain.TypedSchema, key string) []string {
+	raw, ok := schema.Get(key)
+	if !ok {
+		return nil
+	}
+	switch typed := raw.(type) {
+	case []string:
+		return append([]string(nil), typed...)
+	case []interface{}:
+		values := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if value, ok := item.(string); ok {
+				values = append(values, value)
+			}
+		}
+		return values
+	default:
+		return nil
+	}
+}
+
+func hasRequiredSchemaValue(value interface{}) bool {
+	switch typed := value.(type) {
+	case nil:
+		return false
+	case string:
+		return strings.TrimSpace(typed) != ""
+	case []string:
+		return len(typed) > 0
+	case []interface{}:
+		return len(typed) > 0
+	case map[string]interface{}:
+		return len(typed) > 0
+	default:
+		return true
+	}
+}
+
+func extractMarkdownSectionNames(body string) map[string]struct{} {
+	headings := make(map[string]struct{})
+	for _, line := range strings.Split(body, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		title := strings.TrimSpace(strings.TrimLeft(trimmed, "#"))
+		if title == "" {
+			continue
+		}
+		headings[normalizeConceptSectionName(title)] = struct{}{}
+	}
+	return headings
+}
+
+func normalizeConceptSectionName(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	if value == "" {
+		return ""
+	}
+	var b strings.Builder
+	lastSeparator := false
+	for _, r := range value {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			b.WriteRune(r)
+			lastSeparator = false
+		case r == '_' || r == '-' || unicode.IsSpace(r):
+			if !lastSeparator && b.Len() > 0 {
+				b.WriteByte('_')
+				lastSeparator = true
+			}
+		}
+	}
+	return strings.Trim(b.String(), "_")
+}
+
+func knowledgeLifecycleStateCandidates(resource *knowledgedomain.KnowledgeResource) []string {
+	if resource == nil {
+		return nil
+	}
+	switch resource.Status {
+	case knowledgedomain.KnowledgeResourceStatusArchived:
+		return []string{"archived"}
+	}
+	switch resource.ReviewStatus {
+	case knowledgedomain.KnowledgeReviewStatusApproved:
+		return []string{"approved"}
+	case knowledgedomain.KnowledgeReviewStatusReviewed:
+		return []string{"reviewed", "in_review"}
+	default:
+		return []string{"draft"}
+	}
+}
+
+func matchesAnyLifecycleState(candidates, allowed []string) bool {
+	if len(candidates) == 0 || len(allowed) == 0 {
+		return false
+	}
+	allowedSet := make(map[string]struct{}, len(allowed))
+	for _, value := range allowed {
+		allowedSet[strings.ToLower(strings.TrimSpace(value))] = struct{}{}
+	}
+	for _, candidate := range candidates {
+		if _, ok := allowedSet[strings.ToLower(strings.TrimSpace(candidate))]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func normalizeStringList(values []string) []string {

@@ -75,6 +75,19 @@ type WriteResult struct {
 	Changed      bool
 }
 
+type DeleteParams struct {
+	Repository    RepositoryRef
+	RelativePath  string
+	CommitMessage string
+	ActorID       string
+}
+
+type DeleteResult struct {
+	Ref          string
+	RelativePath string
+	Changed      bool
+}
+
 type GitService struct {
 	rootDir string
 }
@@ -196,6 +209,80 @@ func (s *GitService) Write(ctx context.Context, params WriteParams) (*WriteResul
 		Ref:          commitResult.Ref,
 		RelativePath: commitResult.Paths[0],
 		Changed:      commitResult.Changed,
+	}, nil
+}
+
+func (s *GitService) Delete(ctx context.Context, params DeleteParams) (*DeleteResult, error) {
+	if strings.TrimSpace(params.CommitMessage) == "" {
+		return nil, fmt.Errorf("commit message is required")
+	}
+
+	repoDir, err := s.repoDir(params.Repository)
+	if err != nil {
+		return nil, err
+	}
+	relativePath, err := sanitizeRelativePath(params.RelativePath)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := os.Stat(filepath.Join(repoDir, ".git")); errors.Is(err, fs.ErrNotExist) {
+		return &DeleteResult{
+			RelativePath: relativePath,
+			Changed:      false,
+		}, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("check repo root: %w", err)
+	}
+
+	if _, _, err := s.runGit(ctx, repoDir, nil, "rm", "-f", "--ignore-unmatch", "--", relativePath); err != nil {
+		return nil, err
+	}
+	targetPath := filepath.Join(repoDir, filepath.FromSlash(relativePath))
+	if err := os.Remove(targetPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, fmt.Errorf("remove artifact: %w", err)
+	}
+
+	changed, err := s.hasAnyStagedChanges(ctx, repoDir)
+	if err != nil {
+		return nil, err
+	}
+	if !changed {
+		ref, err := s.currentRef(ctx, repoDir)
+		if err != nil && !strings.Contains(err.Error(), "unknown revision or path not in the working tree") {
+			return nil, err
+		}
+		return &DeleteResult{
+			Ref:          ref,
+			RelativePath: relativePath,
+			Changed:      false,
+		}, nil
+	}
+
+	env := []string{
+		"GIT_AUTHOR_NAME=Move Big Rocks",
+		"GIT_AUTHOR_EMAIL=system@movebigrocks.local",
+		"GIT_COMMITTER_NAME=Move Big Rocks",
+		"GIT_COMMITTER_EMAIL=system@movebigrocks.local",
+	}
+	if strings.TrimSpace(params.ActorID) != "" {
+		env = append(env,
+			"GIT_AUTHOR_NAME="+params.ActorID,
+			"GIT_AUTHOR_EMAIL="+params.ActorID+"@movebigrocks.local",
+			"GIT_COMMITTER_NAME="+params.ActorID,
+			"GIT_COMMITTER_EMAIL="+params.ActorID+"@movebigrocks.local",
+		)
+	}
+	if _, _, err := s.runGit(ctx, repoDir, env, "commit", "-m", params.CommitMessage); err != nil {
+		return nil, err
+	}
+	ref, err := s.currentRef(ctx, repoDir)
+	if err != nil {
+		return nil, err
+	}
+	return &DeleteResult{
+		Ref:          ref,
+		RelativePath: relativePath,
+		Changed:      true,
 	}, nil
 }
 

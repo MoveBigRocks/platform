@@ -29,6 +29,14 @@ func TestLookupBuiltInConceptSpec(t *testing.T) {
 	if spec.InstanceKind != KnowledgeResourceKindDecision {
 		t.Fatalf("expected decision instance kind, got %q", spec.InstanceKind)
 	}
+
+	goal, ok := LookupBuiltInConceptSpec("core/goal", "1")
+	if !ok {
+		t.Fatalf("expected built-in strategic context concept spec")
+	}
+	if goal.InstanceKind != KnowledgeResourceKindContext {
+		t.Fatalf("expected context instance kind for strategic concept, got %q", goal.InstanceKind)
+	}
 }
 
 func TestDefaultConceptSpecForKind(t *testing.T) {

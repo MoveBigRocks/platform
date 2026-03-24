@@ -122,6 +122,7 @@ mbr knowledge checkout PATH [--workspace WORKSPACE_ID] [--team TEAM_ID] [--surfa
 mbr knowledge status [PATH] [--url URL] [--token TOKEN] [--json]
 mbr knowledge pull [PATH] [--url URL] [--token TOKEN] [--json]
 mbr knowledge push [PATH] [--url URL] [--token TOKEN] [--json]
+mbr knowledge delete RESOURCE [--workspace WORKSPACE_ID --team TEAM_ID --surface SURFACE] [--url URL] [--token TOKEN] [--json]
 mbr knowledge sync PATH [--workspace WORKSPACE_ID] [--team TEAM_ID] [--surface SURFACE] [--kind KIND] [--concept-spec KEY] [--concept-version VERSION] [--status STATUS] [--review-status STATUS] [--share-with TEAM_IDS] [--source-kind KIND] [--source-ref REF] [--url URL] [--token TOKEN] [--json]
 mbr knowledge import PATH [--workspace WORKSPACE_ID] [--team TEAM_ID] [--surface SURFACE] [--kind KIND] [--concept-spec KEY] [--concept-version VERSION] [--status STATUS] [--review-status STATUS] [--share-with TEAM_IDS] [--source-kind KIND] [--source-ref REF] [--mode preview|apply] [--url URL] [--token TOKEN] [--json]
 mbr knowledge review RESOURCE [--workspace WORKSPACE_ID --team TEAM_ID --surface SURFACE] [--status STATUS] [--url URL] [--token TOKEN] [--json]
@@ -132,6 +133,8 @@ mbr knowledge diff RESOURCE [--workspace WORKSPACE_ID --team TEAM_ID --surface S
 mbr concepts list [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
 mbr concepts show KEY [--workspace WORKSPACE_ID] [--version VERSION] [--url URL] [--token TOKEN] [--json]
 mbr concepts register FILE [--workspace WORKSPACE_ID] [--team TEAM_ID] [--source-kind KIND] [--source-ref REF] [--status STATUS] [--url URL] [--token TOKEN] [--json]
+mbr concepts history KEY [--workspace WORKSPACE_ID] [--version VERSION] [--limit N] [--url URL] [--token TOKEN] [--json]
+mbr concepts diff KEY [--workspace WORKSPACE_ID] [--version VERSION] [--from REVISION] [--to REVISION] [--url URL] [--token TOKEN] [--json]
 mbr artifacts list --extension EXTENSION_ID --surface SURFACE [--url URL] [--token TOKEN] [--json]
 mbr artifacts show --extension EXTENSION_ID --surface SURFACE --path PATH [--ref REVISION] [--url URL] [--token TOKEN] [--json]
 mbr artifacts history --extension EXTENSION_ID --surface SURFACE --path PATH [--limit N] [--url URL] [--token TOKEN] [--json]
@@ -229,6 +232,7 @@ mbr extensions deactivate --id EXTENSION_ID [--reason TEXT] [--url URL] [--token
 | `knowledge status` | Bearer token or browser-backed session | yes | read | read_only |
 | `knowledge pull` | Bearer token or browser-backed session | yes | read | read_only |
 | `knowledge push` | Bearer token or browser-backed session | yes | write | server_managed |
+| `knowledge delete` | Bearer token or browser-backed session | yes | write | server_managed |
 | `knowledge sync` | Bearer token or browser-backed session | yes | write | server_managed |
 | `knowledge import` | Bearer token or browser-backed session | yes | write | server_managed |
 | `knowledge review` | Bearer token or browser-backed session | yes | write | server_managed |
@@ -239,6 +243,8 @@ mbr extensions deactivate --id EXTENSION_ID [--reason TEXT] [--url URL] [--token
 | `concepts list` | Bearer token or browser-backed session | yes | read | read_only |
 | `concepts show` | Bearer token or browser-backed session | yes | read | read_only |
 | `concepts register` | Browser-backed session only | yes | write | server_managed |
+| `concepts history` | Bearer token or browser-backed session | yes | read | read_only |
+| `concepts diff` | Bearer token or browser-backed session | yes | read | read_only |
 | `artifacts list` | Bearer token or browser-backed session | yes | read | read_only |
 | `artifacts show` | Bearer token or browser-backed session | yes | read | read_only |
 | `artifacts history` | Bearer token or browser-backed session | yes | read | read_only |

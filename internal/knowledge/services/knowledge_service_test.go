@@ -6,6 +6,7 @@ import (
 	"time"
 
 	artifactservices "github.com/movebigrocks/platform/internal/artifacts/services"
+	apierrors "github.com/movebigrocks/platform/internal/infrastructure/errors"
 	"github.com/movebigrocks/platform/internal/infrastructure/stores"
 	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
@@ -56,6 +57,18 @@ func setupTestTeam(t *testing.T, store stores.Store, workspaceID, name string) s
 	}
 	require.NoError(t, store.Workspaces().CreateTeam(context.Background(), team))
 	return team.ID
+}
+
+func requireValidationErrors(t *testing.T, err error) []apierrors.ValidationError {
+	t.Helper()
+
+	var apiErr *apierrors.APIError
+	require.ErrorAs(t, err, &apiErr)
+	raw, ok := apiErr.Details["validation_errors"]
+	require.True(t, ok)
+	validationErrors, ok := raw.([]apierrors.ValidationError)
+	require.True(t, ok)
+	return validationErrors
 }
 
 func TestKnowledgeService_CreateAndGetKnowledgeResource(t *testing.T) {
@@ -238,4 +251,125 @@ func TestKnowledgeService_PublishesRFCReviewSignals(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, []string{reviewer.ID}, notification.Recipients)
 	assert.Equal(t, "knowledge_review", notification.SourceType)
+}
+
+func TestKnowledgeService_EnforcesCustomConceptSpecStructure(t *testing.T) {
+	t.Parallel()
+
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	workspaceID := setupTestWorkspace(t, store, "knowledge-custom-concept")
+	teamID := setupTestTeam(t, store, workspaceID, "Operations")
+	ctx := context.Background()
+
+	conceptService := NewConceptSpecService(store.ConceptSpecs(), store.Workspaces(), artifactservices.NewGitService(t.TempDir()))
+	_, err := conceptService.RegisterConceptSpec(ctx, RegisterConceptSpecParams{
+		WorkspaceID:  workspaceID,
+		OwnerTeamID:  teamID,
+		Key:          "ops/runbook",
+		Version:      "1",
+		Name:         "Ops Runbook",
+		InstanceKind: knowledgedomain.KnowledgeResourceKindGuide,
+		MetadataSchema: shareddomain.TypedSchemaFromMap(map[string]interface{}{
+			"required": []string{"owner"},
+		}),
+		SectionsSchema: shareddomain.TypedSchemaFromMap(map[string]interface{}{
+			"required": []string{"summary", "steps", "references"},
+		}),
+		WorkflowSchema: shareddomain.TypedSchemaFromMap(map[string]interface{}{
+			"states": []string{"draft", "reviewed", "approved", "archived"},
+		}),
+		Status: knowledgedomain.ConceptSpecStatusActive,
+	})
+	require.NoError(t, err)
+
+	service := NewKnowledgeService(store.KnowledgeResources(), store.Workspaces(), store.ConceptSpecs(), artifactservices.NewGitService(t.TempDir()), nil, store)
+
+	_, err = service.CreateKnowledgeResource(ctx, CreateKnowledgeResourceParams{
+		WorkspaceID:        workspaceID,
+		TeamID:             teamID,
+		Slug:               "incident-runbook",
+		Title:              "Incident Runbook",
+		Kind:               knowledgedomain.KnowledgeResourceKindGuide,
+		ConceptSpecKey:     "ops/runbook",
+		ConceptSpecVersion: "1",
+		Summary:            "How incidents are handled",
+		BodyMarkdown:       "## Steps\n\nPage the on-call engineer.",
+	})
+	require.Error(t, err)
+
+	validationErrors := requireValidationErrors(t, err)
+	require.Len(t, validationErrors, 2)
+	assert.Contains(t, validationErrors[0].Message+validationErrors[1].Message, "owner")
+	assert.Contains(t, validationErrors[0].Message+validationErrors[1].Message, "references")
+
+	resource, err := service.CreateKnowledgeResource(ctx, CreateKnowledgeResourceParams{
+		WorkspaceID:        workspaceID,
+		TeamID:             teamID,
+		Slug:               "incident-runbook",
+		Title:              "Incident Runbook",
+		Kind:               knowledgedomain.KnowledgeResourceKindGuide,
+		ConceptSpecKey:     "ops/runbook",
+		ConceptSpecVersion: "1",
+		Summary:            "How incidents are handled",
+		BodyMarkdown:       "## Steps\n\nPage the on-call engineer.\n\n## References\n\n- @team/on-call",
+		Frontmatter: shareddomain.TypedSchemaFromMap(map[string]interface{}{
+			"owner": "ops",
+		}),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "incident-runbook", resource.Slug)
+}
+
+func TestKnowledgeService_EnforcesCustomConceptSpecWorkflow(t *testing.T) {
+	t.Parallel()
+
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	workspaceID := setupTestWorkspace(t, store, "knowledge-custom-workflow")
+	teamID := setupTestTeam(t, store, workspaceID, "Operations")
+	ctx := context.Background()
+
+	conceptService := NewConceptSpecService(store.ConceptSpecs(), store.Workspaces(), artifactservices.NewGitService(t.TempDir()))
+	_, err := conceptService.RegisterConceptSpec(ctx, RegisterConceptSpecParams{
+		WorkspaceID:  workspaceID,
+		OwnerTeamID:  teamID,
+		Key:          "ops/approval-only",
+		Version:      "1",
+		Name:         "Approval Only",
+		InstanceKind: knowledgedomain.KnowledgeResourceKindGuide,
+		WorkflowSchema: shareddomain.TypedSchemaFromMap(map[string]interface{}{
+			"states": []string{"draft", "approved", "archived"},
+		}),
+		Status: knowledgedomain.ConceptSpecStatusActive,
+	})
+	require.NoError(t, err)
+
+	service := NewKnowledgeService(store.KnowledgeResources(), store.Workspaces(), store.ConceptSpecs(), artifactservices.NewGitService(t.TempDir()), nil, store)
+
+	resource, err := service.CreateKnowledgeResource(ctx, CreateKnowledgeResourceParams{
+		WorkspaceID:        workspaceID,
+		TeamID:             teamID,
+		Slug:               "approval-only-guide",
+		Title:              "Approval Only Guide",
+		Kind:               knowledgedomain.KnowledgeResourceKindGuide,
+		ConceptSpecKey:     "ops/approval-only",
+		ConceptSpecVersion: "1",
+		BodyMarkdown:       "# Approval Only Guide",
+	})
+	require.NoError(t, err)
+
+	_, err = service.ReviewKnowledgeResource(ctx, resource.ID, "reviewer_123", knowledgedomain.KnowledgeReviewStatusReviewed)
+	require.Error(t, err)
+	validationErrors := requireValidationErrors(t, err)
+	require.Len(t, validationErrors, 1)
+	assert.Contains(t, validationErrors[0].Message, "draft")
+	assert.Contains(t, validationErrors[0].Message, "approved")
+	assert.Contains(t, validationErrors[0].Message, "archived")
+
+	published, err := service.PublishKnowledgeResource(ctx, resource.ID, "reviewer_123", knowledgedomain.KnowledgeSurfacePublished)
+	require.NoError(t, err)
+	assert.Equal(t, knowledgedomain.KnowledgeReviewStatusApproved, published.ReviewStatus)
 }

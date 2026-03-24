@@ -269,6 +269,33 @@ func (r *RootResolver) ConceptSpecs(ctx context.Context, args struct {
 	return r.service.ConceptSpecs(ctx, args.WorkspaceID)
 }
 
+// ConceptSpecHistory delegates to service resolver.
+func (r *RootResolver) ConceptSpecHistory(ctx context.Context, args struct {
+	WorkspaceID *string
+	Key         string
+	Version     *string
+	Limit       *int32
+}) ([]*serviceresolvers.ConceptSpecRevisionResolver, error) {
+	if r.service == nil {
+		return nil, fmt.Errorf("service resolver not configured")
+	}
+	return r.service.ConceptSpecHistory(ctx, valueOrEmpty(args.WorkspaceID), args.Key, args.Version, args.Limit)
+}
+
+// ConceptSpecDiff delegates to service resolver.
+func (r *RootResolver) ConceptSpecDiff(ctx context.Context, args struct {
+	WorkspaceID  *string
+	Key          string
+	Version      *string
+	FromRevision *string
+	ToRevision   *string
+}) (*serviceresolvers.ConceptSpecDiffResolver, error) {
+	if r.service == nil {
+		return nil, fmt.Errorf("service resolver not configured")
+	}
+	return r.service.ConceptSpecDiff(ctx, valueOrEmpty(args.WorkspaceID), args.Key, args.Version, args.FromRevision, args.ToRevision)
+}
+
 // ServiceCatalogNode delegates to service resolver.
 func (r *RootResolver) ServiceCatalogNode(ctx context.Context, args struct{ ID string }) (*serviceresolvers.ServiceCatalogNodeResolver, error) {
 	if r.service == nil {
@@ -811,6 +838,14 @@ func (r *RootResolver) ShareKnowledgeResource(ctx context.Context, args struct {
 		return nil, fmt.Errorf("service resolver not configured")
 	}
 	return r.service.ShareKnowledgeResource(ctx, args.ID, args.Input)
+}
+
+// DeleteKnowledgeResource delegates to service resolver.
+func (r *RootResolver) DeleteKnowledgeResource(ctx context.Context, args struct{ ID string }) (*serviceresolvers.KnowledgeResourceResolver, error) {
+	if r.service == nil {
+		return nil, fmt.Errorf("service resolver not configured")
+	}
+	return r.service.DeleteKnowledgeResource(ctx, args.ID)
 }
 
 // RegisterConceptSpec delegates to service resolver.

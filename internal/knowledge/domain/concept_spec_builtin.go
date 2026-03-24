@@ -3,6 +3,16 @@ package knowledgedomain
 import shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 
 var builtInConceptSpecs = []*ConceptSpec{
+	newBuiltInConcept("core/purpose", "1", "Purpose", "Why the team or workspace exists beyond immediate delivery work.", KnowledgeResourceKindContext, []string{"summary", "purpose", "beneficiaries"}),
+	newBuiltInConcept("core/vision", "1", "Vision", "Future-state narrative that explains where the organization is heading.", KnowledgeResourceKindContext, []string{"summary", "vision", "time_horizon"}),
+	newBuiltInConcept("core/mission", "1", "Mission", "Durable operating mandate for how the organization pursues its purpose.", KnowledgeResourceKindContext, []string{"summary", "mission", "operating_model"}),
+	newBuiltInConcept("core/goal", "1", "Goal", "Concrete outcome the team intends to reach.", KnowledgeResourceKindContext, []string{"summary", "goal", "success_signals"}),
+	newBuiltInConcept("core/strategy", "1", "Strategy", "Coherent plan for how a goal will be reached.", KnowledgeResourceKindContext, []string{"summary", "strategy", "tradeoffs", "proof"}),
+	newBuiltInConcept("core/bet", "1", "Bet", "Focused strategic wager with explicit upside, downside, and decision points.", KnowledgeResourceKindContext, []string{"summary", "bet", "upside", "downside", "decision_points"}),
+	newBuiltInConcept("core/okr", "1", "OKR", "Objective with measurable key results.", KnowledgeResourceKindContext, []string{"summary", "objective", "key_results"}),
+	newBuiltInConcept("core/kpi", "1", "KPI", "Key performance indicator with target and cadence.", KnowledgeResourceKindContext, []string{"summary", "metric", "target", "cadence"}),
+	newBuiltInConcept("core/milestone-goal", "1", "Milestone Goal", "Delivery-scoped goal that operationalizes the strategic stack.", KnowledgeResourceKindContext, []string{"summary", "goal", "scope_boundary", "success_signals"}),
+	newBuiltInConcept("core/workstream", "1", "Workstream", "Coordinated slice of work tied to a milestone or broader goal.", KnowledgeResourceKindContext, []string{"summary", "workstream", "dependencies", "proof"}),
 	newBuiltInConcept("core/policy", "1", "Policy", "Canonical policy and governing guidance.", KnowledgeResourceKindPolicy, []string{"summary", "policy", "exceptions"}),
 	newBuiltInConcept("core/guide", "1", "Guide", "Step-by-step operational guidance.", KnowledgeResourceKindGuide, []string{"summary", "steps", "references"}),
 	newBuiltInConcept("core/skill", "1", "Skill", "Reusable agent or operator capability guidance.", KnowledgeResourceKindSkill, []string{"summary", "inputs", "procedure", "examples"}),

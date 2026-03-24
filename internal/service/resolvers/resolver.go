@@ -45,7 +45,7 @@ type Config struct {
 	QueueService        *serviceapp.QueueService
 	ConversationService *serviceapp.ConversationService
 	CatalogService      *serviceapp.ServiceCatalogService
-	FormSpecService       *serviceapp.FormSpecService
+	FormSpecService     *serviceapp.FormSpecService
 	ConceptService      *knowledgeservices.ConceptSpecService
 	KnowledgeService    *knowledgeservices.KnowledgeService
 	CaseService         *serviceapp.CaseService
@@ -62,7 +62,7 @@ type Resolver struct {
 	queueService        *serviceapp.QueueService
 	conversationService *serviceapp.ConversationService
 	catalogService      *serviceapp.ServiceCatalogService
-	formSpecService       *serviceapp.FormSpecService
+	formSpecService     *serviceapp.FormSpecService
 	conceptService      *knowledgeservices.ConceptSpecService
 	knowledgeService    *knowledgeservices.KnowledgeService
 	caseService         *serviceapp.CaseService
@@ -80,7 +80,7 @@ func NewResolver(cfg Config) *Resolver {
 		queueService:        cfg.QueueService,
 		conversationService: cfg.ConversationService,
 		catalogService:      cfg.CatalogService,
-		formSpecService:       cfg.FormSpecService,
+		formSpecService:     cfg.FormSpecService,
 		conceptService:      cfg.ConceptService,
 		knowledgeService:    cfg.KnowledgeService,
 		caseService:         cfg.CaseService,
@@ -410,7 +410,7 @@ func (r *Resolver) KnowledgeResourceBySlug(ctx context.Context, workspaceID, tea
 	if err != nil {
 		return nil, err
 	}
-	if err := graphshared.ValidateWorkspaceOwnership(workspaceID, authCtx); err != nil || !authCtx.CanAccessTeam(teamID) {
+	if err := graphshared.ValidateWorkspaceOwnership(workspaceID, authCtx); err != nil {
 		return nil, fmt.Errorf("workspace not found")
 	}
 	normalizedSurface, err := normalizeKnowledgeSurface(surface)
@@ -533,6 +533,58 @@ func (r *Resolver) KnowledgeResourceDiff(ctx context.Context, id string, fromRev
 		return nil, fmt.Errorf("failed to load knowledge diff: %w", err)
 	}
 	return &KnowledgeDiffResolver{diff: diff}, nil
+}
+
+// ConceptSpecHistory resolves git-backed concept spec revision history.
+func (r *Resolver) ConceptSpecHistory(ctx context.Context, workspaceID, key string, version *string, limit *int32) ([]*ConceptSpecRevisionResolver, error) {
+	if r.conceptService == nil {
+		return nil, fmt.Errorf("concept service not configured")
+	}
+	authCtx, err := graphshared.RequirePermission(ctx, platformdomain.PermissionKnowledgeRead)
+	if err != nil {
+		return nil, err
+	}
+	workspaceValue := strings.TrimSpace(workspaceID)
+	if workspaceValue != "" {
+		if err := graphshared.ValidateWorkspaceOwnership(workspaceValue, authCtx); err != nil {
+			return nil, fmt.Errorf("workspace not found")
+		}
+	}
+	historyLimit := 20
+	if limit != nil {
+		historyLimit = int(*limit)
+	}
+	revisions, err := r.conceptService.ConceptSpecHistory(ctx, workspaceValue, key, valueOrEmpty(version), historyLimit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load concept spec history: %w", err)
+	}
+	result := make([]*ConceptSpecRevisionResolver, 0, len(revisions))
+	for _, revision := range revisions {
+		result = append(result, &ConceptSpecRevisionResolver{revision: revision})
+	}
+	return result, nil
+}
+
+// ConceptSpecDiff resolves a patch between concept spec revisions.
+func (r *Resolver) ConceptSpecDiff(ctx context.Context, workspaceID, key string, version, fromRevision, toRevision *string) (*ConceptSpecDiffResolver, error) {
+	if r.conceptService == nil {
+		return nil, fmt.Errorf("concept service not configured")
+	}
+	authCtx, err := graphshared.RequirePermission(ctx, platformdomain.PermissionKnowledgeRead)
+	if err != nil {
+		return nil, err
+	}
+	workspaceValue := strings.TrimSpace(workspaceID)
+	if workspaceValue != "" {
+		if err := graphshared.ValidateWorkspaceOwnership(workspaceValue, authCtx); err != nil {
+			return nil, fmt.Errorf("workspace not found")
+		}
+	}
+	diff, err := r.conceptService.ConceptSpecDiff(ctx, workspaceValue, key, valueOrEmpty(version), valueOrEmpty(fromRevision), valueOrEmpty(toRevision))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load concept spec diff: %w", err)
+	}
+	return &ConceptSpecDiffResolver{diff: diff}, nil
 }
 
 // ConceptSpec resolves a concept spec by key and version.
@@ -1289,6 +1341,9 @@ func (r *Resolver) UpdateKnowledgeResource(ctx context.Context, id string, input
 	if err := graphshared.ValidateWorkspaceOwnership(resource.WorkspaceID, authCtx); err != nil {
 		return nil, fmt.Errorf("knowledge resource not found")
 	}
+	if !authCtx.CanAccessTeam(resource.OwnerTeamID) {
+		return nil, fmt.Errorf("knowledge resource not found")
+	}
 
 	params := knowledgeservices.UpdateKnowledgeResourceParams{
 		Slug:               input.Slug,
@@ -1324,6 +1379,29 @@ func (r *Resolver) UpdateKnowledgeResource(ctx context.Context, id string, input
 		return nil, fmt.Errorf("failed to update knowledge resource: %w", err)
 	}
 	return r.NewKnowledgeResourceResolver(updated), nil
+}
+
+// DeleteKnowledgeResource removes a knowledge resource and its git-backed artifact.
+func (r *Resolver) DeleteKnowledgeResource(ctx context.Context, id string) (*KnowledgeResourceResolver, error) {
+	if r.knowledgeService == nil {
+		return nil, fmt.Errorf("knowledge service not configured")
+	}
+	authCtx, err := graphshared.RequirePermission(ctx, platformdomain.PermissionKnowledgeWrite)
+	if err != nil {
+		return nil, err
+	}
+	resource, err := r.knowledgeService.GetKnowledgeResource(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("knowledge resource not found")
+	}
+	if err := graphshared.ValidateWorkspaceOwnership(resource.WorkspaceID, authCtx); err != nil || !authCtx.CanAccessTeam(resource.OwnerTeamID) {
+		return nil, fmt.Errorf("knowledge resource not found")
+	}
+	deleted, err := r.knowledgeService.DeleteKnowledgeResource(ctx, id, authCtx.Principal.GetID())
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete knowledge resource: %w", err)
+	}
+	return r.NewKnowledgeResourceResolver(deleted), nil
 }
 
 // ReviewKnowledgeResource updates the review status for a knowledge resource.
@@ -1608,7 +1686,7 @@ func (r *Resolver) CreateFormSubmission(ctx context.Context, input model.CreateF
 	}
 	submittedAt := dateTimePtrToTime(input.SubmittedAt)
 	submission, err := r.formSpecService.CreateFormSubmission(ctx, serviceapp.CreateFormSubmissionParams{
-		FormSpecID:          input.FormSpecID,
+		FormSpecID:            input.FormSpecID,
 		ConversationSessionID: valueOrEmpty(input.ConversationSessionID),
 		CaseID:                valueOrEmpty(input.CaseID),
 		ContactID:             valueOrEmpty(input.ContactID),
@@ -2367,6 +2445,48 @@ func (r *KnowledgeDiffResolver) ToRevision() string {
 }
 
 func (r *KnowledgeDiffResolver) Patch() string {
+	return r.diff.Patch
+}
+
+// ConceptSpecRevisionResolver resolves git-backed concept spec revision fields.
+type ConceptSpecRevisionResolver struct {
+	revision artifactservices.Revision
+}
+
+func (r *ConceptSpecRevisionResolver) Ref() string {
+	return r.revision.Ref
+}
+
+func (r *ConceptSpecRevisionResolver) CommittedAt() graphshared.DateTime {
+	return graphshared.DateTime{Time: r.revision.CommittedAt}
+}
+
+func (r *ConceptSpecRevisionResolver) Subject() string {
+	return r.revision.Subject
+}
+
+// ConceptSpecDiffResolver resolves a concept spec patch response.
+type ConceptSpecDiffResolver struct {
+	diff *knowledgeservices.ConceptSpecDiff
+}
+
+func (r *ConceptSpecDiffResolver) Path() string {
+	return r.diff.Path
+}
+
+func (r *ConceptSpecDiffResolver) FromRevision() *string {
+	if r.diff.FromRevision == "" {
+		return nil
+	}
+	value := r.diff.FromRevision
+	return &value
+}
+
+func (r *ConceptSpecDiffResolver) ToRevision() string {
+	return r.diff.ToRevision
+}
+
+func (r *ConceptSpecDiffResolver) Patch() string {
 	return r.diff.Patch
 }
 
@@ -4287,11 +4407,12 @@ func canAccessKnowledgeResource(authCtx *platformdomain.AuthContext, resource *k
 	if authCtx == nil || resource == nil {
 		return false
 	}
-	if authCtx.CanAccessTeam(resource.OwnerTeamID) {
+	if (resource.Surface == knowledgedomain.KnowledgeSurfaceWorkspaceWide || resource.Surface == knowledgedomain.KnowledgeSurfacePublished) &&
+		authCtx.HasWorkspaceAccess(resource.WorkspaceID) {
 		return true
 	}
-	if authCtx.Membership == nil || len(authCtx.Membership.Constraints.AllowedTeamIDs) == 0 {
-		return false
+	if authCtx.CanAccessTeam(resource.OwnerTeamID) {
+		return true
 	}
 	for _, teamID := range resource.SharedWithTeamIDs {
 		if authCtx.CanAccessTeam(teamID) {

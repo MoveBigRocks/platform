@@ -10,7 +10,9 @@ import (
 
 	"github.com/movebigrocks/platform/internal/graph/model"
 	storeshared "github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
+	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
 	observabilitydomain "github.com/movebigrocks/platform/internal/observability/domain"
+	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 )
 
@@ -163,4 +165,44 @@ func TestServiceIssueResolverEventsRespectsExtensionState(t *testing.T) {
 	}{})
 	require.NoError(t, err)
 	require.Equal(t, int32(1), enabled.TotalCount())
+}
+
+func TestCanAccessKnowledgeResourceSupportsWorkspaceWideAndSharedTeamVisibility(t *testing.T) {
+	t.Parallel()
+
+	workspaceMember := &platformdomain.AuthContext{
+		WorkspaceID:  "ws_1",
+		WorkspaceIDs: []string{"ws_1"},
+		Membership: &platformdomain.WorkspaceMembership{
+			Constraints: platformdomain.MembershipConstraints{AllowedTeamIDs: []string{"team_peer"}},
+		},
+	}
+	workspaceWide := &knowledgedomain.KnowledgeResource{
+		WorkspaceID: "ws_1",
+		OwnerTeamID: "team_owner",
+		Surface:     knowledgedomain.KnowledgeSurfaceWorkspaceWide,
+	}
+	require.True(t, canAccessKnowledgeResource(workspaceMember, workspaceWide))
+
+	sharedTeamMember := &platformdomain.AuthContext{
+		WorkspaceID:  "ws_1",
+		WorkspaceIDs: []string{"ws_1"},
+		Membership: &platformdomain.WorkspaceMembership{
+			Constraints: platformdomain.MembershipConstraints{AllowedTeamIDs: []string{"team_peer"}},
+		},
+	}
+	sharedResource := &knowledgedomain.KnowledgeResource{
+		WorkspaceID:       "ws_1",
+		OwnerTeamID:       "team_owner",
+		SharedWithTeamIDs: []string{"team_peer"},
+		Surface:           knowledgedomain.KnowledgeSurfacePrivate,
+	}
+	require.True(t, canAccessKnowledgeResource(sharedTeamMember, sharedResource))
+
+	privateResource := &knowledgedomain.KnowledgeResource{
+		WorkspaceID: "ws_1",
+		OwnerTeamID: "team_owner",
+		Surface:     knowledgedomain.KnowledgeSurfacePrivate,
+	}
+	require.False(t, canAccessKnowledgeResource(workspaceMember, privateResource))
 }

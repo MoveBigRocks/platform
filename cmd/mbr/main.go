@@ -463,8 +463,8 @@ type conversationWorkingStateOutput struct {
 	SuggestedCatalogNodes    []conversationCatalogSuggestionOutput `json:"suggestedCatalogNodes"`
 	ClassificationConfidence *float64                              `json:"classificationConfidence,omitempty"`
 	ActivePolicyProfileRef   *string                               `json:"activePolicyProfileRef,omitempty"`
-	ActiveFormSpecID       *string                               `json:"activeFormSpecID,omitempty"`
-	ActiveFormSubmissionID *string                               `json:"activeFormSubmissionID,omitempty"`
+	ActiveFormSpecID         *string                               `json:"activeFormSpecID,omitempty"`
+	ActiveFormSubmissionID   *string                               `json:"activeFormSubmissionID,omitempty"`
 	CollectedFields          map[string]any                        `json:"collectedFields"`
 	MissingFields            map[string]any                        `json:"missingFields"`
 	RequiresOperatorReview   bool                                  `json:"requiresOperatorReview"`
@@ -491,8 +491,8 @@ type conversationSessionOutput struct {
 	ExternalSessionKey          *string                         `json:"externalSessionKey,omitempty"`
 	PrimaryContactID            *string                         `json:"primaryContactID,omitempty"`
 	PrimaryCatalogNodeID        *string                         `json:"primaryCatalogNodeID,omitempty"`
-	ActiveFormSpecID          *string                         `json:"activeFormSpecID,omitempty"`
-	ActiveFormSubmissionID    *string                         `json:"activeFormSubmissionID,omitempty"`
+	ActiveFormSpecID            *string                         `json:"activeFormSpecID,omitempty"`
+	ActiveFormSubmissionID      *string                         `json:"activeFormSubmissionID,omitempty"`
 	LinkedCaseID                *string                         `json:"linkedCaseID,omitempty"`
 	HandlingTeamID              *string                         `json:"handlingTeamID,omitempty"`
 	AssignedOperatorUserID      *string                         `json:"assignedOperatorUserID,omitempty"`
@@ -1704,6 +1704,26 @@ func runKnowledgeShare(ctx context.Context, client *cliapi.Client, id string, te
 	return *payload.ShareKnowledgeResource, nil
 }
 
+func runKnowledgeDelete(ctx context.Context, client *cliapi.Client, id string) (knowledgeResourceOutput, error) {
+	var payload struct {
+		DeleteKnowledgeResource *knowledgeResourceOutput `json:"deleteKnowledgeResource"`
+	}
+	err := client.Query(ctx, `
+		mutation CLIDeleteKnowledgeResource($id: ID!) {
+		  deleteKnowledgeResource(id: $id) {
+		    `+knowledgeSelection+`
+		  }
+		}
+	`, map[string]any{"id": id}, &payload)
+	if err != nil {
+		return knowledgeResourceOutput{}, err
+	}
+	if payload.DeleteKnowledgeResource == nil {
+		return knowledgeResourceOutput{}, fmt.Errorf("delete knowledge resource returned no resource")
+	}
+	return *payload.DeleteKnowledgeResource, nil
+}
+
 func runKnowledgeHistory(ctx context.Context, client *cliapi.Client, id string, limit int) ([]knowledgeRevisionOutput, error) {
 	var payload struct {
 		KnowledgeResourceHistory []knowledgeRevisionOutput `json:"knowledgeResourceHistory"`
@@ -1863,6 +1883,73 @@ func runConceptSpecRegister(ctx context.Context, client *cliapi.Client, input co
 		return conceptSpecOutput{}, fmt.Errorf("register concept spec returned no payload")
 	}
 	return *payload.RegisterConceptSpec, nil
+}
+
+func runConceptSpecHistory(ctx context.Context, client *cliapi.Client, workspaceID, key, version string, limit int) ([]artifactRevisionOutput, error) {
+	var payload struct {
+		ConceptSpecHistory []artifactRevisionOutput `json:"conceptSpecHistory"`
+	}
+	variables := map[string]any{
+		"key":   key,
+		"limit": limit,
+	}
+	if strings.TrimSpace(workspaceID) != "" {
+		variables["workspaceID"] = workspaceID
+	}
+	if strings.TrimSpace(version) != "" {
+		variables["version"] = version
+	}
+	err := client.Query(ctx, `
+		query CLIConceptSpecHistory($workspaceID: ID, $key: String!, $version: String, $limit: Int) {
+		  conceptSpecHistory(workspaceID: $workspaceID, key: $key, version: $version, limit: $limit) {
+		    ref
+		    committedAt
+		    subject
+		  }
+		}
+	`, variables, &payload)
+	if err != nil {
+		return nil, err
+	}
+	return payload.ConceptSpecHistory, nil
+}
+
+func runConceptSpecDiff(ctx context.Context, client *cliapi.Client, workspaceID, key, version, fromRevision, toRevision string) (knowledgeDiffOutput, error) {
+	var payload struct {
+		ConceptSpecDiff *knowledgeDiffOutput `json:"conceptSpecDiff"`
+	}
+	variables := map[string]any{
+		"key": key,
+	}
+	if strings.TrimSpace(workspaceID) != "" {
+		variables["workspaceID"] = workspaceID
+	}
+	if strings.TrimSpace(version) != "" {
+		variables["version"] = version
+	}
+	if strings.TrimSpace(fromRevision) != "" {
+		variables["fromRevision"] = fromRevision
+	}
+	if strings.TrimSpace(toRevision) != "" {
+		variables["toRevision"] = toRevision
+	}
+	err := client.Query(ctx, `
+		query CLIConceptSpecDiff($workspaceID: ID, $key: String!, $version: String, $fromRevision: String, $toRevision: String) {
+		  conceptSpecDiff(workspaceID: $workspaceID, key: $key, version: $version, fromRevision: $fromRevision, toRevision: $toRevision) {
+		    path
+		    fromRevision
+		    toRevision
+		    patch
+		  }
+		}
+	`, variables, &payload)
+	if err != nil {
+		return knowledgeDiffOutput{}, err
+	}
+	if payload.ConceptSpecDiff == nil {
+		return knowledgeDiffOutput{}, fmt.Errorf("concept spec diff returned no payload")
+	}
+	return *payload.ConceptSpecDiff, nil
 }
 
 func runConversationList(ctx context.Context, client *cliapi.Client, input conversationListInput) ([]conversationSessionOutput, error) {
@@ -3599,6 +3686,9 @@ func runKnowledgeShowBySlugAnySurface(ctx context.Context, client *cliapi.Client
 	for _, surface := range surfaces {
 		resource, err := runKnowledgeShowBySlug(ctx, client, workspaceID, teamID, surface, slug)
 		if err == nil {
+			if resource == nil {
+				continue
+			}
 			return resource, nil
 		}
 		if isKnowledgeNotFoundError(err) {

@@ -469,6 +469,19 @@ type KnowledgeDiff {
   patch: String!
 }
 
+type ConceptSpecRevision {
+  ref: String!
+  committedAt: DateTime!
+  subject: String!
+}
+
+type ConceptSpecDiff {
+  path: String!
+  fromRevision: String
+  toRevision: String!
+  patch: String!
+}
+
 type ConceptSpec {
   id: ID!
   workspaceID: ID
@@ -1049,6 +1062,8 @@ type Query {
   knowledgeResourceDiff(id: ID!, fromRevision: String, toRevision: String): KnowledgeDiff!
   conceptSpec(workspaceID: ID, key: String!, version: String): ConceptSpec
   conceptSpecs(workspaceID: ID): [ConceptSpec!]!
+  conceptSpecHistory(workspaceID: ID, key: String!, version: String, limit: Int): [ConceptSpecRevision!]!
+  conceptSpecDiff(workspaceID: ID, key: String!, version: String, fromRevision: String, toRevision: String): ConceptSpecDiff!
   serviceCatalogNode(id: ID!): ServiceCatalogNode
   serviceCatalogNodeByPath(workspaceID: ID!, path: String!): ServiceCatalogNode
   serviceCatalogNodes(workspaceID: ID!, parentNodeID: ID): [ServiceCatalogNode!]!
@@ -1099,6 +1114,7 @@ type Mutation {
   reviewKnowledgeResource(id: ID!, status: KnowledgeReviewStatus): KnowledgeResource!
   publishKnowledgeResource(id: ID!, surface: KnowledgeSurface): KnowledgeResource!
   shareKnowledgeResource(id: ID!, input: ShareKnowledgeResourceInput!): KnowledgeResource!
+  deleteKnowledgeResource(id: ID!): KnowledgeResource!
   registerConceptSpec(input: RegisterConceptSpecInput!): ConceptSpec!
   installExtension(input: InstallExtensionInput!): InstalledExtension!
   upgradeExtension(id: ID!, input: UpgradeExtensionInput!): InstalledExtension!

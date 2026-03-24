@@ -2114,7 +2114,7 @@ func TestRunFormSubmissionsListJSON(t *testing.T) {
 					{
 						"id":               "sub_123",
 						"workspaceID":      "ws_123",
-						"formSpecID":     "spec_123",
+						"formSpecID":       "spec_123",
 						"status":           "submitted",
 						"channel":          "web_chat",
 						"submitterEmail":   "casey@example.com",
@@ -2168,7 +2168,7 @@ func TestRunFormSubmissionShowJSON(t *testing.T) {
 				"formSubmission": map[string]any{
 					"id":                    "sub_789",
 					"workspaceID":           "ws_123",
-					"formSpecID":          "spec_456",
+					"formSpecID":            "spec_456",
 					"conversationSessionID": "conv_123",
 					"caseID":                "case_123",
 					"contactID":             "contact_123",
@@ -2251,7 +2251,7 @@ func TestRunFormSubmissionsCreateJSONBySlug(t *testing.T) {
 					"createFormSubmission": map[string]any{
 						"id":               "sub_new",
 						"workspaceID":      "ws_123",
-						"formSpecID":     "spec_456",
+						"formSpecID":       "spec_456",
 						"status":           "submitted",
 						"channel":          "operator_console",
 						"submitterEmail":   "ops@example.com",
@@ -2581,16 +2581,24 @@ func TestRunKnowledgeSyncJSONUsesStoredContext(t *testing.T) {
 	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
 		requestCount++
 		switch requestCount {
-		case 1:
+		case 1, 2, 3:
 			if !strings.Contains(req.Query, "query CLIKnowledgeResourceBySlug") {
 				t.Fatalf("unexpected lookup query: %s", req.Query)
+			}
+			var surface string
+			if got, ok := req.Variables["surface"].(string); ok {
+				surface = got
+			}
+			expectedSurfaces := []string{"private", "published", "workspace_shared"}
+			if surface != expectedSurfaces[requestCount-1] {
+				t.Fatalf("unexpected surface lookup %q at request %d", surface, requestCount)
 			}
 			return map[string]any{
 				"data": map[string]any{
 					"knowledgeResourceBySlug": nil,
 				},
 			}
-		case 2:
+		case 4:
 			if !strings.Contains(req.Query, "mutation CLICreateKnowledgeResource") {
 				t.Fatalf("unexpected create query: %s", req.Query)
 			}
@@ -2794,6 +2802,344 @@ func TestRunKnowledgeUpsertUpdateJSON(t *testing.T) {
 	if payload.Title != "Incident Response Playbook" || payload.Status != "active" {
 		t.Fatalf("unexpected knowledge update payload: %#v", payload)
 	}
+}
+
+func TestRunKnowledgePushCreatesLocalOnlyFiles(t *testing.T) {
+	root := t.TempDir()
+	manifestPath := filepath.Join(root, knowledgeCheckoutMetadataDir, knowledgeCheckoutManifestFile)
+	require.NoError(t, os.MkdirAll(filepath.Dir(manifestPath), 0o755))
+	rawManifest, err := json.MarshalIndent(knowledgeCheckoutManifest{
+		SchemaVersion: knowledgeCheckoutSchemaVersion,
+		InstanceURL:   "https://app.mbr.test",
+		WorkspaceID:   "ws_123",
+		Filters: knowledgeCheckoutFilter{
+			WorkspaceID: "ws_123",
+		},
+		CheckedOutAt: "2026-03-24T10:00:00Z",
+		Resources:    []knowledgeCheckoutManifestEntry{},
+	}, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(manifestPath, append(rawManifest, '\n'), 0o600))
+
+	localPath := filepath.Join(root, "knowledge", "teams", "team_123", "private", "refund-policy.md")
+	require.NoError(t, os.MkdirAll(filepath.Dir(localPath), 0o755))
+	require.NoError(t, os.WriteFile(localPath, []byte(`---
+title: Refund Policy
+team_id: team_123
+surface: private
+kind: policy
+status: active
+summary: How refunds are handled
+search_keywords:
+  - refund
+---
+
+# Refund Policy
+
+Refunds are reviewed within 3 business days.
+`), 0o600))
+
+	requestCount := 0
+	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
+		requestCount++
+		switch requestCount {
+		case 1:
+			if !strings.Contains(req.Query, "query CLIKnowledgeCheckoutResources") {
+				t.Fatalf("unexpected query: %s", req.Query)
+			}
+			return map[string]any{"data": map[string]any{"knowledgeResources": []any{}}}
+		case 2, 3, 4:
+			if !strings.Contains(req.Query, "query CLIKnowledgeResourceBySlug") {
+				t.Fatalf("unexpected query: %s", req.Query)
+			}
+			return map[string]any{"data": map[string]any{"knowledgeResourceBySlug": nil}}
+		case 5:
+			if !strings.Contains(req.Query, "mutation CLICreateKnowledgeResource") {
+				t.Fatalf("unexpected query: %s", req.Query)
+			}
+			return map[string]any{
+				"data": map[string]any{
+					"createKnowledgeResource": map[string]any{
+						"id":                 "kr_123",
+						"workspaceID":        "ws_123",
+						"ownerTeamID":        "team_123",
+						"slug":               "refund-policy",
+						"title":              "Refund Policy",
+						"kind":               "policy",
+						"conceptSpecKey":     "core/policy",
+						"conceptSpecVersion": "1",
+						"sourceKind":         "workspace",
+						"sourceRef":          "knowledge/teams/team_123/private/refund-policy.md",
+						"pathRef":            "knowledge/teams/team_123/private/refund-policy.md",
+						"artifactPath":       "knowledge/teams/team_123/private/refund-policy.md",
+						"summary":            "How refunds are handled",
+						"bodyMarkdown":       "# Refund Policy\n\nRefunds are reviewed within 3 business days.",
+						"frontmatter":        map[string]any{},
+						"supportedChannels":  []string{},
+						"sharedWithTeamIDs":  []string{},
+						"surface":            "private",
+						"trustLevel":         "workspace",
+						"searchKeywords":     []string{"refund"},
+						"status":             "active",
+						"reviewStatus":       "draft",
+						"contentHash":        "abc123",
+						"revisionRef":        "rev_123",
+						"createdAt":          "2026-03-24T10:00:00Z",
+						"updatedAt":          "2026-03-24T10:00:00Z",
+					},
+				},
+			}
+		case 6:
+			if !strings.Contains(req.Query, "query CLIKnowledgeCheckoutResources") {
+				t.Fatalf("unexpected query: %s", req.Query)
+			}
+			return map[string]any{
+				"data": map[string]any{
+					"knowledgeResources": []any{
+						map[string]any{
+							"id":                 "kr_123",
+							"workspaceID":        "ws_123",
+							"ownerTeamID":        "team_123",
+							"slug":               "refund-policy",
+							"title":              "Refund Policy",
+							"kind":               "policy",
+							"conceptSpecKey":     "core/policy",
+							"conceptSpecVersion": "1",
+							"sourceKind":         "workspace",
+							"sourceRef":          "knowledge/teams/team_123/private/refund-policy.md",
+							"pathRef":            "knowledge/teams/team_123/private/refund-policy.md",
+							"artifactPath":       "knowledge/teams/team_123/private/refund-policy.md",
+							"summary":            "How refunds are handled",
+							"bodyMarkdown":       "# Refund Policy\n\nRefunds are reviewed within 3 business days.",
+							"frontmatter":        map[string]any{},
+							"supportedChannels":  []string{},
+							"sharedWithTeamIDs":  []string{},
+							"surface":            "private",
+							"trustLevel":         "workspace",
+							"searchKeywords":     []string{"refund"},
+							"status":             "active",
+							"reviewStatus":       "draft",
+							"contentHash":        "abc123",
+							"revisionRef":        "rev_123",
+							"createdAt":          "2026-03-24T10:00:00Z",
+							"updatedAt":          "2026-03-24T10:00:00Z",
+						},
+					},
+				},
+			}
+		default:
+			t.Fatalf("unexpected request count %d", requestCount)
+			return nil
+		}
+	})
+
+	t.Setenv("MBR_URL", "https://app.mbr.test")
+	t.Setenv("MBR_TOKEN", "hat_test")
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{"knowledge", "push", root, "--json"}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+
+	var payload knowledgeCheckoutPushResult
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &payload))
+	require.Equal(t, 1, payload.Summary.Added)
+	require.Equal(t, 0, payload.Summary.Updated)
+	require.Equal(t, 0, payload.Summary.Deleted)
+	require.Len(t, payload.Entries, 1)
+	require.Equal(t, "created", payload.Entries[0].Action)
+}
+
+func TestRunKnowledgePushDeletesTrackedFiles(t *testing.T) {
+	root := t.TempDir()
+	rendered := `---
+title: Incident Playbook
+slug: incident-playbook
+team_id: team_123
+surface: private
+kind: guide
+concept_spec: core/guide
+concept_spec_version: "1"
+review_status: draft
+status: draft
+---
+
+# Incident Playbook
+`
+	manifest := knowledgeCheckoutManifest{
+		SchemaVersion: knowledgeCheckoutSchemaVersion,
+		InstanceURL:   "https://app.mbr.test",
+		WorkspaceID:   "ws_123",
+		Filters: knowledgeCheckoutFilter{
+			WorkspaceID: "ws_123",
+		},
+		CheckedOutAt: "2026-03-24T10:00:00Z",
+		Resources: []knowledgeCheckoutManifestEntry{{
+			ID:           "kr_123",
+			OwnerTeamID:  "team_123",
+			Surface:      "private",
+			Slug:         "incident-playbook",
+			Title:        "Incident Playbook",
+			Kind:         "guide",
+			ArtifactPath: "knowledge/teams/team_123/private/incident-playbook.md",
+			RevisionRef:  "rev_123",
+			RenderedHash: knowledgeRenderedHash(rendered),
+		}},
+	}
+	manifestPath := filepath.Join(root, knowledgeCheckoutMetadataDir, knowledgeCheckoutManifestFile)
+	require.NoError(t, os.MkdirAll(filepath.Dir(manifestPath), 0o755))
+	rawManifest, err := json.MarshalIndent(manifest, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(manifestPath, append(rawManifest, '\n'), 0o600))
+
+	requestCount := 0
+	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
+		requestCount++
+		switch requestCount {
+		case 1:
+			if !strings.Contains(req.Query, "query CLIKnowledgeCheckoutResources") {
+				t.Fatalf("unexpected query: %s", req.Query)
+			}
+			return map[string]any{
+				"data": map[string]any{
+					"knowledgeResources": []any{
+						map[string]any{
+							"id":           "kr_123",
+							"artifactPath": "knowledge/teams/team_123/private/incident-playbook.md",
+							"revisionRef":  "rev_123",
+						},
+					},
+				},
+			}
+		case 2:
+			if !strings.Contains(req.Query, "mutation CLIDeleteKnowledgeResource") {
+				t.Fatalf("unexpected query: %s", req.Query)
+			}
+			return map[string]any{
+				"data": map[string]any{
+					"deleteKnowledgeResource": map[string]any{
+						"id":                 "kr_123",
+						"workspaceID":        "ws_123",
+						"ownerTeamID":        "team_123",
+						"slug":               "incident-playbook",
+						"title":              "Incident Playbook",
+						"kind":               "guide",
+						"conceptSpecKey":     "core/guide",
+						"conceptSpecVersion": "1",
+						"sourceKind":         "workspace",
+						"artifactPath":       "knowledge/teams/team_123/private/incident-playbook.md",
+						"bodyMarkdown":       "# Incident Playbook",
+						"frontmatter":        map[string]any{},
+						"supportedChannels":  []string{},
+						"sharedWithTeamIDs":  []string{},
+						"surface":            "private",
+						"trustLevel":         "workspace",
+						"searchKeywords":     []string{},
+						"status":             "draft",
+						"reviewStatus":       "draft",
+						"contentHash":        "abc123",
+						"revisionRef":        "rev_456",
+						"createdAt":          "2026-03-24T10:00:00Z",
+						"updatedAt":          "2026-03-24T11:00:00Z",
+					},
+				},
+			}
+		case 3:
+			if !strings.Contains(req.Query, "query CLIKnowledgeCheckoutResources") {
+				t.Fatalf("unexpected query: %s", req.Query)
+			}
+			return map[string]any{"data": map[string]any{"knowledgeResources": []any{}}}
+		default:
+			t.Fatalf("unexpected request count %d", requestCount)
+			return nil
+		}
+	})
+
+	t.Setenv("MBR_URL", "https://app.mbr.test")
+	t.Setenv("MBR_TOKEN", "hat_test")
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{"knowledge", "push", root, "--json"}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+
+	var payload knowledgeCheckoutPushResult
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &payload))
+	require.Equal(t, 0, payload.Summary.Added)
+	require.Equal(t, 0, payload.Summary.Updated)
+	require.Equal(t, 1, payload.Summary.Deleted)
+	require.Len(t, payload.Entries, 1)
+	require.Equal(t, "deleted", payload.Entries[0].Action)
+}
+
+func TestRunConceptsHistoryJSON(t *testing.T) {
+	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
+		if !strings.Contains(req.Query, "query CLIConceptSpecHistory") {
+			t.Fatalf("unexpected query: %s", req.Query)
+		}
+		return map[string]any{
+			"data": map[string]any{
+				"conceptSpecHistory": []any{
+					map[string]any{
+						"ref":         "rev_123",
+						"committedAt": "2026-03-24T10:00:00Z",
+						"subject":     "concept spec register strategy/campaign-brief@1",
+					},
+				},
+			},
+		}
+	})
+
+	t.Setenv("MBR_URL", "https://app.mbr.test")
+	t.Setenv("MBR_TOKEN", "hat_test")
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{"concepts", "history", "strategy/campaign-brief", "--workspace", "ws_123", "--json"}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+
+	var payload []artifactRevisionOutput
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &payload))
+	require.Len(t, payload, 1)
+	require.Equal(t, "rev_123", payload[0].Ref)
+}
+
+func TestRunConceptsDiffJSON(t *testing.T) {
+	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
+		if !strings.Contains(req.Query, "query CLIConceptSpecDiff") {
+			t.Fatalf("unexpected query: %s", req.Query)
+		}
+		return map[string]any{
+			"data": map[string]any{
+				"conceptSpecDiff": map[string]any{
+					"path":       "concepts/strategy/campaign-brief/v1/spec.yaml",
+					"toRevision": "rev_123",
+					"patch":      "diff --git a/spec.yaml b/spec.yaml",
+				},
+			},
+		}
+	})
+
+	t.Setenv("MBR_URL", "https://app.mbr.test")
+	t.Setenv("MBR_TOKEN", "hat_test")
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{"concepts", "diff", "strategy/campaign-brief", "--workspace", "ws_123", "--json"}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+
+	var payload knowledgeDiffOutput
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &payload))
+	require.Equal(t, "rev_123", payload.ToRevision)
+	require.Contains(t, payload.Patch, "diff --git")
 }
 
 func TestRunTeamsListJSON(t *testing.T) {

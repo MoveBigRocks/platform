@@ -80,3 +80,59 @@ func TestGitServiceWriteHistoryAndDiff(t *testing.T) {
 		t.Fatalf("unexpected content: %s", string(content))
 	}
 }
+
+func TestGitServiceDelete(t *testing.T) {
+	service := NewGitService(t.TempDir())
+	ctx := context.Background()
+	repository := WorkspaceRepository("ws_123")
+
+	first, err := service.Write(ctx, WriteParams{
+		Repository:    repository,
+		RelativePath:  "knowledge/teams/team_123/private/playbook.md",
+		Content:       []byte("# Playbook\n\nPublished\n"),
+		CommitMessage: "knowledge create playbook",
+		ActorID:       "user_123",
+	})
+	if err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	deleted, err := service.Delete(ctx, DeleteParams{
+		Repository:    repository,
+		RelativePath:  "knowledge/teams/team_123/private/playbook.md",
+		CommitMessage: "knowledge delete playbook",
+		ActorID:       "user_123",
+	})
+	if err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if !deleted.Changed || deleted.Ref == "" || deleted.Ref == first.Ref {
+		t.Fatalf("expected delete to create a distinct revision, got %#v", deleted)
+	}
+
+	files, err := service.List(ctx, repository, "knowledge/teams/team_123/private")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(files) != 0 {
+		t.Fatalf("expected deleted file to be absent, got %#v", files)
+	}
+
+	if _, err := service.Read(ctx, ReadParams{
+		Repository:   repository,
+		RelativePath: "knowledge/teams/team_123/private/playbook.md",
+	}); err == nil {
+		t.Fatalf("expected read to fail after delete")
+	}
+
+	history, err := service.History(ctx, repository, "knowledge/teams/team_123/private/playbook.md", 10)
+	if err != nil {
+		t.Fatalf("history: %v", err)
+	}
+	if len(history) != 2 {
+		t.Fatalf("expected delete to remain visible in history, got %#v", history)
+	}
+	if history[0].Ref != deleted.Ref || history[1].Ref != first.Ref {
+		t.Fatalf("unexpected history order after delete: %#v", history)
+	}
+}

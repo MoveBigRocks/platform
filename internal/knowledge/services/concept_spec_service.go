@@ -19,12 +19,21 @@ import (
 
 type conceptArtifactService interface {
 	Write(ctx context.Context, params artifactservices.WriteParams) (*artifactservices.WriteResult, error)
+	History(ctx context.Context, repository artifactservices.RepositoryRef, relativePath string, limit int) ([]artifactservices.Revision, error)
+	Diff(ctx context.Context, repository artifactservices.RepositoryRef, relativePath, fromRef, toRef string) (string, string, string, error)
 }
 
 type ConceptSpecService struct {
 	conceptStore   shared.ConceptSpecStore
 	workspaceStore shared.WorkspaceStore
 	artifacts      conceptArtifactService
+}
+
+type ConceptSpecDiff struct {
+	Path         string
+	FromRevision string
+	ToRevision   string
+	Patch        string
 }
 
 type RegisterConceptSpecParams struct {
@@ -190,6 +199,47 @@ func (s *ConceptSpecService) RegisterConceptSpec(ctx context.Context, params Reg
 		return nil, apierrors.DatabaseError("create concept spec", err)
 	}
 	return spec, nil
+}
+
+func (s *ConceptSpecService) ConceptSpecHistory(ctx context.Context, workspaceID, key, version string, limit int) ([]artifactservices.Revision, error) {
+	spec, err := s.GetConceptSpec(ctx, workspaceID, key, version)
+	if err != nil {
+		return nil, err
+	}
+	if spec.SourceKind == knowledgedomain.ConceptSpecSourceKindCore || strings.TrimSpace(spec.WorkspaceID) == "" {
+		return []artifactservices.Revision{}, nil
+	}
+	if s.artifacts == nil {
+		return nil, apierrors.Newf(apierrors.ErrorTypeInternal, "artifact service not configured")
+	}
+	revisions, err := s.artifacts.History(ctx, artifactservices.WorkspaceRepository(spec.WorkspaceID), spec.ArtifactPath, limit)
+	if err != nil {
+		return nil, apierrors.Wrap(err, apierrors.ErrorTypeInternal, "load concept spec history")
+	}
+	return revisions, nil
+}
+
+func (s *ConceptSpecService) ConceptSpecDiff(ctx context.Context, workspaceID, key, version, fromRevision, toRevision string) (*ConceptSpecDiff, error) {
+	spec, err := s.GetConceptSpec(ctx, workspaceID, key, version)
+	if err != nil {
+		return nil, err
+	}
+	if spec.SourceKind == knowledgedomain.ConceptSpecSourceKindCore || strings.TrimSpace(spec.WorkspaceID) == "" {
+		return nil, apierrors.NewValidationErrors(apierrors.NewValidationError("key", "built-in concept specs do not have git-backed diff history"))
+	}
+	if s.artifacts == nil {
+		return nil, apierrors.Newf(apierrors.ErrorTypeInternal, "artifact service not configured")
+	}
+	fromRef, toRef, patch, err := s.artifacts.Diff(ctx, artifactservices.WorkspaceRepository(spec.WorkspaceID), spec.ArtifactPath, fromRevision, toRevision)
+	if err != nil {
+		return nil, apierrors.Wrap(err, apierrors.ErrorTypeInternal, "load concept spec diff")
+	}
+	return &ConceptSpecDiff{
+		Path:         spec.ArtifactPath,
+		FromRevision: fromRef,
+		ToRevision:   toRef,
+		Patch:        patch,
+	}, nil
 }
 
 func (s *ConceptSpecService) validateWorkspaceTeam(ctx context.Context, workspaceID, teamID string) error {

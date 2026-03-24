@@ -198,6 +198,91 @@ func runConcepts(ctx context.Context, args []string, stdout, stderr io.Writer) i
 		}
 		fmt.Fprintf(stdout, "%s@%s\t%s\t%s\t%s\n", spec.Key, spec.Version, spec.InstanceKind, spec.SourceKind, spec.Status)
 		return 0
+	case "history":
+		fs := flag.NewFlagSet("mbr concepts history", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		instanceURL := registerInstanceURLFlag(fs)
+		token := fs.String("token", "", "Bearer token")
+		workspaceID := fs.String("workspace", "", "Workspace ID")
+		version := fs.String("version", "", "Concept spec version")
+		limit := fs.Int("limit", 20, "Maximum number of revisions")
+		jsonOutput := fs.Bool("json", false, "Emit JSON output")
+		flagArgs, positionals := splitSinglePositionalArgs(args[1:], map[string]bool{
+			"--url": true, "--api-url": true, "--token": true, "--workspace": true, "--version": true, "--limit": true, "--json": false,
+		})
+		if err := fs.Parse(flagArgs); err != nil {
+			return 2
+		}
+		if len(positionals) != 1 {
+			fmt.Fprintln(stderr, "concept spec key is required")
+			return 2
+		}
+		stored, err := cliapi.LoadStoredConfig()
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		workspaceValue := resolveStoredWorkspaceID(*workspaceID, stored)
+		cfg, err := loadCLIConfig(*instanceURL, *token)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+		client := newCLIClient(cfg)
+		revisions, err := runConceptSpecHistory(ctx, client, workspaceValue, strings.TrimSpace(positionals[0]), strings.TrimSpace(*version), *limit)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		if *jsonOutput {
+			return writeJSON(stdout, revisions, stderr)
+		}
+		for _, revision := range revisions {
+			fmt.Fprintf(stdout, "%s\t%s\t%s\n", revision.Ref, revision.CommittedAt, revision.Subject)
+		}
+		return 0
+	case "diff":
+		fs := flag.NewFlagSet("mbr concepts diff", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		instanceURL := registerInstanceURLFlag(fs)
+		token := fs.String("token", "", "Bearer token")
+		workspaceID := fs.String("workspace", "", "Workspace ID")
+		version := fs.String("version", "", "Concept spec version")
+		fromRevision := fs.String("from", "", "Base revision")
+		toRevision := fs.String("to", "", "Target revision")
+		jsonOutput := fs.Bool("json", false, "Emit JSON output")
+		flagArgs, positionals := splitSinglePositionalArgs(args[1:], map[string]bool{
+			"--url": true, "--api-url": true, "--token": true, "--workspace": true, "--version": true, "--from": true, "--to": true, "--json": false,
+		})
+		if err := fs.Parse(flagArgs); err != nil {
+			return 2
+		}
+		if len(positionals) != 1 {
+			fmt.Fprintln(stderr, "concept spec key is required")
+			return 2
+		}
+		stored, err := cliapi.LoadStoredConfig()
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		workspaceValue := resolveStoredWorkspaceID(*workspaceID, stored)
+		cfg, err := loadCLIConfig(*instanceURL, *token)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+		client := newCLIClient(cfg)
+		diff, err := runConceptSpecDiff(ctx, client, workspaceValue, strings.TrimSpace(positionals[0]), strings.TrimSpace(*version), strings.TrimSpace(*fromRevision), strings.TrimSpace(*toRevision))
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		if *jsonOutput {
+			return writeJSON(stdout, diff, stderr)
+		}
+		fmt.Fprint(stdout, diff.Patch)
+		return 0
 	default:
 		fmt.Fprintf(stderr, "unknown concepts command %q\n\n", args[0])
 		printConceptsUsage(stderr)

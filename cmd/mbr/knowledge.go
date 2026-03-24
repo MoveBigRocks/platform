@@ -850,7 +850,11 @@ func runKnowledge(ctx context.Context, args []string, stdout, stderr io.Writer) 
 		fmt.Fprintf(stdout, "status:\t%s\n", result.Status)
 		fmt.Fprintf(stdout, "root:\t%s\n", result.RootPath)
 		fmt.Fprintf(stdout, "manifest:\t%s\n", result.ManifestPath)
-		fmt.Fprintf(stdout, "summary:\tupdated=%d\n", result.Summary.Updated)
+		fmt.Fprintf(stdout, "summary:\tadded=%d updated=%d deleted=%d\n",
+			result.Summary.Added,
+			result.Summary.Updated,
+			result.Summary.Deleted,
+		)
 		for _, entry := range result.Entries {
 			fmt.Fprintf(stdout, "%s\t%s\n", entry.Action, entry.Path)
 		}
@@ -1132,6 +1136,53 @@ func runKnowledge(ctx context.Context, args []string, stdout, stderr io.Writer) 
 			return writeJSON(stdout, resource, stderr)
 		}
 		fmt.Fprintf(stdout, "%s\t%s\n", resource.ID, strings.Join(resource.SharedWithTeamIDs, ","))
+		return 0
+	case "delete":
+		fs := flag.NewFlagSet("mbr knowledge delete", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		instanceURL := registerInstanceURLFlag(fs)
+		token := fs.String("token", "", "Bearer token")
+		workspaceID := fs.String("workspace", "", "Workspace ID for slug lookup")
+		teamID := fs.String("team", "", "Owner team ID for slug lookup")
+		surface := fs.String("surface", "private", "Knowledge surface for slug lookup")
+		jsonOutput := fs.Bool("json", false, "Emit JSON output")
+		flagArgs, positionals := splitSinglePositionalArgs(args[1:], map[string]bool{
+			"--url": true, "--api-url": true, "--token": true, "--workspace": true, "--team": true, "--surface": true, "--json": false,
+		})
+		if err := fs.Parse(flagArgs); err != nil {
+			return 2
+		}
+		if len(positionals) != 1 {
+			fmt.Fprintln(stderr, "knowledge resource identifier is required")
+			return 2
+		}
+		stored, err := cliapi.LoadStoredConfig()
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		workspaceValue := resolveStoredWorkspaceID(*workspaceID, stored)
+		teamValue := resolveStoredTeamID(*teamID, stored)
+		cfg, err := loadCLIConfig(*instanceURL, *token)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+		client := newCLIClient(cfg)
+		resource, err := runKnowledgeShow(ctx, client, strings.TrimSpace(positionals[0]), workspaceValue, teamValue, strings.TrimSpace(*surface))
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		resource, err = runKnowledgeDelete(ctx, client, resource.ID)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		if *jsonOutput {
+			return writeJSON(stdout, resource, stderr)
+		}
+		fmt.Fprintf(stdout, "deleted\t%s\t%s\t%s\n", resource.ID, resource.OwnerTeamID, resource.Slug)
 		return 0
 	case "history":
 		fs := flag.NewFlagSet("mbr knowledge history", flag.ContinueOnError)

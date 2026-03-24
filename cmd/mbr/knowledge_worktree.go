@@ -113,7 +113,9 @@ type knowledgeCheckoutPullResult struct {
 }
 
 type knowledgeCheckoutPushSummary struct {
+	Added   int `json:"added"`
 	Updated int `json:"updated"`
+	Deleted int `json:"deleted"`
 }
 
 type knowledgeCheckoutPushEntry struct {
@@ -277,9 +279,9 @@ func executeKnowledgePush(ctx context.Context, path, instanceURL, token string) 
 	}
 
 	pullFirst := make([]string, 0)
-	deletionBlockers := make([]string, 0)
-	createBlockers := make([]string, 0)
 	trackedChanges := make([]knowledgeCheckoutStatusEntry, 0)
+	trackedDeletions := make([]knowledgeCheckoutStatusEntry, 0)
+	localOnlyChanges := make([]knowledgeCheckoutStatusEntry, 0)
 	for _, entry := range status.Entries {
 		switch entry.State {
 		case "ahead":
@@ -287,19 +289,13 @@ func executeKnowledgePush(ctx context.Context, path, instanceURL, token string) 
 		case "behind", "diverged", "new_on_server", "deleted_on_server":
 			pullFirst = append(pullFirst, fmt.Sprintf("%s (%s)", entry.Path, entry.State))
 		case "deleted_local":
-			deletionBlockers = append(deletionBlockers, entry.Path)
+			trackedDeletions = append(trackedDeletions, entry)
 		case "local_only":
-			createBlockers = append(createBlockers, entry.Path)
+			localOnlyChanges = append(localOnlyChanges, entry)
 		}
 	}
 	if len(pullFirst) > 0 {
 		return knowledgeCheckoutPushResult{}, fmt.Errorf("knowledge working copy is behind the server; run `mbr knowledge pull` first: %s", strings.Join(pullFirst, ", "))
-	}
-	if len(deletionBlockers) > 0 {
-		return knowledgeCheckoutPushResult{}, fmt.Errorf("pushing tracked deletions is not supported yet; restore these files or use a server-side workflow: %s", strings.Join(deletionBlockers, ", "))
-	}
-	if len(createBlockers) > 0 {
-		return knowledgeCheckoutPushResult{}, fmt.Errorf("pushing new local-only files is not supported yet; use `mbr knowledge sync` or `mbr knowledge import`: %s", strings.Join(createBlockers, ", "))
 	}
 
 	effectiveURL := strings.TrimSpace(instanceURL)
@@ -406,6 +402,44 @@ func executeKnowledgePush(ctx context.Context, path, instanceURL, token string) 
 		})
 	}
 
+	for _, entry := range localOnlyChanges {
+		localPath, err := knowledgeCheckoutLocalPath(rootPath, entry.Path)
+		if err != nil {
+			return knowledgeCheckoutPushResult{}, err
+		}
+		document, err := parseKnowledgeSyncDocument(localPath, entry.Path)
+		if err != nil {
+			return knowledgeCheckoutPushResult{}, err
+		}
+		defaults := knowledgeCheckoutDefaultsForPath(manifest.WorkspaceID, entry.Path)
+		resourceResult, err := syncKnowledgeDocument(ctx, client, defaults, document)
+		if err != nil {
+			return knowledgeCheckoutPushResult{}, err
+		}
+		results = append(results, knowledgeCheckoutPushEntry{
+			Path:        entry.Path,
+			Action:      "created",
+			ResourceID:  stringPtr(resourceResult.ID),
+			RevisionRef: stringPtr(resourceResult.RevisionRef),
+		})
+	}
+
+	for _, entry := range trackedDeletions {
+		if entry.ResourceID == nil || strings.TrimSpace(*entry.ResourceID) == "" {
+			return knowledgeCheckoutPushResult{}, fmt.Errorf("tracked knowledge entry %s is missing a resource id", entry.Path)
+		}
+		resource, err := runKnowledgeDelete(ctx, client, strings.TrimSpace(*entry.ResourceID))
+		if err != nil {
+			return knowledgeCheckoutPushResult{}, err
+		}
+		results = append(results, knowledgeCheckoutPushEntry{
+			Path:        entry.Path,
+			Action:      "deleted",
+			ResourceID:  stringPtr(resource.ID),
+			RevisionRef: stringPtr(resource.RevisionRef),
+		})
+	}
+
 	currentResources, err := listKnowledgeResourcesForCheckout(ctx, client, manifest.Filters)
 	if err != nil {
 		return knowledgeCheckoutPushResult{}, err
@@ -429,7 +463,9 @@ func executeKnowledgePush(ctx context.Context, path, instanceURL, token string) 
 		ManifestPath: manifestPath,
 		Status:       "clean",
 		Summary: knowledgeCheckoutPushSummary{
-			Updated: len(results),
+			Added:   countKnowledgePushActions(results, "created"),
+			Updated: countKnowledgePushActions(results, "updated"),
+			Deleted: countKnowledgePushActions(results, "deleted"),
 		},
 		Entries: results,
 	}, nil
@@ -914,6 +950,33 @@ func detectKnowledgeCheckoutLocalOnlyFiles(rootPath string, manifest *knowledgeC
 	}
 	sort.Strings(localOnly)
 	return localOnly, nil
+}
+
+func knowledgeCheckoutDefaultsForPath(workspaceID, artifactPath string) knowledgeSyncDefaults {
+	teamID := ""
+	surface := ""
+	parts := strings.Split(strings.Trim(filepath.ToSlash(strings.TrimSpace(artifactPath)), "/"), "/")
+	if len(parts) >= 5 && parts[0] == "knowledge" && parts[1] == "teams" {
+		teamID = strings.TrimSpace(parts[2])
+		surface = strings.TrimSpace(parts[3])
+	}
+	return knowledgeSyncDefaults{
+		WorkspaceID: workspaceID,
+		TeamID:      teamID,
+		Surface:     surface,
+		SourceKind:  string(knowledgedomain.KnowledgeResourceSourceKindWorkspace),
+		SourceRef:   strings.TrimSpace(artifactPath),
+	}
+}
+
+func countKnowledgePushActions(entries []knowledgeCheckoutPushEntry, action string) int {
+	count := 0
+	for _, entry := range entries {
+		if entry.Action == action {
+			count++
+		}
+	}
+	return count
 }
 
 func parseOptionalRFC3339(value *string) (*time.Time, bool) {
