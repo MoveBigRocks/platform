@@ -4,11 +4,11 @@
 *.dll
 *.so
 *.dylib
-/hectic
-hectic-platform
-hectic-worker
-hectic-outbound-email-sender
-hectic-inbound-email-processor
+/mbr
+mbr-platform
+mbr-worker
+mbr-outbound-email-sender
+mbr-inbound-email-processor
 bin/
 
 # Test binary, built with `go test -c`

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# pre-commit hook for hectic
+# pre-commit hook for Move Big Rocks
 set -e
 
 echo "Running pre-commit checks..."
