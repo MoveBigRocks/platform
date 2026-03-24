@@ -310,6 +310,23 @@ Use this rule:
 - if the software needs Move Big Rocks primitives, Move Big Rocks auth, or Move Big Rocks public routes, build it as an extension
 - if it is a standalone service, keep it in its own repo and integrate with Move Big Rocks
 
+## Upgrading Core
+
+To deploy a new platform release to a running instance:
+
+1. Check available releases on the [platform tags page](https://github.com/MoveBigRocks/platform/tags) or with `git tag --sort=-v:refname` in the platform repo.
+2. In the private instance repo, update all four fields under `spec.deployment.release.core` in `mbr.instance.yaml`:
+   - `version`
+   - `servicesArtifact`
+   - `migrationsArtifact`
+   - `manifestArtifact`
+3. Commit and push to `main`. The deploy workflow handles blue-green rollout, health checks, and smoke tests.
+4. To roll back, revert the version change and push again.
+
+The artifact version tag must match across all four fields. The deploy workflow will pull the OCI artifacts, deploy to the inactive slot, health-check, and switch traffic.
+
+For a detailed runbook with verification commands, rollback procedures, and slot reference, see `deploy/UPGRADE.md` in your instance repo.
+
 ## Deployment Notes
 
 - **GHCR packages must be public** for unauthenticated `oras pull` during deployment. If packages are private, the deploy workflow must authenticate with `REGISTRY_USERNAME` and `REGISTRY_TOKEN`.
