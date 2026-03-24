@@ -165,6 +165,7 @@ func TestEnterpriseAccessOIDCCallbackCreatesSessionForProvisionedOperator(t *tes
 		Status:          enterpriseAccessProviderStatusActive,
 		ClaimMapping:    enterpriseAccessDefaultClaimMapping(),
 	})
+	enableJITProvisioning(t, env)
 
 	registry := NewRegistry(env.container)
 
@@ -241,6 +242,7 @@ func TestEnterpriseAccessOIDCCallbackDoesNotRedirectToExternalReturnTo(t *testin
 		Status:          enterpriseAccessProviderStatusActive,
 		ClaimMapping:    enterpriseAccessDefaultClaimMapping(),
 	})
+	enableJITProvisioning(t, env)
 
 	registry := NewRegistry(env.container)
 
@@ -493,6 +495,17 @@ func mustGetEnterpriseAccessID(t *testing.T, env enterpriseAccessTestEnv) string
 	installed, err := env.container.Store.Extensions().GetInstanceExtensionBySlug(context.Background(), enterpriseAccessSlug)
 	require.NoError(t, err)
 	return installed.ID
+}
+
+func enableJITProvisioning(t *testing.T, env enterpriseAccessTestEnv) {
+	t.Helper()
+	extensionID := mustGetEnterpriseAccessID(t, env)
+	installed, err := env.service.GetInstalledExtension(context.Background(), extensionID)
+	require.NoError(t, err)
+	configMap := installed.Config.ToMap()
+	configMap["jitProvisioning"] = true
+	_, err = env.service.UpdateExtensionConfig(context.Background(), extensionID, configMap)
+	require.NoError(t, err)
 }
 
 func newTestGinContext(t *testing.T) *gin.Context {
