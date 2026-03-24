@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "slug": "error-tracking",
+  "name": "Error Tracking",
+  "version": "1.0.0",
+  "publisher": "DemandOps",
+  "kind": "operational",
+  "scope": "workspace",
+  "risk": "standard",
+  "runtimeClass": "service_backed",
+  "storageClass": "owned_schema",
+  "schema": {
+    "name": "ext_demandops_error_tracking",
+    "packageKey": "demandops/error-tracking",
+    "targetVersion": "000003",
+    "migrationEngine": "postgres_sql"
+  },
+  "runtime": {
+    "protocol": "unix_socket_http",
+    "ociReference": "registry.example.com/mbr/error-tracking:1.0.0",
+    "digest": "sha256:def456"
+  },
+  "description": "Sentry-compatible error ingestion and issue workflows for a Move Big Rocks workspace.",
+  "permissions": [
+    "case:read",
+    "case:write",
+    "automation:read",
+    "automation:write"
+  ],
+  "events": {
+    "publishes": [
+      {
+        "type": "ext.demandops.error-tracking.event_ingested",
+        "description": "Published when a Sentry-compatible envelope is accepted.",
+        "schemaVersion": 1
+      }
+    ],
+    "subscribes": [
+      "case.created",
+      "case.resolved"
+    ]
+  },
+  "endpoints": [
+    {
+      "name": "sentry-envelope",
+      "class": "public_ingest",
+      "mountPath": "/api/envelope",
+      "methods": ["POST"],
+      "auth": "public",
+      "contentTypes": ["application/x-sentry-envelope"],
+      "serviceTarget": "error-tracking.ingest.envelope"
+    },
+    {
+      "name": "error-tracking-applications",
+      "class": "admin_page",
+      "mountPath": "/admin/extensions/error-tracking/applications",
+      "methods": ["GET", "HEAD"],
+      "auth": "session",
+      "workspaceBinding": "workspace_from_session",
+      "serviceTarget": "error-tracking.admin.applications"
+    },
+    {
+      "name": "error-tracking-issues",
+      "class": "admin_page",
+      "mountPath": "/admin/extensions/error-tracking/issues",
+      "methods": ["GET", "HEAD"],
+      "auth": "session",
+      "workspaceBinding": "workspace_from_session",
+      "serviceTarget": "error-tracking.admin.issues"
+    },
+    {
+      "name": "runtime-health",
+      "class": "health",
+      "mountPath": "/admin/extensions/error-tracking/health",
+      "methods": ["GET"],
+      "auth": "internal_only",
+      "serviceTarget": "error-tracking.runtime.health"
+    }
+  ],
+  "adminNavigation": [
+    {
+      "name": "applications",
+      "section": "Error Tracking",
+      "title": "Applications",
+      "endpoint": "error-tracking-applications",
+      "activePage": "applications"
+    },
+    {
+      "name": "issues",
+      "section": "Error Tracking",
+      "title": "Issues",
+      "endpoint": "error-tracking-issues",
+      "activePage": "issues"
+    }
+  ],
+  "commands": [
+    {
+      "name": "error-tracking.issues.list",
+      "description": "List issues for the installed error-tracking pack."
+    }
+  ]
+}

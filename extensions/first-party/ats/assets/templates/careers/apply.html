@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Apply | {{ siteTitle }}</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        background: #f5f7f8;
+        color: #0f172a;
+      }
+      main {
+        max-width: 46rem;
+        margin: 0 auto;
+        padding: 3rem 1.25rem 4rem;
+      }
+      .card {
+        background: white;
+        border-radius: 1.25rem;
+        padding: 1.5rem;
+        box-shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+      }
+      h1 {
+        margin-top: 0;
+      }
+      .embed {
+        margin-top: 1.5rem;
+        border: 1px dashed rgba(15, 23, 42, 0.18);
+        border-radius: 1rem;
+        padding: 1rem;
+        background: #fbfcfc;
+      }
+      code {
+        display: block;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="card">
+        <h1>Apply</h1>
+        <p>
+          The ATS extension owns the public presentation, while the actual form submission runs through the
+          core Move Big Rocks forms capability.
+        </p>
+        <div class="embed">
+          <strong>Form handoff</strong>
+          <code>
+            GET /forms/{job-application-crypto-id}
+          </code>
+          <p>
+            In the production flow this template is branded by the operator or agent and wired to
+            the public application form seeded by the extension.
+          </p>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

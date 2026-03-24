@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ siteTitle }}</title>
+    <style>
+      :root {
+        --ats-primary: #0f766e;
+        --ats-ink: #0f172a;
+        --ats-soft: #f4f8f7;
+      }
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        color: var(--ats-ink);
+        background:
+          radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 32rem),
+          linear-gradient(180deg, #fcfffe 0%, #f4f8f7 100%);
+      }
+      main {
+        max-width: 72rem;
+        margin: 0 auto;
+        padding: 4rem 1.5rem 5rem;
+      }
+      .hero {
+        display: grid;
+        gap: 1.5rem;
+        padding: 2rem 0 3rem;
+      }
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        font-size: 0.8rem;
+        color: var(--ats-primary);
+      }
+      h1 {
+        font-size: clamp(2.4rem, 6vw, 5rem);
+        line-height: 0.95;
+        margin: 0;
+      }
+      p {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        max-width: 42rem;
+        margin: 0;
+      }
+      .panel {
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 1.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+      }
+      .jobs {
+        display: grid;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+      .job {
+        display: grid;
+        gap: 0.75rem;
+        padding: 1.25rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: white;
+      }
+      .job-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        font-size: 0.95rem;
+        color: rgba(15, 23, 42, 0.72);
+      }
+      .cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: fit-content;
+        border-radius: 999px;
+        background: var(--ats-primary);
+        color: white;
+        text-decoration: none;
+        padding: 0.9rem 1.2rem;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <span class="eyebrow">{{ brand }}</span>
+        <h1>Build useful things with a calm, high-agency team.</h1>
+        <p>
+          This careers site is intentionally lightweight. Jobs are published from the ATS extension,
+          applications land in Move Big Rocks as cases, and operators can triage candidates using the same
+          primitives they already use for support and operations.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Open roles</h2>
+        <div class="jobs">
+          <article class="job">
+            <h3>Founding Product Engineer</h3>
+            <div class="job-meta">
+              <span>Amsterdam or remote (EU)</span>
+              <span>Full-time</span>
+              <span>Build product, extensions, and operations</span>
+            </div>
+            <a class="cta" href="/careers/apply?role_slug=founding-product-engineer">Apply now</a>
+          </article>
+
+          <article class="job">
+            <h3>Customer Operations Lead</h3>
+            <div class="job-meta">
+              <span>Remote</span>
+              <span>Full-time</span>
+              <span>Shape support systems and workflow design</span>
+            </div>
+            <a class="cta" href="/careers/apply?role_slug=customer-operations-lead">Apply now</a>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

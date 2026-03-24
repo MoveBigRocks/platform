@@ -1,0 +1,289 @@
+{
+  "schemaVersion": 1,
+  "slug": "ats",
+  "name": "Applicant Tracking",
+  "version": "1.0.0",
+  "publisher": "DemandOps",
+  "kind": "product",
+  "scope": "workspace",
+  "risk": "standard",
+  "runtimeClass": "bundle",
+  "storageClass": "shared_primitives_only",
+  "description": "Run a lightweight careers site and manage applications with Move Big Rocks cases, contacts, forms, tags, and automations.",
+  "workspacePlan": {
+    "mode": "provision_dedicated_workspace",
+    "name": "Hiring",
+    "slug": "hiring",
+    "description": "Dedicated workspace for recruiting operations."
+  },
+  "permissions": [
+    "case:read",
+    "case:write",
+    "contact:read",
+    "contact:write",
+    "form:write",
+    "automation:write"
+  ],
+  "queues": [
+    {
+      "slug": "general-applications",
+      "name": "General Applications",
+      "description": "Default queue for incoming applications before they are moved into a job-specific bucket."
+    },
+    {
+      "slug": "talent-pool",
+      "name": "Talent Pool",
+      "description": "Reusable pool for promising candidates who are not tied to one role."
+    }
+  ],
+  "forms": [
+    {
+      "slug": "job-application",
+      "name": "Job Application",
+      "description": "Public form used by the careers site to create candidate cases.",
+      "status": "active",
+      "isPublic": true,
+      "requiresAuth": false,
+      "allowMultiple": true,
+      "collectEmail": true,
+      "autoCreateCase": true,
+      "autoCasePriority": "normal",
+      "autoCaseType": "web",
+      "autoTags": [
+        "ats",
+        "candidate",
+        "applied"
+      ],
+      "submissionMessage": "Thanks for applying. We have your application and will follow up by email.",
+      "theme": "ats-careers",
+      "schema": {
+        "type": "object",
+        "required": [
+          "full_name",
+          "email",
+          "role_slug"
+        ],
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "format": "email"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "role_slug": {
+            "type": "string",
+            "title": "Role"
+          },
+          "linkedin_url": {
+            "type": "string",
+            "title": "LinkedIn URL"
+          },
+          "portfolio_url": {
+            "type": "string",
+            "title": "Portfolio URL"
+          },
+          "cover_note": {
+            "type": "string",
+            "title": "Why are you interested?"
+          }
+        }
+      },
+      "uiSchema": {
+        "order": [
+          "full_name",
+          "email",
+          "phone",
+          "location",
+          "role_slug",
+          "linkedin_url",
+          "portfolio_url",
+          "cover_note"
+        ]
+      },
+      "validationRules": {
+        "maxLength": {
+          "cover_note": 4000
+        }
+      }
+    }
+  ],
+  "automationRules": [
+    {
+      "key": "ext.demandops.ats.application_received_tag",
+      "title": "ATS application form",
+      "description": "Add a review tag to new ATS cases created through the application form.",
+      "isActive": true,
+      "priority": 50,
+      "maxExecutionsPerHour": 500,
+      "maxExecutionsPerDay": 5000,
+      "conditions": {
+        "operator": "and",
+        "conditions": [
+          {
+            "type": "event",
+            "field": "trigger",
+            "operator": "equals",
+            "value": "case_created"
+          },
+          {
+            "type": "field",
+            "field": "form_slug",
+            "operator": "equals",
+            "value": "job-application"
+          }
+        ]
+      },
+      "actions": {
+        "actions": [
+          {
+            "type": "add_tag",
+            "value": "ats-review"
+          }
+        ]
+      }
+    }
+  ],
+  "artifactSurfaces": [
+    {
+      "name": "website",
+      "description": "Published public careers site content for the ATS extension.",
+      "seedAssetPath": "templates/careers"
+    },
+    {
+      "name": "admin-ui",
+      "description": "Published admin experience content for the ATS extension.",
+      "seedAssetPath": "templates/admin"
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "careers-home",
+      "class": "public_page",
+      "mountPath": "/careers",
+      "methods": [
+        "GET"
+      ],
+      "auth": "public",
+      "workspaceBinding": "none",
+      "artifactSurface": "website",
+      "artifactPath": "index.html"
+    },
+    {
+      "name": "careers-apply",
+      "class": "public_page",
+      "mountPath": "/careers/apply",
+      "methods": [
+        "GET"
+      ],
+      "auth": "public",
+      "workspaceBinding": "none",
+      "artifactSurface": "website",
+      "artifactPath": "apply.html"
+    },
+    {
+      "name": "ats-admin-dashboard",
+      "class": "admin_page",
+      "mountPath": "/admin/extensions/ats",
+      "methods": [
+        "GET"
+      ],
+      "auth": "session",
+      "workspaceBinding": "workspace_from_session",
+      "artifactSurface": "admin-ui",
+      "artifactPath": "dashboard.html"
+    }
+  ],
+  "adminNavigation": [
+    {
+      "name": "ats-dashboard",
+      "section": "Extensions",
+      "title": "ATS",
+      "icon": "briefcase-business",
+      "endpoint": "ats-admin-dashboard",
+      "activePage": "ats"
+    }
+  ],
+  "dashboardWidgets": [
+    {
+      "name": "ats-overview",
+      "title": "ATS Workspace",
+      "description": "Open the hiring dashboard and review candidate workflows.",
+      "icon": "briefcase-business",
+      "endpoint": "ats-admin-dashboard"
+    }
+  ],
+  "events": {
+    "publishes": [
+      {
+        "type": "ext.demandops.ats.job_posting_published",
+        "description": "A job posting was published to the careers site.",
+        "schemaVersion": 1
+      },
+      {
+        "type": "ext.demandops.ats.application_received",
+        "description": "A candidate application was accepted by the ATS form flow.",
+        "schemaVersion": 1
+      }
+    ],
+    "subscribes": [
+      "form.submitted",
+      "case.created",
+      "case.status_changed"
+    ]
+  },
+  "commands": [
+    {
+      "name": "ats.jobs.publish",
+      "description": "Publish a job and expose it on the careers site."
+    },
+    {
+      "name": "ats.jobs.close",
+      "description": "Close a published job and hide it from the careers site."
+    },
+    {
+      "name": "ats.candidates.stage.set",
+      "description": "Move a candidate case through the configured ATS pipeline."
+    }
+  ],
+  "agentSkills": [
+    {
+      "name": "publish-job",
+      "description": "Guide an agent through drafting, reviewing, and publishing a job in the ATS extension.",
+      "assetPath": "agent-skills/publish-job.md"
+    },
+    {
+      "name": "review-candidates",
+      "description": "Guide an agent through triaging incoming candidate cases and updating ATS stages safely.",
+      "assetPath": "agent-skills/review-candidates.md"
+    }
+  ],
+  "customizableAssets": [
+    "templates/careers/index.html",
+    "templates/careers/apply.html",
+    "templates/admin/dashboard.html"
+  ],
+  "defaultConfig": {
+    "brand": "Acme",
+    "siteTitle": "Careers at Acme",
+    "primaryColor": "#0f766e",
+    "stages": [
+      "applied",
+      "screening",
+      "interview",
+      "offer",
+      "hired",
+      "rejected"
+    ]
+  }
+}
