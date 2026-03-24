@@ -847,6 +847,9 @@ type InstalledExtension {
   kind: ExtensionKind!
   scope: ExtensionScope!
   risk: ExtensionRisk!
+  runtimeClass: String!
+  storageClass: String!
+  schema: ExtensionSchema
   workspacePlan: ExtensionWorkspacePlan
   permissions: [String!]!
   seedQueues: [ExtensionQueueSeed!]!
@@ -880,6 +883,13 @@ type InstalledExtension {
   validatedAt: DateTime
   lastHealthCheckAt: DateTime
   assets: [ExtensionAsset!]!
+}
+
+type ExtensionSchema {
+  name: String!
+  packageKey: String!
+  targetVersion: String!
+  migrationEngine: String!
 }
 
 type ExtensionRuntimeDiagnostics {
@@ -1120,6 +1130,7 @@ type Mutation {
   upgradeExtension(id: ID!, input: UpgradeExtensionInput!): InstalledExtension!
   activateExtension(id: ID!): InstalledExtension!
   deactivateExtension(id: ID!, reason: String): InstalledExtension!
+  uninstallExtension(id: ID!): Boolean!
   validateExtension(id: ID!): InstalledExtension!
   checkExtensionHealth(id: ID!): InstalledExtension!
   updateExtensionConfig(id: ID!, input: UpdateExtensionConfigInput!): InstalledExtension!

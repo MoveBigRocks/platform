@@ -1,4 +1,4 @@
-.PHONY: dev run build build-server build-cli build-linux build-server-linux build-cli-linux test test-integration test-coverage test-all lint deadcode deadcode-production clean deploy setup-hooks validate-templates create-admin create-agent seed-defaults create-test-project seed-security-test sentry-tests health docs-check sync-agent-cli-doc
+.PHONY: dev run build build-server build-cli build-linux build-server-linux build-cli-linux cli-release-local milestone-proof test test-integration test-coverage test-all lint deadcode deadcode-production clean deploy setup-hooks validate-templates create-admin create-agent seed-defaults create-test-project seed-security-test sentry-tests health docs-check sync-agent-cli-doc
 
 ifneq (,$(wildcard ./.env))
 include .env
@@ -29,6 +29,12 @@ build-server:
 build-cli:
 	@mkdir -p bin
 	go build -o bin/mbr ./cmd/mbr
+
+cli-release-local:
+	@bash scripts/build-cli-release.sh $(if $(VERSION),--version "$(VERSION)") --out "$(or $(OUT),dist/cli-release)"
+
+milestone-proof:
+	@bash scripts/run-milestone-1-proof.sh $(if $(VERSION),--version "$(VERSION)") --out "$(or $(OUT),dist/milestone-proof)"
 
 # Build Linux artifacts
 build-linux: build-server-linux build-cli-linux

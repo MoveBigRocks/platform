@@ -898,6 +898,14 @@ func (r *RootResolver) DeactivateExtension(ctx context.Context, args struct {
 	return r.platform.DeactivateExtension(ctx, args.ID, args.Reason)
 }
 
+// UninstallExtension delegates to platform resolver.
+func (r *RootResolver) UninstallExtension(ctx context.Context, args struct{ ID string }) (bool, error) {
+	if r.platform == nil {
+		return false, fmt.Errorf("platform resolver not configured")
+	}
+	return r.platform.UninstallExtension(ctx, args.ID)
+}
+
 // ValidateExtension delegates to platform resolver.
 func (r *RootResolver) ValidateExtension(ctx context.Context, args struct{ ID string }) (*platformresolvers.InstalledExtensionResolver, error) {
 	if r.platform == nil {

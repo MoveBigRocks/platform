@@ -1,0 +1,88 @@
+name: CLI Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version override
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build Cross-Platform CLI Archives
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.0'
+          cache-dependency-path: go.sum
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev-${GITHUB_SHA::12}"
+          fi
+
+          echo "value=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build CLI release archives
+        run: |
+          bash scripts/build-cli-release.sh \
+            --version "${{ steps.version.outputs.value }}" \
+            --out dist/cli-release
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign release archives and metadata
+        run: |
+          shopt -s nullglob
+          for file in dist/cli-release/*.tar.gz dist/cli-release/*.zip dist/cli-release/checksums.txt dist/cli-release/release-manifest.json; do
+            cosign sign-blob --yes "$file" \
+              --output-signature "${file}.sig" \
+              --output-certificate "${file}.pem"
+          done
+
+      - name: Upload CLI release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-release-${{ steps.version.outputs.value }}
+          path: dist/cli-release/*
+
+      - name: Publish GitHub release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/cli-release/*
+          generate_release_notes: true
+
+      - name: Create release summary
+        run: |
+          {
+            echo "## CLI Release"
+            echo
+            echo "- Version: \`${{ steps.version.outputs.value }}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo
+            echo "### Files"
+            echo
+            ls -1 dist/cli-release | sed 's/^/- /'
+          } >> "$GITHUB_STEP_SUMMARY"

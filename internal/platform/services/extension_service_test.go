@@ -1229,6 +1229,71 @@ func TestExtensionService_DeactivateExtensionDrainsConfiguredRuntime(t *testing.
 	assert.Equal(t, "maintenance window", runtime.deactivateReason)
 }
 
+func TestExtensionService_UninstallRequiresDeactivationAndSoftDeletesInstallation(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	service := NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+
+	manifest := platformdomain.ExtensionManifest{
+		SchemaVersion: 1,
+		Slug:          "ats",
+		Name:          "Applicant Tracking",
+		Version:       "1.0.0",
+		Publisher:     "DemandOps",
+		Kind:          platformdomain.ExtensionKindProduct,
+		Scope:         platformdomain.ExtensionScopeWorkspace,
+		Risk:          platformdomain.ExtensionRiskStandard,
+		PublicRoutes: []platformdomain.ExtensionRoute{
+			{PathPrefix: "/careers", AssetPath: "templates/careers/index.html"},
+		},
+		CustomizableAssets: []string{"templates/careers/index.html"},
+	}
+
+	installed, err := service.InstallExtension(ctx, InstallExtensionParams{
+		WorkspaceID:   workspace.ID,
+		InstalledByID: "user_123",
+		LicenseToken:  "lic_123",
+		Manifest:      manifest,
+		Assets: []ExtensionAssetInput{
+			{
+				Path:        "templates/careers/index.html",
+				ContentType: "text/html",
+				Content:     []byte("<html><body>Careers</body></html>"),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = service.ActivateExtension(ctx, installed.ID)
+	require.NoError(t, err)
+
+	err = service.UninstallExtension(ctx, installed.ID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "must be deactivated before uninstall")
+
+	_, err = service.DeactivateExtension(ctx, installed.ID, "ready to remove")
+	require.NoError(t, err)
+
+	err = service.UninstallExtension(ctx, installed.ID)
+	require.NoError(t, err)
+
+	_, err = service.GetInstalledExtension(ctx, installed.ID)
+	require.Error(t, err)
+
+	extensions, err := service.ListWorkspaceExtensions(ctx, workspace.ID)
+	require.NoError(t, err)
+	assert.Empty(t, extensions)
+
+	assets, err := service.ListExtensionAssets(ctx, installed.ID)
+	require.NoError(t, err)
+	assert.Empty(t, assets)
+}
+
 type mockExtensionHealthRuntime struct {
 	status  platformdomain.ExtensionHealthStatus
 	message string

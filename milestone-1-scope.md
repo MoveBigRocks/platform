@@ -87,6 +87,15 @@ together, not a partial platform slice.
 - `Extension Model`, `Paid Extension Flow`, and the first-party pack sections
   define how Move Big Rocks delivers product depth without bloating core
 
+## Current Proof Synthesis
+
+The living readiness and evidence matrix for this milestone is tracked in
+[`docs/MILESTONE_1_READINESS.md`](docs/MILESTONE_1_READINESS.md). The runnable
+launch-proof flow is tracked in [`docs/MILESTONE_1_PROOF.md`](docs/MILESTONE_1_PROOF.md).
+Keep this scope document as the target and use the readiness and proof docs to
+record what is currently proven, how to rerun it, and where external release
+confirmation still happens.
+
 ## Outcome
 
 Milestone 1 delivers Move Big Rocks as a self-hosted operations center with the

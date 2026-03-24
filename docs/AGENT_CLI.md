@@ -173,6 +173,7 @@ mbr extensions configure --id EXTENSION_ID (--config-file PATH | --config-json J
 mbr extensions validate --id EXTENSION_ID [--url URL] [--token TOKEN] [--json]
 mbr extensions activate --id EXTENSION_ID [--url URL] [--token TOKEN] [--json]
 mbr extensions deactivate --id EXTENSION_ID [--reason TEXT] [--url URL] [--token TOKEN] [--json]
+mbr extensions uninstall --id EXTENSION_ID [--deactivate] [--reason TEXT] [--export-out PATH | --confirm-no-export] [--dry-run] [--url URL] [--token TOKEN] [--json]
 ```
 <!-- END GENERATED CLI COMMAND SURFACE -->
 
@@ -283,6 +284,7 @@ mbr extensions deactivate --id EXTENSION_ID [--reason TEXT] [--url URL] [--token
 | `extensions validate` | Bearer token or browser-backed session | yes | write | server_managed |
 | `extensions activate` | Bearer token or browser-backed session | yes | write | server_managed |
 | `extensions deactivate` | Bearer token or browser-backed session | yes | write | server_managed |
+| `extensions uninstall` | Bearer token or browser-backed session | yes | write | server_managed |
 <!-- END GENERATED CLI AUTH MATRIX -->
 
 ## Extension Discovery
@@ -411,7 +413,20 @@ Build the CLI in Go and distribute:
 - tarballs and package-manager delivery for Linux
 - winget or Scoop plus zip artifacts for Windows
 
-Every release publishes checksums and signed binaries.
+The local packaging entrypoint is `make cli-release-local`. Tagged releases are
+published by [`.github/workflows/cli-release.yml`](../.github/workflows/cli-release.yml).
+Each release produces cross-platform archives, `checksums.txt`,
+`release-manifest.json`, and Sigstore signatures for the published archives.
+See [`docs/CLI_RELEASES.md`](./CLI_RELEASES.md) for the artifact matrix and
+verification flow.
+
+Safe removal flow for installed extensions:
+
+1. preview the removal plan with `mbr extensions uninstall --id EXTENSION_ID --dry-run --json`
+2. export the removal bundle with `--export-out PATH`, or explicitly acknowledge
+   no export with `--confirm-no-export`
+3. add `--deactivate` when the installation is still active
+4. rerun the same command without `--dry-run` to complete uninstall
 
 When `INSTANCE_ID` is configured on the server, `mbr health check --json`
 exposes it through the health payload so agents and operators can confirm which

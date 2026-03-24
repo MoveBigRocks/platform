@@ -875,6 +875,13 @@ type extensionWorkspacePlanOutput struct {
 	Description *string `json:"description"`
 }
 
+type extensionSchemaOutput struct {
+	Name            string `json:"name"`
+	PackageKey      string `json:"packageKey"`
+	TargetVersion   string `json:"targetVersion"`
+	MigrationEngine string `json:"migrationEngine"`
+}
+
 type extensionRouteOutput struct {
 	PathPrefix      string  `json:"pathPrefix"`
 	AssetPath       *string `json:"assetPath,omitempty"`
@@ -1037,6 +1044,9 @@ type extensionRuntimeEndpointStateOutput struct {
 type extensionDetailOutput struct {
 	extensionOutput
 	Description        *string                              `json:"description"`
+	RuntimeClass       string                               `json:"runtimeClass"`
+	StorageClass       string                               `json:"storageClass"`
+	Schema             *extensionSchemaOutput               `json:"schema"`
 	WorkspacePlan      *extensionWorkspacePlanOutput        `json:"workspacePlan"`
 	Permissions        []string                             `json:"permissions"`
 	ArtifactSurfaces   []extensionArtifactSurfaceOutput     `json:"artifactSurfaces"`
@@ -2289,6 +2299,14 @@ func fetchExtensionDetail(ctx context.Context, client *cliapi.Client, id string)
 		    kind
 		    scope
 		    risk
+		    runtimeClass
+		    storageClass
+		    schema {
+		      name
+		      packageKey
+		      targetVersion
+		      migrationEngine
+		    }
 		    workspacePlan {
 		      mode
 		      name
@@ -2607,6 +2625,8 @@ func printExtensionDetail(stdout io.Writer, extension extensionDetailOutput) {
 	fmt.Fprintf(stdout, "kind:\t%s\n", extension.Kind)
 	fmt.Fprintf(stdout, "scope:\t%s\n", extension.Scope)
 	fmt.Fprintf(stdout, "risk:\t%s\n", extension.Risk)
+	fmt.Fprintf(stdout, "runtimeClass:\t%s\n", extension.RuntimeClass)
+	fmt.Fprintf(stdout, "storageClass:\t%s\n", extension.StorageClass)
 	fmt.Fprintf(stdout, "status:\t%s\n", extension.Status)
 	fmt.Fprintf(stdout, "validation:\t%s\t%s\n", extension.ValidationStatus, coalesce(extension.ValidationMessage, ""))
 	fmt.Fprintf(stdout, "health:\t%s\t%s\n", extension.HealthStatus, coalesce(extension.HealthMessage, ""))
@@ -2627,6 +2647,14 @@ func printExtensionDetail(stdout io.Writer, extension extensionDetailOutput) {
 			*extension.WorkspacePlan.Mode,
 			coalesce(extension.WorkspacePlan.Name, ""),
 			coalesce(extension.WorkspacePlan.Slug, ""),
+		)
+	}
+	if extension.Schema != nil {
+		fmt.Fprintf(stdout, "schema:\t%s\t%s\t%s\t%s\n",
+			extension.Schema.Name,
+			extension.Schema.PackageKey,
+			extension.Schema.TargetVersion,
+			extension.Schema.MigrationEngine,
 		)
 	}
 	if len(extension.ArtifactSurfaces) > 0 {

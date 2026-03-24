@@ -1084,6 +1084,25 @@ func (r *Resolver) DeactivateExtension(ctx context.Context, id string, reason *s
 	return &InstalledExtensionResolver{extension: extension, r: r}, nil
 }
 
+// UninstallExtension removes a deactivated extension installation.
+func (r *Resolver) UninstallExtension(ctx context.Context, id string) (bool, error) {
+	authCtx, err := graphshared.RequirePermission(ctx, platformdomain.PermissionExtensionWrite)
+	if err != nil {
+		return false, err
+	}
+	extension, err := r.extensionService.GetInstalledExtension(ctx, id)
+	if err != nil {
+		return false, fmt.Errorf("extension not found")
+	}
+	if err := validateInstalledExtensionAccess(authCtx, extension); err != nil {
+		return false, fmt.Errorf("extension not found")
+	}
+	if err := r.extensionService.UninstallExtension(ctx, id); err != nil {
+		return false, fmt.Errorf("failed to uninstall extension: %w", err)
+	}
+	return true, nil
+}
+
 // ValidateExtension validates an installed extension's manifest and assets.
 func (r *Resolver) ValidateExtension(ctx context.Context, id string) (*InstalledExtensionResolver, error) {
 	authCtx, err := graphshared.RequirePermission(ctx, platformdomain.PermissionExtensionWrite)
@@ -1740,6 +1759,21 @@ func (e *InstalledExtensionResolver) Description() *string {
 func (e *InstalledExtensionResolver) Kind() string  { return string(e.extension.Manifest.Kind) }
 func (e *InstalledExtensionResolver) Scope() string { return string(e.extension.Manifest.Scope) }
 func (e *InstalledExtensionResolver) Risk() string  { return string(e.extension.Manifest.Risk) }
+func (e *InstalledExtensionResolver) RuntimeClass() string {
+	return string(e.extension.Manifest.RuntimeClass)
+}
+func (e *InstalledExtensionResolver) StorageClass() string {
+	return string(e.extension.Manifest.StorageClass)
+}
+func (e *InstalledExtensionResolver) Schema() *ExtensionSchemaResolver {
+	if e.extension.Manifest.Schema.Name == "" &&
+		e.extension.Manifest.Schema.PackageKey == "" &&
+		e.extension.Manifest.Schema.TargetVersion == "" &&
+		e.extension.Manifest.Schema.MigrationEngine == "" {
+		return nil
+	}
+	return &ExtensionSchemaResolver{schema: e.extension.Manifest.Schema}
+}
 func (e *InstalledExtensionResolver) WorkspacePlan() *ExtensionWorkspacePlanResolver {
 	if e.extension.Manifest.WorkspacePlan.Mode == "" &&
 		e.extension.Manifest.WorkspacePlan.Name == "" &&
@@ -1946,6 +1980,15 @@ func (e *ExtensionQueueSeedResolver) Description() *string {
 type ExtensionWorkspacePlanResolver struct {
 	plan platformdomain.ExtensionWorkspacePlan
 }
+
+type ExtensionSchemaResolver struct {
+	schema platformdomain.ExtensionSchemaManifest
+}
+
+func (e *ExtensionSchemaResolver) Name() string            { return e.schema.Name }
+func (e *ExtensionSchemaResolver) PackageKey() string      { return e.schema.PackageKey }
+func (e *ExtensionSchemaResolver) TargetVersion() string   { return e.schema.TargetVersion }
+func (e *ExtensionSchemaResolver) MigrationEngine() string { return e.schema.MigrationEngine }
 
 func (e *ExtensionWorkspacePlanResolver) Mode() *string {
 	if e.plan.Mode == "" {

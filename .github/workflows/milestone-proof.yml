@@ -1,0 +1,66 @@
+name: Milestone 1 Proof
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  proof:
+    name: Run Milestone 1 Proof
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_DSN: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
+      TEST_DATABASE_ADMIN_DSN: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
+      STORAGE_TYPE: filesystem
+      STORAGE_PATH: /tmp/mbr-proof
+      FILESYSTEM_PATH: /tmp/mbr-proof
+      CACHE_ENABLED: true
+      EMAIL_BACKEND: mock
+      JWT_SECRET: milestone-proof-secret-at-least-32-characters
+      ENVIRONMENT: test
+      TRACING_ENABLED: "false"
+      ENABLE_METRICS: "false"
+      CLAMAV_ADDR: ""
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.0'
+          cache-dependency-path: go.sum
+
+      - name: Run milestone proof script
+        run: |
+          bash scripts/run-milestone-1-proof.sh \
+            --version "proof-${GITHUB_SHA::12}" \
+            --out dist/milestone-proof
+
+      - name: Upload proof bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: milestone-1-proof-${{ github.sha }}
+          path: dist/milestone-proof
+
+      - name: Publish proof summary
+        run: cat dist/milestone-proof/summary.md >> "$GITHUB_STEP_SUMMARY"

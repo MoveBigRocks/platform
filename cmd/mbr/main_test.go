@@ -247,6 +247,7 @@ func TestRunSpecExportJSON(t *testing.T) {
 	var foundSpecExport bool
 	var foundInstall bool
 	var foundDeploy bool
+	var foundUninstall bool
 	var foundContextView bool
 	var foundCatalogList bool
 	var foundFormSpecsList bool
@@ -354,6 +355,17 @@ func TestRunSpecExportJSON(t *testing.T) {
 			}
 		case "extensions deploy":
 			foundDeploy = true
+		case "extensions uninstall":
+			foundUninstall = true
+			flags := map[string]bool{}
+			for _, flag := range command.Flags {
+				flags[flag.Name] = true
+			}
+			for _, expected := range []string{"--deactivate", "--reason", "--export-out", "--confirm-no-export", "--dry-run"} {
+				if !flags[expected] {
+					t.Fatalf("expected extensions uninstall to advertise %s", expected)
+				}
+			}
 		}
 	}
 	if !foundSpecExport {
@@ -451,6 +463,9 @@ func TestRunSpecExportJSON(t *testing.T) {
 	}
 	if !foundDeploy {
 		t.Fatalf("expected extensions deploy command in contract")
+	}
+	if !foundUninstall {
+		t.Fatalf("expected extensions uninstall command in contract")
 	}
 }
 
@@ -4281,6 +4296,333 @@ func TestRunExtensionsMonitorJSON(t *testing.T) {
 	}
 	if requests != 2 {
 		t.Fatalf("expected mutation + detail query, got %d requests", requests)
+	}
+}
+
+func TestRunExtensionsUninstallDryRunJSON(t *testing.T) {
+	requests := 0
+	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
+		requests++
+		switch {
+		case strings.Contains(req.Query, "query CLIExtensionArtifactFiles"):
+			if got := req.Variables["surface"]; got != "careers" {
+				t.Fatalf("expected artifact surface careers, got %#v", got)
+			}
+			return map[string]any{
+				"data": map[string]any{
+					"extensionArtifactFiles": []map[string]any{
+						{
+							"surface": "careers",
+							"path":    "jobs/index.html",
+						},
+					},
+				},
+			}
+		case strings.Contains(req.Query, "query CLIExtension"):
+			return map[string]any{
+				"data": map[string]any{
+					"extension": map[string]any{
+						"id":           "ext_123",
+						"workspaceID":  "ws_123",
+						"slug":         "ats",
+						"name":         "Applicant Tracking",
+						"publisher":    "DemandOps",
+						"version":      "1.0.0",
+						"kind":         "product",
+						"scope":        "workspace",
+						"risk":         "standard",
+						"runtimeClass": "bundle",
+						"storageClass": "owned_schema",
+						"schema": map[string]any{
+							"name":            "ext_ats",
+							"packageKey":      "demandops/ats",
+							"targetVersion":   "1.0.0",
+							"migrationEngine": "sql",
+						},
+						"artifactSurfaces": []map[string]any{
+							{
+								"name":          "careers",
+								"description":   "ATS careers site",
+								"seedAssetPath": "templates/careers/index.html",
+							},
+						},
+						"status":           "active",
+						"validationStatus": "passed",
+						"healthStatus":     "healthy",
+						"bundleSHA256":     "abc123",
+						"bundleSize":       2048,
+						"installedAt":      "2026-03-13T10:00:00Z",
+						"assets": []map[string]any{
+							{
+								"id":             "asset_1",
+								"path":           "templates/careers/index.html",
+								"kind":           "template",
+								"contentType":    "text/html",
+								"isCustomizable": true,
+								"checksum":       "assetsha",
+								"size":           256,
+								"updatedAt":      "2026-03-13T10:03:00Z",
+							},
+						},
+					},
+				},
+			}
+		default:
+			t.Fatalf("unexpected query: %s", req.Query)
+			return nil
+		}
+	})
+
+	t.Setenv("MBR_URL", "https://app.mbr.test")
+	t.Setenv("MBR_TOKEN", "hat_test")
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{
+		"extensions", "uninstall",
+		"--id", "ext_123",
+		"--dry-run",
+		"--json",
+	}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+
+	var payload struct {
+		ID      string `json:"id"`
+		DryRun  bool   `json:"dryRun"`
+		Planned struct {
+			RequiresExportConfirmation bool `json:"requiresExportConfirmation"`
+			SchemaCleanup              *struct {
+				SuggestedSQL string `json:"suggestedSQL"`
+			} `json:"schemaCleanup"`
+			ArtifactFilesBySurface map[string][]extensionArtifactFileOutput `json:"artifactFilesBySurface"`
+		} `json:"planned"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("decode output: %v", err)
+	}
+	if payload.ID != "ext_123" || !payload.DryRun {
+		t.Fatalf("unexpected uninstall payload: %#v", payload)
+	}
+	if !payload.Planned.RequiresExportConfirmation {
+		t.Fatalf("expected export confirmation requirement in payload: %#v", payload.Planned)
+	}
+	if payload.Planned.SchemaCleanup == nil || payload.Planned.SchemaCleanup.SuggestedSQL != "DROP SCHEMA IF EXISTS ext_ats CASCADE;" {
+		t.Fatalf("expected schema cleanup guidance in payload: %#v", payload.Planned.SchemaCleanup)
+	}
+	if len(payload.Planned.ArtifactFilesBySurface["careers"]) != 1 {
+		t.Fatalf("expected artifact files in payload: %#v", payload.Planned.ArtifactFilesBySurface)
+	}
+	if requests != 2 {
+		t.Fatalf("expected detail and artifact list requests, got %d", requests)
+	}
+}
+
+func TestRunExtensionsUninstallRequiresExportConfirmation(t *testing.T) {
+	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
+		if !strings.Contains(req.Query, "query CLIExtension") {
+			t.Fatalf("unexpected query: %s", req.Query)
+		}
+		return map[string]any{
+			"data": map[string]any{
+				"extension": map[string]any{
+					"id":           "ext_123",
+					"workspaceID":  "ws_123",
+					"slug":         "ats",
+					"name":         "Applicant Tracking",
+					"publisher":    "DemandOps",
+					"version":      "1.0.0",
+					"kind":         "product",
+					"scope":        "workspace",
+					"risk":         "standard",
+					"runtimeClass": "bundle",
+					"storageClass": "shared_primitives_only",
+					"status":       "inactive",
+					"bundleSHA256": "abc123",
+					"bundleSize":   2048,
+					"installedAt":  "2026-03-13T10:00:00Z",
+					"assets": []map[string]any{
+						{
+							"id":             "asset_1",
+							"path":           "templates/careers/index.html",
+							"kind":           "template",
+							"contentType":    "text/html",
+							"isCustomizable": true,
+							"checksum":       "assetsha",
+							"size":           256,
+							"updatedAt":      "2026-03-13T10:03:00Z",
+						},
+					},
+				},
+			},
+		}
+	})
+
+	t.Setenv("MBR_URL", "https://app.mbr.test")
+	t.Setenv("MBR_TOKEN", "hat_test")
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{
+		"extensions", "uninstall",
+		"--id", "ext_123",
+	}, stdout, stderr)
+	if exitCode != 2 {
+		t.Fatalf("expected exit code 2, got %d stderr=%s stdout=%s", exitCode, stderr.String(), stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "--export-out PATH or --confirm-no-export") {
+		t.Fatalf("expected export confirmation guidance, got %q", stderr.String())
+	}
+}
+
+func TestRunExtensionsUninstallDeactivateAndExportJSON(t *testing.T) {
+	requests := 0
+	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
+		requests++
+		switch {
+		case strings.Contains(req.Query, "query CLIExtensionArtifactFiles"):
+			return map[string]any{
+				"data": map[string]any{
+					"extensionArtifactFiles": []map[string]any{
+						{
+							"surface": "careers",
+							"path":    "jobs/index.html",
+						},
+					},
+				},
+			}
+		case strings.Contains(req.Query, "query CLIExtension"):
+			return map[string]any{
+				"data": map[string]any{
+					"extension": map[string]any{
+						"id":           "ext_123",
+						"workspaceID":  "ws_123",
+						"slug":         "ats",
+						"name":         "Applicant Tracking",
+						"publisher":    "DemandOps",
+						"version":      "1.0.0",
+						"kind":         "product",
+						"scope":        "workspace",
+						"risk":         "standard",
+						"runtimeClass": "bundle",
+						"storageClass": "owned_schema",
+						"schema": map[string]any{
+							"name":            "ext_ats",
+							"packageKey":      "demandops/ats",
+							"targetVersion":   "1.0.0",
+							"migrationEngine": "sql",
+						},
+						"artifactSurfaces": []map[string]any{
+							{
+								"name":          "careers",
+								"description":   "ATS careers site",
+								"seedAssetPath": "templates/careers/index.html",
+							},
+						},
+						"status":           "active",
+						"validationStatus": "passed",
+						"healthStatus":     "healthy",
+						"bundleSHA256":     "abc123",
+						"bundleSize":       2048,
+						"installedAt":      "2026-03-13T10:00:00Z",
+						"assets": []map[string]any{
+							{
+								"id":             "asset_1",
+								"path":           "templates/careers/index.html",
+								"kind":           "template",
+								"contentType":    "text/html",
+								"isCustomizable": true,
+								"checksum":       "assetsha",
+								"size":           256,
+								"updatedAt":      "2026-03-13T10:03:00Z",
+							},
+						},
+					},
+				},
+			}
+		case strings.Contains(req.Query, "mutation CLIDeactivateExtension"):
+			if got := req.Variables["reason"]; got != "cleanup before uninstall" {
+				t.Fatalf("expected deactivation reason, got %#v", got)
+			}
+			return map[string]any{
+				"data": map[string]any{
+					"deactivateExtension": map[string]any{
+						"id":                "ext_123",
+						"workspaceID":       "ws_123",
+						"slug":              "ats",
+						"name":              "Applicant Tracking",
+						"publisher":         "DemandOps",
+						"version":           "1.0.0",
+						"kind":              "product",
+						"scope":             "workspace",
+						"risk":              "standard",
+						"status":            "inactive",
+						"validationStatus":  "passed",
+						"validationMessage": "ready",
+						"healthStatus":      "healthy",
+						"healthMessage":     "runtime drained",
+					},
+				},
+			}
+		case strings.Contains(req.Query, "mutation CLIUninstallExtension"):
+			return map[string]any{
+				"data": map[string]any{
+					"uninstallExtension": true,
+				},
+			}
+		default:
+			t.Fatalf("unexpected query: %s", req.Query)
+			return nil
+		}
+	})
+
+	t.Setenv("MBR_URL", "https://app.mbr.test")
+	t.Setenv("MBR_TOKEN", "hat_test")
+
+	exportPath := filepath.Join(t.TempDir(), "extension-removal.json")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{
+		"extensions", "uninstall",
+		"--id", "ext_123",
+		"--deactivate",
+		"--reason", "cleanup before uninstall",
+		"--export-out", exportPath,
+		"--json",
+	}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+
+	var payload struct {
+		ID          string `json:"id"`
+		Deactivated bool   `json:"deactivated"`
+		Uninstalled bool   `json:"uninstalled"`
+		ExportOut   string `json:"exportOut"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("decode output: %v", err)
+	}
+	if payload.ID != "ext_123" || !payload.Deactivated || !payload.Uninstalled {
+		t.Fatalf("unexpected uninstall payload: %#v", payload)
+	}
+	if payload.ExportOut != exportPath {
+		t.Fatalf("expected export path %q, got %q", exportPath, payload.ExportOut)
+	}
+
+	bundle, err := os.ReadFile(exportPath)
+	if err != nil {
+		t.Fatalf("read export bundle: %v", err)
+	}
+	if !strings.Contains(string(bundle), `"schemaCleanup"`) {
+		t.Fatalf("expected schema cleanup guidance in export bundle, got %q", string(bundle))
+	}
+	if !strings.Contains(string(bundle), `DROP SCHEMA IF EXISTS ext_ats CASCADE;`) {
+		t.Fatalf("expected suggested SQL in export bundle, got %q", string(bundle))
+	}
+	if requests != 4 {
+		t.Fatalf("expected detail, artifact list, deactivate, and uninstall requests, got %d", requests)
 	}
 }
 

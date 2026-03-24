@@ -633,6 +633,27 @@ func (s *ExtensionService) DeactivateExtension(ctx context.Context, extensionID,
 	return extension, nil
 }
 
+func (s *ExtensionService) UninstallExtension(ctx context.Context, extensionID string) error {
+	extension, err := s.GetInstalledExtension(ctx, extensionID)
+	if err != nil {
+		return err
+	}
+	if extension.Status == platformdomain.ExtensionStatusActive {
+		return apierrors.Newf(apierrors.ErrorTypeValidation, "extension %s must be deactivated before uninstall", extension.Slug)
+	}
+
+	deleteInstalled := func(runCtx context.Context) error {
+		if err := s.extensionStore.DeleteInstalledExtension(runCtx, extensionID); err != nil {
+			return apierrors.DatabaseError("uninstall extension", err)
+		}
+		return nil
+	}
+	if s.tx != nil {
+		return s.tx.WithTransaction(ctx, deleteInstalled)
+	}
+	return deleteInstalled(ctx)
+}
+
 func (s *ExtensionService) ValidateExtension(ctx context.Context, extensionID string) (*platformdomain.InstalledExtension, error) {
 	extension, err := s.GetInstalledExtension(ctx, extensionID)
 	if err != nil {
