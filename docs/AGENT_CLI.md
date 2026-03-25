@@ -76,11 +76,6 @@ at the runtime bootstrap endpoint.
 mbr auth whoami [--url URL] [--token TOKEN] [--json]
 mbr auth login --url URL [--token TOKEN | --token-stdin] [--json]
 mbr auth logout
-mbr sandboxes create --email EMAIL [--name NAME] [--url URL] [--json]
-mbr sandboxes show SANDBOX_ID --manage-token TOKEN [--url URL] [--json]
-mbr sandboxes extend SANDBOX_ID --manage-token TOKEN [--url URL] [--json]
-mbr sandboxes destroy SANDBOX_ID --manage-token TOKEN [--reason TEXT] [--url URL] [--json]
-mbr sandboxes export SANDBOX_ID --manage-token TOKEN [--out PATH] [--url URL] [--json]
 mbr context view [--json]
 mbr context set [--workspace WORKSPACE_ID] [--team TEAM_ID] [--clear-team | --clear] [--json]
 mbr spec export [--json]
@@ -187,11 +182,6 @@ mbr extensions uninstall --id EXTENSION_ID [--deactivate] [--reason TEXT] [--exp
 | `auth whoami` | Bearer token or browser-backed session | yes | read | read_only |
 | `auth login` | No remote auth required | yes | local | local_state |
 | `auth logout` | Local CLI state | no | local | local_state |
-| `sandboxes create` | No remote auth required | yes | write | server_managed |
-| `sandboxes show` | No remote auth required | yes | read | read_only |
-| `sandboxes extend` | No remote auth required | yes | write | server_managed |
-| `sandboxes destroy` | No remote auth required | yes | write | server_managed |
-| `sandboxes export` | No remote auth required | yes | read | read_only |
 | `context view` | Local CLI state | yes | local | read_only |
 | `context set` | Local CLI state | yes | local | local_state |
 | `spec export` | No remote auth required | yes | local | not_applicable |
