@@ -190,8 +190,7 @@ func BuildCaseFromFormSubmission(formEvent *contracts.FormSubmittedEvent, option
 		caseObj.ContactName = formEvent.SubmitterName
 	}
 
-	baseTags := []string{"form-submission", formEvent.FormSlug}
-	caseObj.Tags = append(baseTags, options.Tags...)
+	caseObj.Tags = append([]string{"form-submission", formEvent.FormSlug}, options.Tags...)
 
 	caseObj.CustomFields.SetString("form_id", formEvent.FormID)
 	caseObj.CustomFields.SetString("form_slug", formEvent.FormSlug)

@@ -928,8 +928,7 @@ func knowledgeLifecycleStateCandidates(resource *knowledgedomain.KnowledgeResour
 	if resource == nil {
 		return nil
 	}
-	switch resource.Status {
-	case knowledgedomain.KnowledgeResourceStatusArchived:
+	if resource.Status == knowledgedomain.KnowledgeResourceStatusArchived {
 		return []string{"archived"}
 	}
 	switch resource.ReviewStatus {
