@@ -85,7 +85,7 @@ type ServiceCatalogBindingTargetKind string
 
 const (
 	ServiceCatalogBindingTargetKindKnowledgeResource ServiceCatalogBindingTargetKind = "knowledge_resource"
-	ServiceCatalogBindingTargetKindFormSpec        ServiceCatalogBindingTargetKind = "form_spec"
+	ServiceCatalogBindingTargetKindFormSpec          ServiceCatalogBindingTargetKind = "form_spec"
 	ServiceCatalogBindingTargetKindQueue             ServiceCatalogBindingTargetKind = "queue"
 	ServiceCatalogBindingTargetKindPolicyProfile     ServiceCatalogBindingTargetKind = "policy_profile"
 )

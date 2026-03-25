@@ -30,7 +30,7 @@ func (FormSpec) TableName() string { return "form_specs" }
 type FormSubmission struct {
 	ID                    string     `db:"id"`
 	WorkspaceID           string     `db:"workspace_id"`
-	FormSpecID          string     `db:"form_spec_id"`
+	FormSpecID            string     `db:"form_spec_id"`
 	ConversationSessionID *string    `db:"conversation_session_id"`
 	CaseID                *string    `db:"case_id"`
 	ContactID             *string    `db:"contact_id"`

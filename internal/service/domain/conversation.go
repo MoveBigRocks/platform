@@ -57,12 +57,12 @@ const (
 type ConversationMessageKind string
 
 const (
-	ConversationMessageKindText         ConversationMessageKind = "text"
-	ConversationMessageKindToolCall     ConversationMessageKind = "tool_call"
-	ConversationMessageKindToolResult   ConversationMessageKind = "tool_result"
-	ConversationMessageKindCitation     ConversationMessageKind = "citation"
+	ConversationMessageKindText       ConversationMessageKind = "text"
+	ConversationMessageKindToolCall   ConversationMessageKind = "tool_call"
+	ConversationMessageKindToolResult ConversationMessageKind = "tool_result"
+	ConversationMessageKindCitation   ConversationMessageKind = "citation"
 	ConversationMessageKindFormUpdate ConversationMessageKind = "form_update"
-	ConversationMessageKindEvent        ConversationMessageKind = "event"
+	ConversationMessageKindEvent      ConversationMessageKind = "event"
 )
 
 type ConversationMessageVisibility string
@@ -76,8 +76,8 @@ type ConversationOutcomeKind string
 
 const (
 	ConversationOutcomeKindResolvedInSession ConversationOutcomeKind = "resolved_in_session"
-	ConversationOutcomeKindFormDrafted     ConversationOutcomeKind = "form_drafted"
-	ConversationOutcomeKindFormSubmitted   ConversationOutcomeKind = "form_submitted"
+	ConversationOutcomeKindFormDrafted       ConversationOutcomeKind = "form_drafted"
+	ConversationOutcomeKindFormSubmitted     ConversationOutcomeKind = "form_submitted"
 	ConversationOutcomeKindCaseCreated       ConversationOutcomeKind = "case_created"
 	ConversationOutcomeKindHandedToOperator  ConversationOutcomeKind = "handed_to_operator"
 )
@@ -95,8 +95,8 @@ type ConversationSession struct {
 
 	PrimaryContactID            string
 	PrimaryCatalogNodeID        string
-	ActiveFormSpecID          string
-	ActiveFormSubmissionID    string
+	ActiveFormSpecID            string
+	ActiveFormSubmissionID      string
 	LinkedCaseID                string
 	HandlingTeamID              string
 	AssignedOperatorUserID      string
@@ -228,8 +228,8 @@ type ConversationWorkingState struct {
 	SuggestedCatalogNodes    []ConversationCatalogSuggestion
 	ClassificationConfidence *float64
 	ActivePolicyProfileRef   string
-	ActiveFormSpecID       string
-	ActiveFormSubmissionID string
+	ActiveFormSpecID         string
+	ActiveFormSubmissionID   string
 	CollectedFields          shareddomain.TypedSchema
 	MissingFields            shareddomain.TypedSchema
 	RequiresOperatorReview   bool

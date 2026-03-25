@@ -13,13 +13,13 @@ import (
 
 // FormSpecService manages form specs and collected submissions.
 type FormSpecService struct {
-	formSpecStore    shared.FormSpecStore
+	formSpecStore  shared.FormSpecStore
 	workspaceStore shared.WorkspaceStore
 }
 
 func NewFormSpecService(formSpecStore shared.FormSpecStore, workspaceStore shared.WorkspaceStore) *FormSpecService {
 	return &FormSpecService{
-		formSpecStore:    formSpecStore,
+		formSpecStore:  formSpecStore,
 		workspaceStore: workspaceStore,
 	}
 }
@@ -61,7 +61,7 @@ type UpdateFormSpecParams struct {
 }
 
 type CreateFormSubmissionParams struct {
-	FormSpecID          string
+	FormSpecID            string
 	ConversationSessionID string
 	CaseID                string
 	ContactID             string

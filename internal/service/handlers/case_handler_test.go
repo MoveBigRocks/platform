@@ -76,7 +76,7 @@ func (m *MockStore) ErrorAlerts() shared.ErrorAlertStore                    { re
 func (m *MockStore) Jobs() shared.JobStore                                  { return nil }
 func (m *MockStore) ServiceCatalog() shared.ServiceCatalogStore             { return nil }
 func (m *MockStore) Conversations() shared.ConversationStore                { return nil }
-func (m *MockStore) FormSpecs() shared.FormSpecStore                             { return nil }
+func (m *MockStore) FormSpecs() shared.FormSpecStore                        { return nil }
 func (m *MockStore) ConceptSpecs() shared.ConceptSpecStore                  { return nil }
 func (m *MockStore) KnowledgeResources() shared.KnowledgeResourceStore      { return nil }
 func (m *MockStore) Sandboxes() shared.SandboxStore                         { return nil }

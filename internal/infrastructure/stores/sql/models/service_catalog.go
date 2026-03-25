@@ -15,7 +15,7 @@ type ServiceCatalogNode struct {
 	Visibility            string    `db:"visibility"`
 	SupportedChannels     string    `db:"supported_channels"`
 	DefaultCaseCategory   *string   `db:"default_case_category"`
-	DefaultQueueID   *string   `db:"default_queue_id"`
+	DefaultQueueID        *string   `db:"default_queue_id"`
 	DefaultPriority       *string   `db:"default_priority"`
 	RoutingPolicyJSON     string    `db:"routing_policy_json"`
 	EntitlementPolicyJSON string    `db:"entitlement_policy_json"`

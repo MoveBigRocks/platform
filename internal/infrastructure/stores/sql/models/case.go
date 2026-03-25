@@ -15,7 +15,7 @@ type Case struct {
 	Priority                  string  `db:"priority"`
 	Channel                   string  `db:"channel"`
 	Category                  string  `db:"category"`
-	QueueID              *string `db:"queue_id"`
+	QueueID                   *string `db:"queue_id"`
 	ContactID                 *string `db:"contact_id"`
 	PrimaryCatalogNodeID      *string `db:"primary_catalog_node_id"`
 	OriginatingConversationID *string `db:"originating_conversation_session_id"`
@@ -233,7 +233,7 @@ type Attachment struct {
 	EmailID               *string `db:"email_id"`
 	ConversationSessionID *string `db:"conversation_session_id"`
 	ConversationMessageID *string `db:"conversation_message_id"`
-	FormSubmissionID    *string `db:"form_submission_id"`
+	FormSubmissionID      *string `db:"form_submission_id"`
 
 	// Security
 	IsScanned   bool       `db:"is_scanned"`

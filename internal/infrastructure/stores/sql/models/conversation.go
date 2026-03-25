@@ -9,8 +9,8 @@ type ConversationSession struct {
 	Status                      string     `db:"status"`
 	PrimaryContactID            *string    `db:"primary_contact_id"`
 	PrimaryCatalogNodeID        *string    `db:"primary_catalog_node_id"`
-	ActiveFormSpecID          *string    `db:"active_form_spec_id"`
-	ActiveFormSubmissionID    *string    `db:"active_form_submission_id"`
+	ActiveFormSpecID            *string    `db:"active_form_spec_id"`
+	ActiveFormSubmissionID      *string    `db:"active_form_submission_id"`
 	LinkedCaseID                *string    `db:"linked_case_id"`
 	HandlingTeamID              *string    `db:"handling_team_id"`
 	AssignedOperatorUserID      *string    `db:"assigned_operator_user_id"`
@@ -68,8 +68,8 @@ type ConversationWorkingState struct {
 	SuggestedCatalogNodesJSON string    `db:"suggested_catalog_nodes_json"`
 	ClassificationConfidence  *float64  `db:"classification_confidence"`
 	ActivePolicyProfileRef    *string   `db:"active_policy_profile_ref"`
-	ActiveFormSpecID        *string   `db:"active_form_spec_id"`
-	ActiveFormSubmissionID  *string   `db:"active_form_submission_id"`
+	ActiveFormSpecID          *string   `db:"active_form_spec_id"`
+	ActiveFormSubmissionID    *string   `db:"active_form_submission_id"`
 	CollectedFieldsJSON       string    `db:"collected_fields_json"`
 	MissingFieldsJSON         string    `db:"missing_fields_json"`
 	RequiresOperatorReview    bool      `db:"requires_operator_review"`

@@ -376,7 +376,7 @@ func mapFormSubmissionToDomain(model *models.FormSubmission) *servicedomain.Form
 	return &servicedomain.FormSubmission{
 		ID:                    model.ID,
 		WorkspaceID:           model.WorkspaceID,
-		FormSpecID:          model.FormSpecID,
+		FormSpecID:            model.FormSpecID,
 		ConversationSessionID: valueOrEmpty(model.ConversationSessionID),
 		CaseID:                valueOrEmpty(model.CaseID),
 		ContactID:             valueOrEmpty(model.ContactID),

@@ -118,7 +118,7 @@ type FormSubmission struct {
 	ID          string
 	WorkspaceID string
 
-	FormSpecID          string
+	FormSpecID            string
 	ConversationSessionID string
 	CaseID                string
 	ContactID             string
@@ -144,7 +144,7 @@ func NewFormSubmission(workspaceID, formSpecID string) *FormSubmission {
 	now := time.Now().UTC()
 	return &FormSubmission{
 		WorkspaceID:      workspaceID,
-		FormSpecID:     formSpecID,
+		FormSpecID:       formSpecID,
 		Status:           FormSubmissionStatusDraft,
 		Channel:          "operator_console",
 		CollectedFields:  shareddomain.NewTypedSchema(),
@@ -176,7 +176,7 @@ func (s *FormSubmission) Validate() error {
 }
 
 type FormSubmissionFilter struct {
-	FormSpecID          string
+	FormSpecID            string
 	ConversationSessionID string
 	CaseID                string
 	ContactID             string

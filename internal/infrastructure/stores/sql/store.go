@@ -24,7 +24,7 @@ type Store struct {
 	formStore              *FormStore
 	serviceCatalogStore    *ServiceCatalogStore
 	conversationStore      *ConversationStore
-	formSpecStore            *FormSpecStore
+	formSpecStore          *FormSpecStore
 	emailStore             *EmailStore
 	contactStore           *ContactStore
 	ruleStore              *RuleStore
@@ -59,7 +59,7 @@ func NewStore(db *DB) (*Store, error) {
 		formStore:              NewFormStore(sqlxDB),
 		serviceCatalogStore:    NewServiceCatalogStore(sqlxDB),
 		conversationStore:      NewConversationStore(sqlxDB),
-		formSpecStore:            NewFormSpecStore(sqlxDB),
+		formSpecStore:          NewFormSpecStore(sqlxDB),
 		emailStore:             NewEmailStore(sqlxDB),
 		contactStore:           NewContactStore(sqlxDB),
 		ruleStore:              NewRuleStore(sqlxDB),

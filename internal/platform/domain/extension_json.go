@@ -1,8 +1,10 @@
 package platformdomain
 
-import "encoding/json"
+import (
+	"encoding/json"
 
-import shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+)
 
 type extensionManifestJSON struct {
 	SchemaVersion      int                            `json:"schemaVersion"`

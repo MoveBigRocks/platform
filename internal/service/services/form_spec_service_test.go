@@ -101,8 +101,8 @@ func TestFormSpecService_GetSubmissionAndList(t *testing.T) {
 
 	submissions, err := service.ListFormSubmissions(ctx, workspaceID, servicedomain.FormSubmissionFilter{
 		FormSpecID: spec.ID,
-		Status:       servicedomain.FormSubmissionStatusSubmitted,
-		Limit:        10,
+		Status:     servicedomain.FormSubmissionStatusSubmitted,
+		Limit:      10,
 	})
 	require.NoError(t, err)
 	require.Len(t, submissions, 1)
@@ -123,7 +123,7 @@ func TestFormSpecService_CreateSubmissionDefaultsToSubmitted(t *testing.T) {
 	require.NoError(t, store.FormSpecs().CreateFormSpec(ctx, spec))
 
 	submission, err := service.CreateFormSubmission(ctx, CreateFormSubmissionParams{
-		FormSpecID:   spec.ID,
+		FormSpecID:     spec.ID,
 		SubmitterEmail: "ops@example.com",
 		SubmitterName:  "Ops",
 	})

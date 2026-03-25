@@ -44,7 +44,7 @@ type KnowledgeResourceFilterInput struct {
 
 // FormSubmissionFilterInput filters for form submission queries.
 type FormSubmissionFilterInput struct {
-	FormSpecID          *string
+	FormSpecID            *string
 	ConversationSessionID *string
 	CaseID                *string
 	ContactID             *string
@@ -195,7 +195,7 @@ type UpdateFormSpecInput struct {
 
 // CreateFormSubmissionInput input for creating a form submission.
 type CreateFormSubmissionInput struct {
-	FormSpecID          string
+	FormSpecID            string
 	ConversationSessionID *string
 	CaseID                *string
 	ContactID             *string

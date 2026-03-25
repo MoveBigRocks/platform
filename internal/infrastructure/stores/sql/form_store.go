@@ -17,15 +17,15 @@ import (
 
 // FormStore provides the web-form surface on top of form specs and submissions.
 type FormStore struct {
-	db          *SqlxDB
-	logger      *logger.Logger
+	db            *SqlxDB
+	logger        *logger.Logger
 	formSpecStore *FormSpecStore
 }
 
 func NewFormStore(db *SqlxDB) *FormStore {
 	return &FormStore{
-		db:          db,
-		logger:      logger.New(),
+		db:            db,
+		logger:        logger.New(),
 		formSpecStore: NewFormSpecStore(db),
 	}
 }
@@ -84,7 +84,7 @@ type formSubmissionEnvelope struct {
 type formAccessTokenRow struct {
 	ID           string     `db:"id"`
 	WorkspaceID  string     `db:"workspace_id"`
-	FormSpecID string     `db:"form_spec_id"`
+	FormSpecID   string     `db:"form_spec_id"`
 	Token        string     `db:"token"`
 	Name         string     `db:"name"`
 	IsActive     bool       `db:"is_active"`
@@ -431,7 +431,7 @@ func mapPublicFormSubmissionToFormSubmission(submission *servicedomain.PublicFor
 	return &servicedomain.FormSubmission{
 		ID:               submission.ID,
 		WorkspaceID:      submission.WorkspaceID,
-		FormSpecID:     submission.FormID,
+		FormSpecID:       submission.FormID,
 		CaseID:           submission.CaseID,
 		ContactID:        submission.ContactID,
 		Status:           servicedomain.FormSubmissionStatus(submission.Status),
