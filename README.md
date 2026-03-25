@@ -41,6 +41,19 @@ Move Big Rocks exists to solve that combined problem: one operational core
 where work, knowledge, strategic context, and agent activity live in the same
 legible system.
 
+## Provenance
+
+Move Big Rocks is not a speculative blank-sheet project.
+
+- It is based on a multi-tenant service management platform first built in
+  2010.
+- That earlier system ran in production for more than 10 years across campuses
+  around Australia, supporting students with all kinds of issues across
+  multiple departments including student services.
+- AI-assisted migration made it practical to carry that codebase forward into
+  Go with a cleaner architecture, explicit extensions, and a stronger
+  agent-operable command surface.
+
 ## What Move Big Rocks Does About It
 
 Move Big Rocks gives your organisation one operational core instead of a pile
@@ -94,7 +107,7 @@ Move Big Rocks is not just a product — it is a platform you can build on:
 - Own structured state in your own `ext_*` PostgreSQL schema
 - Use Git-backed artifact surfaces for websites, templates, and published docs
 - Register concept specs and agent skills so your pack is discoverable
-- Test in a sandbox, validate, then promote to production
+- Test in a preview workspace, validate, then promote to production
 - Keep your extensions private or publish them
 
 The extension model is closer to Shopify app extensions than to WordPress
@@ -184,8 +197,9 @@ same contract as humans — one `mbr` CLI with `--json` on every command, one
 GraphQL API, machine-readable bootstrap endpoints for discovery, and explicit
 workspace and team context.
 
-A user should be able to tell their agent "create me a Move Big Rocks sandbox"
-and the agent handles the rest through `mbr`.
+A user should be able to tell their agent "create me a Move Big Rocks instance
+repo, validate it, and deploy it to one Ubuntu VPS I control" and the agent
+handles most of the work through GitHub, SSH, and `mbr`.
 
 ## Move Big Rocks With OpenClaw
 
@@ -199,35 +213,39 @@ operational data, the permissions, the approvals, the extension lifecycle, and
 the audit trail. OpenClaw can help control Move Big Rocks, but Move Big Rocks
 stays in charge.
 
-## Hosted Sandboxes
+## Build It Yourself, With Agent Help
 
-Move Big Rocks is self-hosted by default in production, but the product also
-supports a hosted sandbox path for evaluation:
+Move Big Rocks is self-hosted in production and, for now, evaluation is owned
+too.
 
-- spin up a sandbox in minutes from the `mbr` CLI
-- run `mbr sandboxes create --email you@company.com --json` and get back the ready URL, login path, expiry, and next steps in one response
-- get 5 days free by default
-- extend it for 30 more days for $50 if needed
-- get a disposable hosted environment with seeded demo data
-- get an auto-generated subdomain such as `magic-dumpling-26.movebigrocks.io`
-- use the browser after bootstrap, but create and manage the sandbox through the same `mbr` contract as a real deployment
-- explore teams, queues, conversations, knowledge, concept specs, and extensions
-- use first-party packs in sandbox mode for evaluation without a separate purchase
-- export data and configuration easily before the sandbox expires
+The current try-it path is:
 
-The important ergonomics rule is that sandbox creation is CLI-first: `mbr`
-creates, inspects, extends, exports, and destroys sandboxes. In the normal
-path, sandbox creation should return a usable URL directly instead of forcing a
-human or agent through a separate verification step. The public site exposes a
-machine-readable bootstrap endpoint so agents can discover docs, CLI install
-metadata, and sandbox bootstrap steps before `mbr` is installed.
+- start on one Ubuntu VPS you control, or run it locally if you are
+  comfortable with a technical setup
+- give the agent this repo for product understanding
+- have it create a private instance repo from the template
+- let it validate `mbr.instance.yaml`, prepare secrets, deploy the pinned core
+  artifacts, and hand back the URLs and next steps
+- use a dedicated preview workspace on that instance for extension trials
+  before broader rollout
+
+There is no vendor-hosted sandbox path right now. The product bar instead is
+that an agent can help you stand up an owned instance with minimal follow-up.
+
+Hosted sandboxes are still a possible future evaluation path, but they are
+deferred rather than available today. See
+[RFC-0013](docs/RFCs/RFC-0013-hosted-sandbox-control-plane.md) for the
+preserved design and comment on
+[issue #1](https://github.com/MoveBigRocks/platform/issues/1) if you would
+like that path to become real.
 
 ## Self-Hosted, Not SaaS
 
 - **Free core** — self-host the platform without per-seat rent
-- **Paid packs** — buy focused first-party extensions when the depth matters
-- **Sandbox for evaluation** — spin up a disposable hosted sandbox in minutes
-  (5 days free, $50 for 30 more)
+- **Off-the-shelf extensions** — use focused first-party extensions when the
+  depth matters, on the same shared base
+- **Owned evaluation path** — start on one Ubuntu VPS you control, or use a
+  local technical setup if you prefer
 - **Your instance, your control** — one private instance repo, one Linux host,
   pinned releases, no vendor lock-in
 - **Buy or build on the same base** — use first-party packs or ship your own
@@ -240,7 +258,8 @@ metadata, and sandbox bootstrap steps before `mbr` is installed.
 - **Versioned artifact surfaces**: Git-backed Markdown and publishable content artifacts managed by core for teams and extensions
 - **CLI-first agent access**: stable commands, JSON output, strict exit codes, browser login for humans, token auth for agents
 - **Explicit delegated routing**: agent handoff and escalation governed through workspace membership constraints, not generic write access
-- **Sandbox-first evaluation**: disposable hosted sandboxes for fast trials without weakening the self-hosted production story
+- **Owned first deployment**: no vendor sandbox required; start on
+  infrastructure you control and keep the path to production honest
 - **Single source of truth**: GraphQL backed by shared services and audit trails
 - **Optional product layers**: ATS, enterprise access, error tracking, web analytics, operational health, and agent-runtime connectors install as extensions
 - **Self-hosted by default**: one Go service, PostgreSQL, predictable deployment

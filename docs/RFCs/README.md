@@ -18,3 +18,4 @@ service operations platform, before implementation.
 | [RFC-0010](RFC-0010-agent-native-service-catalog-and-operational-taxonomy.md) | Agent-Native Service Catalog and Operational Taxonomy | draft | Service tree, classification, routing, entitlements, knowledge and forms bindings |
 | [RFC-0011](RFC-0011-operational-interaction-model.md) | Operational Interaction Model | draft | Concrete object graph for conversations, service catalog, forms, cases, and agent runtimes |
 | [RFC-0012](RFC-0012-conversation-storage-and-query-strategy.md) | Conversation Storage and Query Strategy | draft | PostgreSQL storage model, indexing, retention, and search for conversations and service catalog |
+| [RFC-0013](RFC-0013-hosted-sandbox-control-plane.md) | Hosted Sandbox Control Plane | draft | Deferred hosted evaluation path, CLI-first lifecycle, export and handoff to owned instances |
