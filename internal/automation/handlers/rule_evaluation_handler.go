@@ -69,7 +69,7 @@ func (h *RuleEvaluationHandler) HandleCaseCreated(ctx context.Context, eventData
 	}
 
 	// Evaluate rules for case creation — return error so event bus can retry
-	if err := h.rulesEngine.EvaluateRulesForCase(ctx, caseObj, "case_created", nil); err != nil {
+	if err := h.rulesEngine.EvaluateRulesForCaseTyped(ctx, caseObj, "case_created", nil); err != nil {
 		h.logger.WithError(err).WithField("case_id", event.CaseID).Error("Rule evaluation failed")
 		return fmt.Errorf("rule evaluation failed for case %s: %w", event.CaseID, err)
 	}
@@ -104,14 +104,13 @@ func (h *RuleEvaluationHandler) HandleCaseAssigned(ctx context.Context, eventDat
 		return nil
 	}
 
-	// Changes map for condition evaluation
-	changes := map[string]interface{}{
-		"assigned_to": event.AssignedTo,
-		"team_id":     event.TeamID,
-	}
+	// Changes for condition evaluation
+	changes := automationservices.NewFieldChanges()
+	changes.Set("assigned_to", event.AssignedTo)
+	changes.Set("team_id", event.TeamID)
 
 	// Evaluate rules — return error so event bus can retry
-	if err := h.rulesEngine.EvaluateRulesForCase(ctx, caseObj, "case_assigned", changes); err != nil {
+	if err := h.rulesEngine.EvaluateRulesForCaseTyped(ctx, caseObj, "case_assigned", changes); err != nil {
 		h.logger.WithError(err).WithField("case_id", event.CaseID).Error("Rule evaluation failed")
 		return fmt.Errorf("rule evaluation failed for case %s: %w", event.CaseID, err)
 	}
@@ -146,15 +145,14 @@ func (h *RuleEvaluationHandler) HandleCaseStatusChanged(ctx context.Context, eve
 		return nil
 	}
 
-	// Changes map for condition evaluation
-	changes := map[string]interface{}{
-		"old_status": event.OldStatus,
-		"new_status": event.NewStatus,
-		"status":     event.NewStatus,
-	}
+	// Changes for condition evaluation
+	changes := automationservices.NewFieldChanges()
+	changes.Set("old_status", event.OldStatus)
+	changes.Set("new_status", event.NewStatus)
+	changes.Set("status", event.NewStatus)
 
 	// Evaluate rules — return error so event bus can retry
-	if err := h.rulesEngine.EvaluateRulesForCase(ctx, caseObj, "case_status_changed", changes); err != nil {
+	if err := h.rulesEngine.EvaluateRulesForCaseTyped(ctx, caseObj, "case_status_changed", changes); err != nil {
 		h.logger.WithError(err).WithField("case_id", event.CaseID).Error("Rule evaluation failed")
 		return fmt.Errorf("rule evaluation failed for case %s: %w", event.CaseID, err)
 	}
@@ -189,14 +187,13 @@ func (h *RuleEvaluationHandler) HandleCaseResolved(ctx context.Context, eventDat
 		return nil
 	}
 
-	// Changes map for condition evaluation
-	changes := map[string]interface{}{
-		"resolution":      event.Resolution,
-		"time_to_resolve": event.TimeToResolve,
-	}
+	// Changes for condition evaluation
+	changes := automationservices.NewFieldChanges()
+	changes.Set("resolution", event.Resolution)
+	changes.Set("time_to_resolve", event.TimeToResolve)
 
 	// Evaluate rules — return error so event bus can retry
-	if err := h.rulesEngine.EvaluateRulesForCase(ctx, caseObj, "case_resolved", changes); err != nil {
+	if err := h.rulesEngine.EvaluateRulesForCaseTyped(ctx, caseObj, "case_resolved", changes); err != nil {
 		h.logger.WithError(err).WithField("case_id", event.CaseID).Error("Rule evaluation failed")
 		return fmt.Errorf("rule evaluation failed for case %s: %w", event.CaseID, err)
 	}
