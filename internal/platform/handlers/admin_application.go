@@ -13,7 +13,7 @@ import (
 
 // Application management handlers
 
-const errorTrackingApplicationsBasePath = "/admin/extensions/error-tracking/applications"
+const errorTrackingApplicationsBasePath = "/extensions/error-tracking/applications"
 
 // ShowApplications renders the error monitoring applications page
 func (h *AdminManagementHandler) ShowApplications(c *gin.Context) {

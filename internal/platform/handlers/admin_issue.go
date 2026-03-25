@@ -10,7 +10,7 @@ import (
 	"github.com/movebigrocks/platform/internal/shared/contracts"
 )
 
-const errorTrackingIssuesBasePath = "/admin/extensions/error-tracking/issues"
+const errorTrackingIssuesBasePath = "/extensions/error-tracking/issues"
 
 // ShowIssues renders the error tracking issues page
 func (h *AdminManagementHandler) ShowIssues(c *gin.Context) {
