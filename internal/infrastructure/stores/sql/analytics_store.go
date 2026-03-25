@@ -41,9 +41,6 @@ func (s *AnalyticsStore) selectContext(ctx context.Context, dest interface{}, qu
 	return s.db.SelectContext(ctx, dest, s.query(query), args...)
 }
 
-func (s *AnalyticsStore) getContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
-	return s.db.GetContext(ctx, dest, s.query(query), args...)
-}
 
 func (s *AnalyticsStore) queryRowxContext(ctx context.Context, query string, args ...interface{}) *sqlx.Row {
 	return s.db.QueryRowxContext(ctx, s.query(query), args...)

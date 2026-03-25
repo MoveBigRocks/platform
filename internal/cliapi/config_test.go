@@ -33,7 +33,7 @@ func TestNormalizeGraphQLURL(t *testing.T) {
 		},
 		{
 			name:  "admin URL rewrites to api graphql path",
-			input: "https://admin.movebigrocks.example.com/admin/graphql",
+			input: "https://admin.movebigrocks.example.com/graphql",
 			want:  "https://api.movebigrocks.example.com/graphql",
 		},
 		{
@@ -49,7 +49,6 @@ func TestNormalizeGraphQLURL(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -174,7 +173,7 @@ func TestLoadConfigUsesStoredSessionConfig(t *testing.T) {
 	if got.APIBaseURL != "https://api.movebigrocks.example.com" {
 		t.Fatalf("got APIBaseURL %q", got.APIBaseURL)
 	}
-	if got.GraphQLURL != "https://admin.movebigrocks.example.com/admin/graphql" {
+	if got.GraphQLURL != "https://admin.movebigrocks.example.com/graphql" {
 		t.Fatalf("got GraphQLURL %q", got.GraphQLURL)
 	}
 	if got.SessionToken != "session_saved" {
@@ -214,7 +213,6 @@ func TestNormalizeAdminBaseURL(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got, err := normalizeAdminBaseURL(tc.input)
@@ -235,7 +233,7 @@ func TestNormalizeAdminBaseURL(t *testing.T) {
 }
 
 func TestConfigApplyAuthSessionSetsCookie(t *testing.T) {
-	req, err := http.NewRequest(http.MethodGet, "https://admin.example.com/admin/graphql", nil)
+	req, err := http.NewRequest(http.MethodGet, "https://admin.example.com/graphql", nil)
 	if err != nil {
 		t.Fatalf("NewRequest returned error: %v", err)
 	}

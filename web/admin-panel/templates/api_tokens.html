@@ -494,7 +494,7 @@
 
             async function loadWorkspaces() {
                 try {
-                    const response = await fetch('/admin/graphql', {
+                    const response = await fetch('/graphql', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -533,7 +533,7 @@
 
                 try {
                     // First create the agent
-                    const agentResponse = await fetch('/admin/graphql', {
+                    const agentResponse = await fetch('/graphql', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -558,7 +558,7 @@
                     const agentId = agentData.data.createAgent.id;
 
                     // Then create the token
-                    const tokenResponse = await fetch('/admin/graphql', {
+                    const tokenResponse = await fetch('/graphql', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -622,7 +622,7 @@
 
             async function loadTokens() {
                 try {
-                    const response = await fetch('/admin/graphql', {
+                    const response = await fetch('/graphql', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -783,7 +783,7 @@
                 btn.textContent = 'Revoking...';
 
                 try {
-                    const response = await fetch('/admin/graphql', {
+                    const response = await fetch('/graphql', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

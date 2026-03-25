@@ -2949,6 +2949,7 @@ func readBundleFilePayload(path string) (bundleSourcePayload, error) {
 	return decodeBundlePayload(data, bundleSourceKindLocal)
 }
 
+//nolint:unused // pending extension install CLI
 func readBundleURL(rawURL string) (bundleFile, error) {
 	return readBundleURLWithHeaders(context.Background(), rawURL, nil)
 }
@@ -2971,6 +2972,7 @@ func bundleSourceURL(value string) (string, bool) {
 	return u.String(), true
 }
 
+//nolint:unused // pending extension install CLI
 func readBundleDirectory(root string) (bundleFile, error) {
 	payload, err := readBundleDirectoryPayload(root)
 	if err != nil {
@@ -2979,6 +2981,7 @@ func readBundleDirectory(root string) (bundleFile, error) {
 	return payload.Bundle, nil
 }
 
+//nolint:unused // pending extension install CLI
 func readBundleDirectoryPayload(root string) (bundleSourcePayload, error) {
 	manifestPath := filepath.Join(root, "manifest.json")
 	manifestBytes, err := os.ReadFile(manifestPath)

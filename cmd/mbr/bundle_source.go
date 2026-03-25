@@ -165,6 +165,7 @@ func resolveMarketplaceAlias(ctx context.Context, alias, licenseToken string) (m
 	return resolution, nil
 }
 
+//nolint:unused // pending extension install CLI
 func readBundleURLWithHeaders(ctx context.Context, rawURL string, headers map[string]string) (bundleFile, error) {
 	payload, err := readBundleURLPayloadWithHeaders(ctx, rawURL, headers, bundleSourceKindHTTP)
 	if err != nil {
@@ -199,6 +200,7 @@ func readBundleURLPayloadWithHeaders(ctx context.Context, rawURL string, headers
 	return decodeBundlePayload(data, kind)
 }
 
+//nolint:unused // pending extension install CLI
 func readBundleOCI(ctx context.Context, ref ociReference) (bundleFile, error) {
 	payload, err := readBundleOCIPayload(ctx, ref)
 	if err != nil {
@@ -207,6 +209,7 @@ func readBundleOCI(ctx context.Context, ref ociReference) (bundleFile, error) {
 	return payload.Bundle, nil
 }
 
+//nolint:unused // pending extension install CLI
 func readBundleOCIPayload(ctx context.Context, ref ociReference) (bundleSourcePayload, error) {
 	client := newHTTPClient()
 
@@ -269,6 +272,7 @@ func readBundleOCIPayload(ctx context.Context, ref ociReference) (bundleSourcePa
 	return decodeBundlePayload(blobBytes, bundleSourceKindOCI)
 }
 
+//nolint:unused // pending extension install CLI
 func decodeBundleBytes(data []byte) (bundleFile, error) {
 	payload, err := decodeBundlePayload(data, bundleSourceKindLocal)
 	if err != nil {

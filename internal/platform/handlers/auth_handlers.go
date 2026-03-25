@@ -73,7 +73,6 @@ func (h *AuthHandler) CookieDomain() string {
 	return h.cookieDomain
 }
 
-type cliLoginStartRequest struct{}
 
 type cliLoginPollRequest struct {
 	PollToken string `json:"pollToken"`
@@ -295,7 +294,7 @@ func (h *AuthHandler) StartCLILogin(c *gin.Context) {
 		"pollToken":        start.PollToken,
 		"authorizeURL":     authorizeURL,
 		"adminBaseURL":     adminBaseURL,
-		"adminGraphQLURL":  adminBaseURL + "/admin/graphql",
+		"adminGraphQLURL":  adminBaseURL + "/graphql",
 		"expiresAt":        start.ExpiresAt,
 		"expiresInSeconds": int(time.Until(start.ExpiresAt).Seconds()),
 		"intervalSeconds":  2,

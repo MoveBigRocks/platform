@@ -3,7 +3,6 @@ package sql
 import (
 	"context"
 	"database/sql"
-	"strings"
 
 	"github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
 	"github.com/movebigrocks/platform/internal/infrastructure/stores/sql/models"
@@ -124,14 +123,6 @@ func mapConceptSpecToDomain(model *models.ConceptSpec) *knowledgedomain.ConceptS
 		UpdatedAt:       model.UpdatedAt,
 		DeletedAt:       model.DeletedAt,
 	}
-}
-
-func normalizeConceptSpecLookupVersion(value string) string {
-	normalized := knowledgedomain.NormalizeConceptSpecVersion(value)
-	if strings.TrimSpace(normalized) == "" {
-		return "1"
-	}
-	return normalized
 }
 
 var _ shared.ConceptSpecStore = (*ConceptSpecStore)(nil)
