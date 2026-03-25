@@ -81,7 +81,7 @@ type formSpecOutput struct {
 type formSubmissionOutput struct {
 	ID                    string           `json:"id"`
 	WorkspaceID           string           `json:"workspaceID"`
-	FormSpecID          string           `json:"formSpecID"`
+	FormSpecID            string           `json:"formSpecID"`
 	ConversationSessionID *string          `json:"conversationSessionID,omitempty"`
 	CaseID                *string          `json:"caseID,omitempty"`
 	ContactID             *string          `json:"contactID,omitempty"`
