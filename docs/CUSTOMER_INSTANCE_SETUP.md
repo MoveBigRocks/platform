@@ -4,6 +4,10 @@ This is the canonical production setup guide for Move Big Rocks.
 
 It is written for both humans and agents. If you are using Codex or Claude Code, the repo the agent should open is the **private instance repo**, not the public core repo.
 
+There is no vendor-hosted sandbox path right now. The shortest supported path
+is one Ubuntu 22.04+ host or VPS you control. If you are comfortable with a
+technical setup, you can also run Move Big Rocks locally while evaluating.
+
 For the full intended lifecycle after initial setup, including when to create a custom extension repo and how extensions should move from development to production, see [Instance and Extension Lifecycle](https://github.com/MoveBigRocks/platform/blob/main/docs/INSTANCE_AND_EXTENSION_LIFECYCLE.md).
 
 ## What You Are Creating
@@ -253,13 +257,13 @@ The recommended activation flow is:
 3. Validate signature, manifest, and license.
 4. Configure extension-specific settings.
 5. For `enterprise-access`, restrict provider hosts to the approved IdP domains and use non-literal `clientSecretRef` values.
-6. Run the required checks in a sandbox workspace first.
-7. Monitor the extension in that sandbox workspace.
-8. Activate it in the target production workspace only after the sandbox pass is clean.
+6. Run the required checks in a preview workspace first.
+7. Monitor the extension in that preview workspace.
+8. Activate it in the target production workspace only after the preview pass is clean.
 
 Do not activate privileged auth or connector extensions through the generic custom-extension path.
 
-Use a dedicated sandbox workspace on the live instance for this preview pass.
+Use a dedicated preview workspace on the live instance for this preview pass.
 
 Current repo baseline:
 

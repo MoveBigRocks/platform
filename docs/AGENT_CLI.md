@@ -58,7 +58,7 @@ need to scrape HTML to discover how to proceed.
 
 The platform discovery model is:
 
-- create or select a sandbox or runtime
+- create or select a runtime you control
 - query the runtime bootstrap endpoint such as `https://<runtime>/.well-known/mbr-instance.json`
 - continue through `mbr` and GraphQL
 
@@ -343,13 +343,13 @@ If Move Big Rocks exposes MCP, it follows these rules:
 The same rule applies to agent-runtime connectors such as OpenClaw: they compose
 with the CLI and GraphQL contract rather than bypass it.
 
-Sandbox creation should follow the same principle. The goal is that a user can
-give an external agent one short instruction such as "create me a Move Big
-Rocks sandbox", and the agent can complete the workflow through `mbr` with
-minimal follow-up. The sandbox create flow should therefore return machine-
-readable URL, expiry, login, and next-step data directly, without a manual
-verification or polling step in the normal path, instead of forcing the agent
-to scrape browser-only responses.
+The same ergonomics should apply to self-host bootstrap. The goal is that a
+user can give an external agent one short instruction such as "create me a
+Move Big Rocks instance repo and deploy it to one Ubuntu VPS I control", and
+the agent can complete most of the workflow through GitHub, SSH, and `mbr`
+with minimal follow-up. The public bootstrap, README, and instance-template
+handoff should therefore make the build-it-yourself path explicit instead of
+relying on hidden evaluator infrastructure.
 
 The same ergonomics should apply to concept-aware Markdown work:
 

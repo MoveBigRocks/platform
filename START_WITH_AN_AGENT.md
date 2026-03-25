@@ -71,7 +71,7 @@ For knowledge work, the operating rule is:
 Before the CLI is installed, the intended discovery path is:
 
 - the agent queries the public bootstrap endpoint
-- the endpoint points to docs, CLI install metadata, and sandbox bootstrap guidance
+- the endpoint points to docs, CLI install metadata, and self-host bootstrap guidance
 - the agent installs `mbr` and continues through the normal machine contract
 
 If the agent starts with only a homepage URL rather than the bootstrap URL, the
@@ -90,16 +90,14 @@ Use this if you want:
 - workspaces, teams, queues, conversations, cases, knowledge, forms, attachments, and automation
 - a clean starting point before adding any extensions
 
-### 1a. Spin up a sandbox
+### 1a. Build it yourself on one VPS or locally
 
 Use this if you want:
 
-- a disposable hosted trial in minutes
-- 5 free days with a simple path to extend for 30 more days
-- sandbox creation through `mbr` with a ready URL returned directly, then browser access plus the same `mbr` contract an agent would use later
-- a safe place to explore teams, queues, knowledge, concept specs, and extensions
-- access to first-party extensions in sandbox mode for evaluation
-- a short evaluation path before committing to a real deployment
+- a first owned evaluation path with no vendor-hosted dependency
+- one Ubuntu VPS you control, or a local technical setup if you are comfortable with that
+- agent-led private instance repo creation, desired-state validation, and deployment
+- a short path to a real runtime before broader production rollout
 
 ### 2. Install a first-party extension
 
@@ -176,19 +174,13 @@ Use one of these prompts.
 ```text
 Open this Move Big Rocks repo and read README.md, START_WITH_AN_AGENT.md, docs/CUSTOMER_INSTANCE_SETUP.md, docs/INSTANCE_AND_EXTENSION_LIFECYCLE.md, docs/AGENT_CLI.md, and docs/AGENT_RECIPES.md.
 
-Help me create and configure a private Move Big Rocks instance repo based on MoveBigRocks/instance-template, then deploy my first Move Big Rocks instance to a fresh Linux host. Keep secrets out of tracked files, verify the repo and deployment-environment protections before production rollout, tell me exactly which accounts, credentials, DNS records, and SSH access you need from me, and do the rest step by step.
-```
-
-### Prompt: Spin up a Move Big Rocks sandbox
-
-```text
-Open this Move Big Rocks repo and help me spin up a sandbox so I can evaluate the product quickly. Use the sandbox path rather than a full production deployment. Make sure I get a browser URL, login path, and any `mbr` bootstrap steps I need. Seed or verify demo data so I can explore teams, queues, conversations, knowledge, concept specs, and extensions with an agent.
+Help me create and configure a private Move Big Rocks instance repo based on MoveBigRocks/instance-template, then deploy my first Move Big Rocks instance to one Ubuntu VPS I control. If I only want a technical local evaluation, use the local path instead. Keep secrets out of tracked files, verify the repo and deployment-environment protections before production rollout, tell me exactly which accounts, credentials, DNS records, and SSH access you need from me, and do the rest step by step.
 ```
 
 ### Prompt: Install an extension into my instance
 
 ```text
-Open my Move Big Rocks instance repo and help me install, configure, validate, and activate an extension safely. Use the current `mbr` CLI and the documented lifecycle. Test it in a sandbox workspace on the live instance before activating it in production.
+Open my Move Big Rocks instance repo and help me install, configure, validate, and activate an extension safely. Use the current `mbr` CLI and the documented lifecycle. Test it in a preview workspace on the live instance before activating it in production.
 ```
 
 ### Prompt: Build me a private custom extension
@@ -233,27 +225,6 @@ If the agent is already in the private instance repo, it should start with:
 
 ## What Inputs the Agent Will Usually Need
 
-To spin up a sandbox, the agent should usually need only:
-
-- an email address for the initial admin login
-- a preferred trial name or workspace name
-
-The sandbox path should also let the agent:
-
-- evaluate first-party extensions without separate purchase during the sandbox window
-- export the sandbox data cleanly before expiry
-- create and control the sandbox primarily through `mbr`, not a separate web provisioning flow
-- take one short instruction from the user and handle the rest with minimal follow-up
-
-The intended sandbox agent experience is:
-
-- user says something as simple as `create me a Move Big Rocks sandbox`
-- agent authenticates if needed
-- agent runs the `mbr sandboxes create ...` flow
-- agent gets the ready sandbox URL back directly from that command, without manual verification or polling
-- agent returns the sandbox URL, expiry time, login path, and suggested next steps
-- the user is not asked for production-only inputs such as DNS, SSH, or provider credentials
-
 To deploy a first instance, the agent will usually ask for:
 
 - a Linux host or VPS
@@ -264,6 +235,13 @@ To deploy a first instance, the agent will usually ask for:
 - object storage credentials
 - registry or license information if installing paid extensions
 
+For a local technical setup, the agent will usually need:
+
+- a cloned repo
+- local PostgreSQL
+- a copied `.env` file
+- permission to run the documented local commands such as `make run`
+
 ## The Product Bar
 
 The product is working the way we want only if this feels natural:
@@ -271,8 +249,7 @@ The product is working the way we want only if this feels natural:
 - a user opens Claude Code, Codex, OpenClaw, or another capable agent host
 - points it at the Move Big Rocks repo
 - understands immediately that Move Big Rocks is a team-aware operations platform
-- can spin up a sandbox quickly if they are not ready for production setup
-- gets guided to a working Move Big Rocks instance
+- gets guided to a working Move Big Rocks instance on infrastructure they control
 - installs an extension, connects OpenClaw, or builds a custom one with the same agent
 
 If the experience depends on hidden setup knowledge or too many manual steps,

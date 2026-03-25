@@ -62,38 +62,34 @@ foundation for multiple teams.
 
 ## Can I try Move Big Rocks without self-hosting it first?
 
-Yes. The intended evaluation path is to spin up a hosted sandbox.
+Not through a vendor-hosted sandbox right now.
 
-The sandbox model should be:
+The current evaluation path is to either:
 
-- disposable and time-limited
-- 5 days free by default
-- extendable for 30 more days for $50
-- reachable on an auto-generated subdomain such as `magic-dumpling-26.movebigrocks.io`
-- seeded with demo data
-- created and managed through `mbr`, then usable through the browser and the same contract as a real instance
-- safe for evaluation, extension trials, and agent-led exploration
-- inclusive of first-party extension access in sandbox mode during the trial window
-- easy to export before deletion
-- easy for an agent to create from one short user instruction through `mbr`
+- deploy it on one Ubuntu 22.04+ VPS you control
+- run it locally if you are comfortable with a technical setup
 
-Production should still move to a real self-hosted instance repo, but the
-sandbox should be the fastest way to experience the product.
+The intended agent experience is still simple:
 
-## Do I have to buy extensions separately in a sandbox?
+- create the private instance repo from the template
+- validate `mbr.instance.yaml`
+- wire secrets and deploy the pinned core artifacts
+- hand back the app, admin, and API URLs plus the next steps
 
-No. The intended sandbox model includes first-party extension access for
-evaluation during the sandbox window.
+This keeps evaluation on infrastructure you control from day one.
 
-That means a sandbox user should be able to try things like:
+## How should I test extensions before production?
 
-- ATS
-- web analytics
-- error tracking
-- operational health / observability
+Use a dedicated preview workspace on your own instance.
 
-Production licensing remains separate. Sandbox access is for evaluation, not
-for indefinite hosted use.
+That lets you:
+
+- install and validate an extension in a lower-risk workspace first
+- monitor it under the real runtime and permission model
+- promote it only after the preview pass is clean
+
+Production licensing and trust review still apply. The preview workspace is for
+safe evaluation inside an owned instance, not for bypassing review.
 
 ## Do I need OpenClaw to use Move Big Rocks?
 
@@ -197,12 +193,10 @@ Yes. That is the intended model. The agent should open the private instance
 repo, read `agents/bootstrap.md`, wire secrets, deploy the pinned release, and
 then install optional extensions.
 
-If you are not ready for a production deployment yet, the agent should also be
-able to spin up a sandbox first and use that as the trial environment.
-
 The intended experience is that you can tell Codex or Claude Code something
-like "create me a Move Big Rocks sandbox" and the agent can handle the rest
-through the CLI with only minimal follow-up.
+like "create me a Move Big Rocks instance repo and deploy it to one Ubuntu VPS
+I control" and the agent can handle most of the rest with only minimal
+follow-up.
 
 ## What repo should I give to Codex or Claude Code?
 

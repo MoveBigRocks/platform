@@ -37,13 +37,11 @@ extensions, curated marketplace packs, and professional services.
 
 The evaluation model should be simple too:
 
-- self-hosted is the production default
-- a hosted sandbox is the shortest path to first value
-- the sandbox should use the same `mbr` and GraphQL contract as a real instance
-- learning in a sandbox should convert cleanly into a real deployment
-- the default trial should be short and clear: 5 free days, then a simple paid extension such as $50 for 30 more days
-- the sandbox should expose first-party extensions for evaluation without making the sandbox feel crippled
-- sandbox lifecycle should be CLI-first so agents and operators do not need a separate control surface just to begin
+- self-hosted is both the production default and the current evaluation default
+- the shortest supported path is one Ubuntu VPS you control or a local technical setup
+- the first owned runtime should use the same `mbr` and GraphQL contract as any longer-lived instance
+- learning in that first owned runtime should convert cleanly into a real deployment
+- the public site and docs should make the build-it-yourself path legible to agents rather than hiding the real work behind evaluator theater
 
 ## Core Operating Model
 
@@ -261,28 +259,27 @@ predictable, easy to inspect with `--json`, and usable by both humans and
 agents.
 
 That same ergonomic bar should apply before production too. A user should be
-able to spin up a sandbox, hand it to an agent, and get useful work done
-without first creating a private repo, a Linux host, DNS, and production
-secrets.
+able to ask an agent to create a private instance repo, validate it, and
+deploy it to one Ubuntu VPS they control without the process feeling bespoke.
 
 The agent ergonomics bar should be very high:
 
-- the user should be able to ask an agent to create a sandbox in one sentence
-- the agent should need only minimal follow-up such as email address and optional sandbox name
-- the agent should be able to complete creation through `mbr` and then hand back the URL, expiry time, login path, and next suggested actions
-- before `mbr` is installed, the agent should be able to query one public bootstrap endpoint for docs discovery, CLI install metadata, and sandbox bootstrap guidance
+- the user should be able to ask an agent to build an owned instance in one sentence
+- the agent should need only minimal follow-up such as VPS choice, domain, admin email, provider credentials, and SSH access
+- the agent should be able to create the repo, validate desired state, deploy the pinned artifacts, and then hand back the URL and next suggested actions
+- before `mbr` is installed, the agent should be able to query one public bootstrap endpoint for docs discovery, CLI install metadata, and self-host bootstrap guidance
 
 The public site should therefore have two layers:
 
-- human docs organized around sandbox, CLI install, agents, self-host, extensions, pricing, and security
+- human docs organized around CLI install, agents, self-host, extensions, pricing, and security
 - machine-readable bootstrap endpoints for agents and CLIs
 
-That trial path should also feel product-complete:
+That first owned path should also feel product-complete:
 
-- a sandbox should have an auto-generated subdomain on `movebigrocks.io`
-- a sandbox should include first-party pack evaluation such as ATS, web analytics, error tracking, and enterprise access
-- a sandbox should support export so the user can keep the work and move to a real deployment cleanly
-- a sandbox should be created and managed through `mbr`, with the browser used after bootstrap rather than as the creation control plane
+- one Ubuntu VPS should be enough for the first real deployment
+- local technical setup should remain possible for hands-on evaluators
+- extension trials should happen in a dedicated preview workspace on the owned instance
+- the agent should do the bulk of the repo, deploy, and validation work through explicit documented surfaces
 
 ## Extensions
 
