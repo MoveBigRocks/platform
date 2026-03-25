@@ -200,7 +200,7 @@ func (h *CaseEventHandler) HandleCaseCreatedForContact(ctx context.Context, even
 	}
 
 	// Update metrics
-	metrics.CasesCreated.WithLabelValues(event.WorkspaceID, string(event.Priority)).Inc()
+	metrics.CasesCreated.WithLabelValues(event.WorkspaceID, event.Priority).Inc()
 
 	h.logger.WithFields(map[string]interface{}{
 		"contact_id": event.ContactID,

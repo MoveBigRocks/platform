@@ -1555,17 +1555,13 @@ func (r *MembershipConstraintsResolver) AllowedIPs() []string {
 
 func (r *MembershipConstraintsResolver) AllowedProjectIDs() []graphql.ID {
 	result := make([]graphql.ID, len(r.constraints.AllowedProjectIDs))
-	for i, projectID := range r.constraints.AllowedProjectIDs {
-		result[i] = graphql.ID(projectID)
-	}
+	copy(result, r.constraints.AllowedProjectIDs)
 	return result
 }
 
 func (r *MembershipConstraintsResolver) AllowedTeamIDs() []graphql.ID {
 	result := make([]graphql.ID, len(r.constraints.AllowedTeamIDs))
-	for i, teamID := range r.constraints.AllowedTeamIDs {
-		result[i] = graphql.ID(teamID)
-	}
+	copy(result, r.constraints.AllowedTeamIDs)
 	return result
 }
 
@@ -1575,9 +1571,7 @@ func (r *MembershipConstraintsResolver) AllowDelegatedRouting() bool {
 
 func (r *MembershipConstraintsResolver) DelegatedRoutingTeamIDs() []graphql.ID {
 	result := make([]graphql.ID, len(r.constraints.DelegatedRoutingTeamIDs))
-	for i, teamID := range r.constraints.DelegatedRoutingTeamIDs {
-		result[i] = graphql.ID(teamID)
-	}
+	copy(result, r.constraints.DelegatedRoutingTeamIDs)
 	return result
 }
 
