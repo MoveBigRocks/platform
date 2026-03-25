@@ -24,7 +24,7 @@ func TestRegistryDispatchAndProbe(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy", "message": "ready"})
 	})
 
-	result, err := registry.Probe("test.health", http.MethodGet, "/admin/extensions/test/health", nil)
+	result, err := registry.Probe("test.health", http.MethodGet, "/extensions/test/health", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, result.StatusCode)
 	assert.Contains(t, string(result.Body), `"status":"healthy"`)
@@ -55,17 +55,17 @@ func TestNewRegistryIncludesEnterpriseAccessTargets(t *testing.T) {
 
 	registry := NewRegistry(nil)
 
-	health, err := registry.Probe("enterprise-access.runtime.health", http.MethodGet, "/admin/extensions/enterprise-access/health", nil)
+	health, err := registry.Probe("enterprise-access.runtime.health", http.MethodGet, "/extensions/enterprise-access/health", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, health.StatusCode)
 	assert.Contains(t, string(health.Body), `"status":"failed"`)
 
-	settings, err := registry.Probe("enterprise-access.admin.settings", http.MethodGet, "/admin/extensions/enterprise-access", nil)
+	settings, err := registry.Probe("enterprise-access.admin.settings", http.MethodGet, "/extensions/enterprise-access", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusServiceUnavailable, settings.StatusCode)
 	assert.Contains(t, string(settings.Body), "Enterprise Access")
 
-	start, err := registry.Probe("enterprise-access.auth.oidc.start", http.MethodPost, "/admin/extensions/enterprise-access/oidc/start", nil)
+	start, err := registry.Probe("enterprise-access.auth.oidc.start", http.MethodPost, "/extensions/enterprise-access/oidc/start", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusServiceUnavailable, start.StatusCode)
 	assert.Contains(t, string(start.Body), "failed")
@@ -88,7 +88,7 @@ func TestRuntimeEnsureInstalledExtensionRuntimeRequiresRegisteredTargets(t *test
 				{
 					Name:             "runtime-health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/web-analytics/health",
+					MountPath:        "/extensions/web-analytics/health",
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
 					ServiceTarget:    "analytics.runtime.health",
@@ -118,7 +118,7 @@ func TestRuntimeCheckInstalledExtensionHealth(t *testing.T) {
 				{
 					Name:             "runtime-health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/web-analytics/health",
+					MountPath:        "/extensions/web-analytics/health",
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
 					ServiceTarget:    "analytics.runtime.health",
@@ -159,7 +159,7 @@ func TestRuntimePrepareInstallValidatesPrivilegedManifest(t *testing.T) {
 			{
 				Name:          "health",
 				Class:         platformdomain.ExtensionEndpointClassHealth,
-				MountPath:     "/admin/extensions/enterprise-access/health",
+				MountPath:     "/extensions/enterprise-access/health",
 				Methods:       []string{"GET"},
 				Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 				ServiceTarget: "enterprise-access.runtime.health",
@@ -273,7 +273,7 @@ func TestRuntimeEnsureInstalledExtensionRuntimeRegistersEventConsumersAndJobs(t 
 			{
 				Name:             "runtime-health",
 				Class:            platformdomain.ExtensionEndpointClassHealth,
-				MountPath:        "/admin/extensions/runtime-pack/health",
+				MountPath:        "/extensions/runtime-pack/health",
 				Methods:          []string{"GET"},
 				Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 				WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -405,7 +405,7 @@ func TestRuntimeDeactivateInstalledExtensionRuntimeStopsJobsAndAllowsReactivatio
 			{
 				Name:             "runtime-health",
 				Class:            platformdomain.ExtensionEndpointClassHealth,
-				MountPath:        "/admin/extensions/runtime-pack/health",
+				MountPath:        "/extensions/runtime-pack/health",
 				Methods:          []string{"GET"},
 				Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 				WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -539,7 +539,7 @@ func TestRuntimeTracksConsumerFailures(t *testing.T) {
 			{
 				Name:          "runtime-health",
 				Class:         platformdomain.ExtensionEndpointClassHealth,
-				MountPath:     "/admin/extensions/runtime-pack/health",
+				MountPath:     "/extensions/runtime-pack/health",
 				Methods:       []string{"GET"},
 				Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 				ServiceTarget: "runtime.health",
@@ -628,7 +628,7 @@ func TestRuntimeIsolatesDiagnosticsPerInstalledExtension(t *testing.T) {
 			{
 				Name:          "runtime-health",
 				Class:         platformdomain.ExtensionEndpointClassHealth,
-				MountPath:     "/admin/extensions/runtime-pack/health",
+				MountPath:     "/extensions/runtime-pack/health",
 				Methods:       []string{"GET"},
 				Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 				ServiceTarget: "runtime.health",
@@ -725,7 +725,7 @@ func TestRuntimeStartContinuesAfterBootstrapFailure(t *testing.T) {
 			{
 				Name:          "runtime-health",
 				Class:         platformdomain.ExtensionEndpointClassHealth,
-				MountPath:     "/admin/extensions/healthy-pack/health",
+				MountPath:     "/extensions/healthy-pack/health",
 				Methods:       []string{"GET"},
 				Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 				ServiceTarget: "runtime.health",
@@ -757,7 +757,7 @@ func TestRuntimeStartContinuesAfterBootstrapFailure(t *testing.T) {
 			{
 				Name:          "runtime-health",
 				Class:         platformdomain.ExtensionEndpointClassHealth,
-				MountPath:     "/admin/extensions/broken-pack/health",
+				MountPath:     "/extensions/broken-pack/health",
 				Methods:       []string{"GET"},
 				Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 				ServiceTarget: "missing.runtime.health",
@@ -837,7 +837,7 @@ func TestRuntimeBacksOffFailingJobs(t *testing.T) {
 			{
 				Name:          "runtime-health",
 				Class:         platformdomain.ExtensionEndpointClassHealth,
-				MountPath:     "/admin/extensions/runtime-pack/health",
+				MountPath:     "/extensions/runtime-pack/health",
 				Methods:       []string{"GET"},
 				Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 				ServiceTarget: "runtime.health",

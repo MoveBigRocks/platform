@@ -35,7 +35,7 @@ const (
 	enterpriseAccessProviderCountKey     = "provider_count"
 	enterpriseAccessConfiguredAtKey      = "providers_configured_at"
 	enterpriseAccessDefaultCallbackPath  = "/webhooks/extensions/enterprise-access/callback/oidc"
-	enterpriseAccessDefaultReturnPath    = "/admin/extensions/enterprise-access"
+	enterpriseAccessDefaultReturnPath    = "/extensions/enterprise-access"
 	enterpriseAccessOIDCStateMaxAge      = 15 * time.Minute
 	enterpriseAccessProviderTypeOIDC     = "oidc"
 	enterpriseAccessProviderStatusDraft  = "draft"
@@ -432,7 +432,7 @@ var enterpriseAccessSettingsTemplate = template.Must(template.New("enterprise-ac
     </section>
     <section class="card">
       <h2>Agent-Friendly API</h2>
-      <p>Agents can configure a provider by posting JSON to <code>/admin/extensions/enterprise-access/providers</code>.</p>
+      <p>Agents can configure a provider by posting JSON to <code>/extensions/enterprise-access/providers</code>.</p>
       <pre>{
   "providerType": "oidc",
   "displayName": "Acme SSO",

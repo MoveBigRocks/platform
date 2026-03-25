@@ -178,7 +178,7 @@
 
             <div id="layout-main">
                 <div class="max-w-5xl mx-auto">
-                    <form id="form-form" method="POST" action="{{if .Form}}/admin/actions/forms/{{.Form.ID}}{{else}}/admin/actions/forms{{end}}">
+                    <form id="form-form" method="POST" action="{{if .Form}}/actions/forms/{{.Form.ID}}{{else}}/actions/forms{{end}}">
                         {{if .Form}}<input type="hidden" name="_method" value="PUT">{{end}}
 
                         <div class="grid grid-cols-3 gap-6">
@@ -523,7 +523,7 @@
 
         function deleteForm(formId) {
             if (confirm('Are you sure you want to delete this form? This cannot be undone.')) {
-                fetch('/admin/actions/forms/' + formId, {
+                fetch('/actions/forms/' + formId, {
                     method: 'DELETE',
                     credentials: 'include'
                 }).then(function(response) {

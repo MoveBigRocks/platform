@@ -228,7 +228,7 @@ func TestExtensionSDKTemplateInstallsAndActivates(t *testing.T) {
 	nav, err := service.ListWorkspaceAdminNavigation(ctx, workspace.ID)
 	require.NoError(t, err)
 	require.Len(t, nav, 1)
-	assert.Equal(t, "/admin/extensions/sample-ops-pack", nav[0].Href)
+	assert.Equal(t, "/extensions/sample-ops-pack", nav[0].Href)
 }
 
 func TestReferenceEnterpriseAccessExtensionInstallsAsInstanceScopedPrivilegedPack(t *testing.T) {
@@ -268,7 +268,7 @@ func TestReferenceEnterpriseAccessExtensionInstallsAsInstanceScopedPrivilegedPac
 	require.Len(t, nav, 1)
 	assert.Equal(t, "Identity", nav[0].Section)
 	assert.Equal(t, "Enterprise Access", nav[0].Title)
-	assert.Equal(t, "/admin/extensions/enterprise-access", nav[0].Href)
+	assert.Equal(t, "/extensions/enterprise-access", nav[0].Href)
 }
 
 func loadTestExtensionBundle(t *testing.T, slug string) (platformdomain.ExtensionManifest, []platformservices.ExtensionAssetInput) {

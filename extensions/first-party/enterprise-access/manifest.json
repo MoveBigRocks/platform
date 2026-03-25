@@ -29,7 +29,7 @@
     {
       "name": "enterprise-access-settings",
       "class": "admin_page",
-      "mountPath": "/admin/extensions/enterprise-access",
+      "mountPath": "/extensions/enterprise-access",
       "methods": ["GET", "HEAD"],
       "auth": "session",
       "serviceTarget": "enterprise-access.admin.settings"
@@ -37,7 +37,7 @@
     {
       "name": "enterprise-access-providers-upsert",
       "class": "admin_page",
-      "mountPath": "/admin/extensions/enterprise-access/providers",
+      "mountPath": "/extensions/enterprise-access/providers",
       "methods": ["POST"],
       "auth": "session",
       "serviceTarget": "enterprise-access.admin.providers.upsert"
@@ -61,7 +61,7 @@
     {
       "name": "enterprise-access-health",
       "class": "health",
-      "mountPath": "/admin/extensions/enterprise-access/health",
+      "mountPath": "/extensions/enterprise-access/health",
       "methods": ["GET"],
       "auth": "internal_only",
       "serviceTarget": "enterprise-access.runtime.health"

@@ -393,7 +393,7 @@ func TestExtensionService_ListWorkspaceAdminNavigationAndWidgets(t *testing.T) {
 			{
 				Name:             "ats-admin-dashboard",
 				Class:            platformdomain.ExtensionEndpointClassAdminPage,
-				MountPath:        "/admin/extensions/ats",
+				MountPath:        "/extensions/ats",
 				Methods:          []string{"GET"},
 				Auth:             platformdomain.ExtensionEndpointAuthSession,
 				WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingFromSession,
@@ -443,14 +443,14 @@ func TestExtensionService_ListWorkspaceAdminNavigationAndWidgets(t *testing.T) {
 	require.Len(t, nav, 1)
 	assert.Equal(t, "Extensions", nav[0].Section)
 	assert.Equal(t, "ATS", nav[0].Title)
-	assert.Equal(t, "/admin/extensions/ats", nav[0].Href)
+	assert.Equal(t, "/extensions/ats", nav[0].Href)
 	assert.Equal(t, "ats", nav[0].ActivePage)
 
 	widgets, err := service.ListWorkspaceDashboardWidgets(ctx, workspace.ID)
 	require.NoError(t, err)
 	require.Len(t, widgets, 1)
 	assert.Equal(t, "ATS Workspace", widgets[0].Title)
-	assert.Equal(t, "/admin/extensions/ats", widgets[0].Href)
+	assert.Equal(t, "/extensions/ats", widgets[0].Href)
 }
 
 func TestExtensionService_AllowsFirstPartyPrivilegedWorkspaceScopedExtensions(t *testing.T) {
@@ -489,7 +489,7 @@ func TestExtensionService_AllowsFirstPartyPrivilegedWorkspaceScopedExtensions(t 
 				{
 					Name:          "health",
 					Class:         platformdomain.ExtensionEndpointClassHealth,
-					MountPath:     "/admin/extensions/enterprise-access/health",
+					MountPath:     "/extensions/enterprise-access/health",
 					Methods:       []string{"GET"},
 					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 					ServiceTarget: "enterprise-access.runtime.health",
@@ -539,7 +539,7 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 				{
 					Name:          "health",
 					Class:         platformdomain.ExtensionEndpointClassHealth,
-					MountPath:     "/admin/extensions/enterprise-access/health",
+					MountPath:     "/extensions/enterprise-access/health",
 					Methods:       []string{"GET"},
 					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 					ServiceTarget: "enterprise-access.runtime.health",
@@ -579,7 +579,7 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 				{
 					Name:          "health",
 					Class:         platformdomain.ExtensionEndpointClassHealth,
-					MountPath:     "/admin/extensions/enterprise-access-alt/health",
+					MountPath:     "/extensions/enterprise-access-alt/health",
 					Methods:       []string{"GET"},
 					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 					ServiceTarget: "enterprise-access.runtime.health",
@@ -617,7 +617,7 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 				{
 					Name:          "health",
 					Class:         platformdomain.ExtensionEndpointClassHealth,
-					MountPath:     "/admin/extensions/slack-alerts/health",
+					MountPath:     "/extensions/slack-alerts/health",
 					Methods:       []string{"GET"},
 					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 					ServiceTarget: "slack-alerts.runtime.health",
@@ -655,7 +655,7 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 				{
 					Name:          "health",
 					Class:         platformdomain.ExtensionEndpointClassHealth,
-					MountPath:     "/admin/extensions/slack-alerts/health",
+					MountPath:     "/extensions/slack-alerts/health",
 					Methods:       []string{"GET"},
 					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 					ServiceTarget: "slack-alerts.runtime.health",
@@ -787,7 +787,7 @@ func TestExtensionService_RejectsServiceBackedSourceInstallWithoutMigrations(t *
 				{
 					Name:             "runtime-health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/web-analytics/health",
+					MountPath:        "/extensions/web-analytics/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -845,7 +845,7 @@ func TestExtensionService_AllowsServiceBackedSourceInstallWithMigrations(t *test
 				{
 					Name:             "runtime-health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/web-analytics/health",
+					MountPath:        "/extensions/web-analytics/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -930,7 +930,7 @@ func TestExtensionService_CheckExtensionHealthUsesConfiguredRuntime(t *testing.T
 				{
 					Name:             "runtime-health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/web-analytics/health",
+					MountPath:        "/extensions/web-analytics/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -990,7 +990,7 @@ func TestExtensionService_CheckExtensionHealthDegradesWhenRuntimeMissing(t *test
 				{
 					Name:             "runtime-health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/web-analytics/health",
+					MountPath:        "/extensions/web-analytics/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -1066,7 +1066,7 @@ func TestExtensionService_GetExtensionRuntimeDiagnosticsUsesConfiguredRuntime(t 
 				{
 					Name:             "runtime-health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/web-analytics/health",
+					MountPath:        "/extensions/web-analytics/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -1137,7 +1137,7 @@ func TestExtensionService_ActivateExtensionFailsWhenConfiguredRuntimeIsUnavailab
 				{
 					Name:             "runtime-health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/web-analytics/health",
+					MountPath:        "/extensions/web-analytics/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -1204,7 +1204,7 @@ func TestExtensionService_DeactivateExtensionDrainsConfiguredRuntime(t *testing.
 				{
 					Name:             "runtime-health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/web-analytics/health",
+					MountPath:        "/extensions/web-analytics/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,

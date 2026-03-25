@@ -115,7 +115,7 @@ func createWorkspace(ctx context.Context, cfg cliapi.Config, input workspaceCrea
 	if cfg.AuthMode != cliapi.AuthModeSession {
 		return workspaceOutput{}, fmt.Errorf("workspaces create requires browser login or session-backed auth")
 	}
-	adminURL, err := adminActionURL(cfg.AdminBaseURL, "/admin/actions/workspaces")
+	adminURL, err := adminActionURL(cfg.AdminBaseURL, "/actions/workspaces")
 	if err != nil {
 		return workspaceOutput{}, err
 	}

@@ -1004,7 +1004,7 @@ func TestRunAuthLoginBrowserStoresSessionConfig(t *testing.T) {
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				switch r.URL.Path {
 				case "/auth/cli/start":
-					body := `{"requestID":"req_123","pollToken":"poll_123","authorizeURL":"https://admin.mbr.test/cli-login?request_id=req_123","adminBaseURL":"https://admin.mbr.test","adminGraphQLURL":"https://admin.mbr.test/admin/graphql","expiresInSeconds":600,"intervalSeconds":0}`
+					body := `{"requestID":"req_123","pollToken":"poll_123","authorizeURL":"https://admin.mbr.test/cli-login?request_id=req_123","adminBaseURL":"https://admin.mbr.test","adminGraphQLURL":"https://admin.mbr.test/graphql","expiresInSeconds":600,"intervalSeconds":0}`
 					return &http.Response{
 						StatusCode: http.StatusOK,
 						Header:     http.Header{"Content-Type": []string{"application/json"}},
@@ -1042,7 +1042,7 @@ func TestRunAuthLoginBrowserStoresSessionConfig(t *testing.T) {
 	newCLIClient = func(cfg cliapi.Config) *cliapi.Client {
 		cfg.HTTPClient = &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-				if r.URL.Path != "/admin/graphql" {
+				if r.URL.Path != "/graphql" {
 					t.Fatalf("unexpected graphql path %q", r.URL.Path)
 				}
 				if got := r.Header.Get("Authorization"); got != "" {
@@ -3215,7 +3215,7 @@ func TestRunTeamsCreateJSON(t *testing.T) {
 	newCLIClient = func(cfg cliapi.Config) *cliapi.Client {
 		cfg.HTTPClient = &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-				if r.URL.Path != "/admin/graphql" {
+				if r.URL.Path != "/graphql" {
 					t.Fatalf("unexpected graphql path %q", r.URL.Path)
 				}
 				cookie, err := r.Cookie("mbr_session")
@@ -3365,7 +3365,7 @@ func TestRunTeamMembersAddJSON(t *testing.T) {
 	newCLIClient = func(cfg cliapi.Config) *cliapi.Client {
 		cfg.HTTPClient = &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-				if r.URL.Path != "/admin/graphql" {
+				if r.URL.Path != "/graphql" {
 					t.Fatalf("unexpected graphql path %q", r.URL.Path)
 				}
 				cookie, err := r.Cookie("mbr_session")
@@ -3492,7 +3492,7 @@ func TestRunAdminFormsListJSON(t *testing.T) {
 	newCLIClient = func(cfg cliapi.Config) *cliapi.Client {
 		cfg.HTTPClient = &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-				if r.URL.Path != "/admin/graphql" {
+				if r.URL.Path != "/graphql" {
 					t.Fatalf("unexpected graphql path %q", r.URL.Path)
 				}
 				cookie, err := r.Cookie("mbr_session")
@@ -3593,7 +3593,7 @@ func TestRunAdminFormsCreateJSON(t *testing.T) {
 	newCLIClient = func(cfg cliapi.Config) *cliapi.Client {
 		cfg.HTTPClient = &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-				if r.URL.Path != "/admin/graphql" {
+				if r.URL.Path != "/graphql" {
 					t.Fatalf("unexpected graphql path %q", r.URL.Path)
 				}
 				cookie, err := r.Cookie("mbr_session")
@@ -3701,7 +3701,7 @@ func TestRunAutomationRulesListJSON(t *testing.T) {
 	newCLIClient = func(cfg cliapi.Config) *cliapi.Client {
 		cfg.HTTPClient = &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-				if r.URL.Path != "/admin/graphql" {
+				if r.URL.Path != "/graphql" {
 					t.Fatalf("unexpected graphql path %q", r.URL.Path)
 				}
 				cookie, err := r.Cookie("mbr_session")
@@ -3784,7 +3784,7 @@ func TestRunAutomationRulesCreateJSON(t *testing.T) {
 	newCLIClient = func(cfg cliapi.Config) *cliapi.Client {
 		cfg.HTTPClient = &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-				if r.URL.Path != "/admin/graphql" {
+				if r.URL.Path != "/graphql" {
 					t.Fatalf("unexpected graphql path %q", r.URL.Path)
 				}
 				cookie, err := r.Cookie("mbr_session")
@@ -4051,7 +4051,7 @@ func TestRunWorkspacesCreateJSON(t *testing.T) {
 	newHTTPClient = func() *http.Client {
 		return &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-				if r.URL.Path != "/admin/actions/workspaces" {
+				if r.URL.Path != "/actions/workspaces" {
 					t.Fatalf("unexpected admin path %q", r.URL.Path)
 				}
 				if auth := r.Header.Get("Authorization"); auth != "" {
@@ -4239,7 +4239,7 @@ func TestRunExtensionsMonitorJSON(t *testing.T) {
 					"workspacePlan":      map[string]any{"mode": "provision_dedicated_workspace", "name": "People", "slug": "people", "description": "People operations"},
 					"permissions":        []string{"case:read", "case:write"},
 					"publicRoutes":       []map[string]any{{"pathPrefix": "/careers", "assetPath": "templates/careers"}},
-					"adminRoutes":        []map[string]any{{"pathPrefix": "/admin/extensions/ats", "assetPath": "templates/admin/ats"}},
+					"adminRoutes":        []map[string]any{{"pathPrefix": "/extensions/ats", "assetPath": "templates/admin/ats"}},
 					"endpoints":          []map[string]any{{"name": "careers-site", "class": "public_page", "mountPath": "/careers", "methods": []string{"GET"}, "auth": "public", "contentTypes": []string{"text/html"}, "maxBodyBytes": 0, "rateLimitPerMinute": 60, "workspaceBinding": "none", "assetPath": "templates/careers/index.html", "serviceTarget": nil}},
 					"events":             map[string]any{"publishes": []map[string]any{{"type": "candidate.reviewed", "description": "Candidate reviewed", "schemaVersion": 1}}, "subscribes": []string{"case.created"}},
 					"commands":           []map[string]any{{"name": "ats.jobs.publish", "description": "Publish a job"}},
@@ -4789,7 +4789,7 @@ func TestRunExtensionsInstallProvisionedWorkspaceJSON(t *testing.T) {
 	newCLIClient = func(cfg cliapi.Config) *cliapi.Client {
 		cfg.HTTPClient = &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-				if r.URL.Path != "/admin/graphql" {
+				if r.URL.Path != "/graphql" {
 					t.Fatalf("unexpected graphql path %q", r.URL.Path)
 				}
 				if cookie, err := r.Cookie("mbr_session"); err != nil || cookie.Value != "session_cli" {
@@ -4855,7 +4855,7 @@ func TestRunExtensionsInstallProvisionedWorkspaceJSON(t *testing.T) {
 	newHTTPClient = func() *http.Client {
 		return &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-				if r.URL.Path != "/admin/actions/workspaces" {
+				if r.URL.Path != "/actions/workspaces" {
 					t.Fatalf("unexpected workspace path %q", r.URL.Path)
 				}
 				if cookie, err := r.Cookie("mbr_session"); err != nil || cookie.Value != "session_cli" {

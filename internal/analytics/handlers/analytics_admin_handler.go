@@ -10,7 +10,7 @@ import (
 // These are server-rendered pages; all data loading happens via GraphQL from client-side JS.
 type AnalyticsAdminHandler struct{}
 
-const analyticsAdminBasePath = "/admin/extensions/web-analytics"
+const analyticsAdminBasePath = "/extensions/web-analytics"
 
 // NewAnalyticsAdminHandler creates a new analytics admin handler.
 func NewAnalyticsAdminHandler() *AnalyticsAdminHandler {

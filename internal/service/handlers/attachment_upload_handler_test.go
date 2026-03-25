@@ -102,7 +102,7 @@ func TestAttachmentUploadHandler_HandleAdminUploadRequiresWorkspace(t *testing.T
 	require.NoError(t, err)
 	require.NoError(t, writer.Close())
 
-	req := httptest.NewRequest(http.MethodPost, "/admin/actions/attachments", body)
+	req := httptest.NewRequest(http.MethodPost, "/actions/attachments", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)

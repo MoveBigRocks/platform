@@ -194,7 +194,7 @@
     {
       "name": "ats-admin-dashboard",
       "class": "admin_page",
-      "mountPath": "/admin/extensions/ats",
+      "mountPath": "/extensions/ats",
       "methods": [
         "GET"
       ],

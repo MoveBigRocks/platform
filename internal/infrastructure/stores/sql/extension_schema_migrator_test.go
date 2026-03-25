@@ -69,7 +69,7 @@ func TestExtensionSchemaMigrator_ActivateAppliesAndReusesPackageSchema(t *testin
 					{
 						Name:          "runtime-health",
 						Class:         platformdomain.ExtensionEndpointClassHealth,
-						MountPath:     "/admin/extensions/web-analytics/health",
+						MountPath:     "/extensions/web-analytics/health",
 						Methods:       []string{"GET"},
 						Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 						ServiceTarget: "web-analytics.runtime.health",
@@ -174,7 +174,7 @@ func TestExtensionSchemaMigrator_RejectsChecksumDrift(t *testing.T) {
 				{
 					Name:          "runtime-health",
 					Class:         platformdomain.ExtensionEndpointClassHealth,
-					MountPath:     "/admin/extensions/error-tracking/health",
+					MountPath:     "/extensions/error-tracking/health",
 					Methods:       []string{"GET"},
 					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 					ServiceTarget: "error-tracking.runtime.health",

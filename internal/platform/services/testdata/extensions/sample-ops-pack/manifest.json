@@ -32,7 +32,7 @@
     {
       "name": "sample-ops-admin-dashboard",
       "class": "admin_page",
-      "mountPath": "/admin/extensions/sample-ops-pack",
+      "mountPath": "/extensions/sample-ops-pack",
       "methods": [
         "GET",
         "HEAD"

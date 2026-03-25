@@ -28,7 +28,7 @@ func TestNewExtensionPackageRegistration(t *testing.T) {
 			{
 				Name:             "runtime-health",
 				Class:            ExtensionEndpointClassHealth,
-				MountPath:        "/admin/extensions/web-analytics/health",
+				MountPath:        "/extensions/web-analytics/health",
 				Methods:          []string{"GET"},
 				Auth:             ExtensionEndpointAuthInternalOnly,
 				WorkspaceBinding: ExtensionWorkspaceBindingInstanceScoped,
@@ -181,7 +181,7 @@ func validServiceBackedOwnedSchemaManifest() ExtensionManifest {
 			{
 				Name:             "runtime-health",
 				Class:            ExtensionEndpointClassHealth,
-				MountPath:        "/admin/extensions/web-analytics/health",
+				MountPath:        "/extensions/web-analytics/health",
 				Methods:          []string{"GET"},
 				Auth:             ExtensionEndpointAuthInternalOnly,
 				WorkspaceBinding: ExtensionWorkspaceBindingInstanceScoped,

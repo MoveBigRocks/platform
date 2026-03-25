@@ -206,7 +206,7 @@
 
         async function editUser(id) {
             try {
-                const response = await fetch(`/admin/actions/users/${id}`, {
+                const response = await fetch(`/actions/users/${id}`, {
                     credentials: 'same-origin'
                 });
 
@@ -232,7 +232,7 @@
 
         async function manageUserWorkspaces(id) {
             try {
-                const response = await fetch(`/admin/actions/users/${id}/workspaces`, {
+                const response = await fetch(`/actions/users/${id}/workspaces`, {
                     credentials: 'same-origin'
                 });
 
@@ -271,7 +271,7 @@
 
         async function toggleUserStatus(id, activate) {
             try {
-                const response = await fetch(`/admin/actions/users/${id}/status`, {
+                const response = await fetch(`/actions/users/${id}/status`, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
@@ -306,7 +306,7 @@
                 delete data.instance_role;
             }
 
-            const url = userId ? `/admin/actions/users/${userId}` : '/admin/actions/users';
+            const url = userId ? `/actions/users/${userId}` : '/actions/users';
             const method = userId ? 'PUT' : 'POST';
 
             try {

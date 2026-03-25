@@ -147,7 +147,7 @@ func TestCaseDetailTemplateRenders(t *testing.T) {
 				Status: "unresolved",
 			},
 		},
-		IssuesBasePath: "/admin/extensions/error-tracking/issues",
+		IssuesBasePath: "/extensions/error-tracking/issues",
 		Users:          []UserOptionItem{},
 		StatusOptions: []servicedomain.CaseStatus{
 			servicedomain.CaseStatusNew,
@@ -171,7 +171,7 @@ func TestCaseDetailTemplateRenders(t *testing.T) {
 	output := buf.String()
 	require.Contains(t, output, "ac-2512-abc123", "case ID should appear in output")
 	require.Contains(t, output, "Test support request", "case subject should appear in output")
-	require.Contains(t, output, "/admin/extensions/error-tracking/issues/issue-1", "linked issue links should use extension path")
+	require.Contains(t, output, "/extensions/error-tracking/issues/issue-1", "linked issue links should use extension path")
 }
 
 func TestIssuesListTemplateRenders(t *testing.T) {
@@ -203,7 +203,7 @@ func TestIssuesListTemplateRenders(t *testing.T) {
 			},
 		},
 		TotalIssues:    1,
-		IssuesBasePath: "/admin/extensions/error-tracking/issues",
+		IssuesBasePath: "/extensions/error-tracking/issues",
 	}
 
 	var buf bytes.Buffer
@@ -213,7 +213,7 @@ func TestIssuesListTemplateRenders(t *testing.T) {
 	output := buf.String()
 	require.Contains(t, output, "NullPointerException", "issue title should appear in output")
 	require.Contains(t, output, "1 issues", "total issues should appear in output")
-	require.Contains(t, output, "/admin/extensions/error-tracking/issues/issue-1", "issue detail links should use extension path")
+	require.Contains(t, output, "/extensions/error-tracking/issues/issue-1", "issue detail links should use extension path")
 }
 
 func TestApplicationsListTemplateRenders(t *testing.T) {
@@ -242,7 +242,7 @@ func TestApplicationsListTemplateRenders(t *testing.T) {
 			},
 		},
 		TotalApplications:    1,
-		ApplicationsBasePath: "/admin/extensions/error-tracking/applications",
+		ApplicationsBasePath: "/extensions/error-tracking/applications",
 	}
 
 	var buf bytes.Buffer
@@ -252,8 +252,8 @@ func TestApplicationsListTemplateRenders(t *testing.T) {
 	output := buf.String()
 	require.Contains(t, output, "Backend API", "application name should appear in output")
 	require.Contains(t, output, "1 applications across all workspaces", "instance-scoped summary should render correctly")
-	require.Contains(t, output, "/admin/extensions/error-tracking/applications/new", "new application link should use extension path")
-	require.Contains(t, output, "/admin/extensions/error-tracking/applications/app-1", "application detail link should use extension path")
+	require.Contains(t, output, "/extensions/error-tracking/applications/new", "new application link should use extension path")
+	require.Contains(t, output, "/extensions/error-tracking/applications/app-1", "application detail link should use extension path")
 }
 
 func TestApplicationsListTemplateRendersWorkspaceScopedSummary(t *testing.T) {
@@ -280,7 +280,7 @@ func TestApplicationsListTemplateRendersWorkspaceScopedSummary(t *testing.T) {
 			},
 		},
 		TotalApplications:    1,
-		ApplicationsBasePath: "/admin/extensions/error-tracking/applications",
+		ApplicationsBasePath: "/extensions/error-tracking/applications",
 	}
 
 	var buf bytes.Buffer
@@ -308,7 +308,7 @@ func TestSidebarTemplateRendersExtensionNavigation(t *testing.T) {
 					{
 						Title:      "Issues",
 						Icon:       "alert-circle",
-						Href:       "/admin/extensions/error-tracking/issues",
+						Href:       "/extensions/error-tracking/issues",
 						ActivePage: "issues",
 					},
 				},
@@ -322,7 +322,7 @@ func TestSidebarTemplateRendersExtensionNavigation(t *testing.T) {
 
 	output := buf.String()
 	require.Contains(t, output, "Error Tracking", "extension section title should render")
-	require.Contains(t, output, "/admin/extensions/error-tracking/issues", "extension nav href should render")
+	require.Contains(t, output, "/extensions/error-tracking/issues", "extension nav href should render")
 	require.Contains(t, output, "Issues", "extension nav title should render")
 }
 
@@ -344,7 +344,7 @@ func TestDashboardTemplateRendersExtensionWidgets(t *testing.T) {
 				Title:       "ATS Workspace",
 				Description: "Open the hiring dashboard and review candidate workflows.",
 				Icon:        "briefcase-business",
-				Href:        "/admin/extensions/ats",
+				Href:        "/extensions/ats",
 			},
 		},
 	}
@@ -356,5 +356,5 @@ func TestDashboardTemplateRendersExtensionWidgets(t *testing.T) {
 	output := buf.String()
 	require.Contains(t, output, "Extensions", "extensions section title should render")
 	require.Contains(t, output, "ATS Workspace", "extension widget title should render")
-	require.Contains(t, output, "/admin/extensions/ats", "extension widget href should render")
+	require.Contains(t, output, "/extensions/ats", "extension widget href should render")
 }

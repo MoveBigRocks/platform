@@ -53,7 +53,7 @@ func TestExtensionServiceTargetRegistry_Probe(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy", "message": "ready"})
 	})
 
-	result, err := registry.Probe("test.health", http.MethodGet, "/admin/extensions/test/health", nil)
+	result, err := registry.Probe("test.health", http.MethodGet, "/extensions/test/health", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, result.StatusCode)
 	assert.Contains(t, string(result.Body), `"status":"healthy"`)
@@ -75,7 +75,7 @@ func TestExtensionServiceHealthRuntime_CheckInstalledExtensionHealth(t *testing.
 				{
 					Name:             "runtime-health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/web-analytics/health",
+					MountPath:        "/extensions/web-analytics/health",
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
 					ServiceTarget:    "analytics.runtime.health",
@@ -279,7 +279,7 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesInstanceScopedService
 				{
 					Name:             "settings",
 					Class:            platformdomain.ExtensionEndpointClassAdminPage,
-					MountPath:        "/admin/extensions/enterprise-access",
+					MountPath:        "/extensions/enterprise-access",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthSession,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -288,7 +288,7 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesInstanceScopedService
 				{
 					Name:             "health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/enterprise-access/health",
+					MountPath:        "/extensions/enterprise-access/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -312,7 +312,7 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesInstanceScopedService
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, "/admin/extensions/enterprise-access", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/extensions/enterprise-access", nil)
 	c.Set("auth_context", &platformdomain.AuthContext{
 		Principal:     &platformdomain.User{ID: "user_admin", Email: "admin@example.com"},
 		PrincipalType: platformdomain.PrincipalTypeUser,
@@ -353,7 +353,7 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesWorkspaceScopedEndpoi
 				{
 					Name:             "refresh-dashboard",
 					Class:            platformdomain.ExtensionEndpointClassAdminAction,
-					MountPath:        "/admin/extensions/ops/actions/:actionName",
+					MountPath:        "/extensions/ops/actions/:actionName",
 					Methods:          []string{"POST"},
 					Auth:             platformdomain.ExtensionEndpointAuthSession,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingFromSession,
@@ -373,7 +373,7 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesWorkspaceScopedEndpoi
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodPost, "/admin/extensions/ops/actions/refresh", nil)
+	c.Request = httptest.NewRequest(http.MethodPost, "/extensions/ops/actions/refresh", nil)
 	c.Set("auth_context", &platformdomain.AuthContext{
 		Principal:     &platformdomain.User{ID: "user_operator", Email: "ops@example.com"},
 		PrincipalType: platformdomain.PrincipalTypeUser,
@@ -425,7 +425,7 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInstanceScopedEndpointFro
 				{
 					Name:             "settings",
 					Class:            platformdomain.ExtensionEndpointClassAdminPage,
-					MountPath:        "/admin/extensions/enterprise-access",
+					MountPath:        "/extensions/enterprise-access",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthSession,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -434,7 +434,7 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInstanceScopedEndpointFro
 				{
 					Name:             "health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/enterprise-access/health",
+					MountPath:        "/extensions/enterprise-access/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -455,7 +455,7 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInstanceScopedEndpointFro
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, "/admin/extensions/enterprise-access", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/extensions/enterprise-access", nil)
 	c.Set("auth_context", &platformdomain.AuthContext{
 		Principal:     &platformdomain.User{ID: "user_operator", Email: "ops@example.com"},
 		PrincipalType: platformdomain.PrincipalTypeUser,
@@ -503,7 +503,7 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInternalOnlyEndpointOverH
 				{
 					Name:             "health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/enterprise-access/health",
+					MountPath:        "/extensions/enterprise-access/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -524,7 +524,7 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInternalOnlyEndpointOverH
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, "/admin/extensions/enterprise-access/health", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/extensions/enterprise-access/health", nil)
 	c.Set("auth_context", &platformdomain.AuthContext{
 		Principal:     &platformdomain.User{ID: "user_admin", Email: "admin@example.com"},
 		PrincipalType: platformdomain.PrincipalTypeUser,
@@ -701,7 +701,7 @@ func TestServeResolvedExtensionServiceRoute_ValidatesSignedWebhookAuth(t *testin
 				{
 					Name:             "runtime-health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/admin/extensions/ops-pack/health",
+					MountPath:        "/extensions/ops-pack/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
@@ -769,7 +769,7 @@ func TestExtensionServiceTargetRegistry_DispatchesAnalyticsAdminPage(t *testing.
 	w := httptest.NewRecorder()
 	ginCtx, router := gin.CreateTestContext(w)
 	router.SetHTMLTemplate(template.Must(template.New("analytics_properties.html").Parse(`{{define "analytics_properties.html"}}{{.AnalyticsBasePath}}|analytics-admin{{end}}`)))
-	ginCtx.Request = httptest.NewRequest(http.MethodGet, "/admin/extensions/web-analytics", nil)
+	ginCtx.Request = httptest.NewRequest(http.MethodGet, "/extensions/web-analytics", nil)
 	ginCtx.Set("name", "Test User")
 	ginCtx.Set("email", "test@example.com")
 
@@ -777,7 +777,7 @@ func TestExtensionServiceTargetRegistry_DispatchesAnalyticsAdminPage(t *testing.
 
 	require.True(t, ok)
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), "/admin/extensions/web-analytics")
+	assert.Contains(t, w.Body.String(), "/extensions/web-analytics")
 	assert.Contains(t, w.Body.String(), "analytics-admin")
 }
 
@@ -833,7 +833,7 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingApplicationsPage(
 	workspaceID := workspace.ID
 	workspaceName := workspace.Name
 	workspaceSlug := workspace.ShortCode
-	ginCtx.Request = httptest.NewRequest(http.MethodGet, "/admin/extensions/error-tracking/applications", nil)
+	ginCtx.Request = httptest.NewRequest(http.MethodGet, "/extensions/error-tracking/applications", nil)
 	ginCtx.Set("name", "Test User")
 	ginCtx.Set("email", "test@example.com")
 	ginCtx.Set("session", &platformdomain.Session{
@@ -850,7 +850,7 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingApplicationsPage(
 
 	require.True(t, ok)
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), "/admin/extensions/error-tracking/applications")
+	assert.Contains(t, w.Body.String(), "/extensions/error-tracking/applications")
 	assert.Contains(t, w.Body.String(), "|1")
 }
 
@@ -921,7 +921,7 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingIssuesPage(t *tes
 	workspaceID := workspace.ID
 	workspaceName := workspace.Name
 	workspaceSlug := workspace.ShortCode
-	ginCtx.Request = httptest.NewRequest(http.MethodGet, "/admin/extensions/error-tracking/issues", nil)
+	ginCtx.Request = httptest.NewRequest(http.MethodGet, "/extensions/error-tracking/issues", nil)
 	ginCtx.Set("name", "Test User")
 	ginCtx.Set("email", "test@example.com")
 	ginCtx.Set("session", &platformdomain.Session{
@@ -938,6 +938,6 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingIssuesPage(t *tes
 
 	require.True(t, ok)
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), "/admin/extensions/error-tracking/issues")
+	assert.Contains(t, w.Body.String(), "/extensions/error-tracking/issues")
 	assert.Contains(t, w.Body.String(), "|1")
 }

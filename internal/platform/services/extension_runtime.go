@@ -39,8 +39,8 @@ var (
 		"/static",
 		"/login",
 		"/logout",
-		"/admin/actions",
-		"/admin/graphql",
+		"/actions",
+		"/graphql",
 	}
 )
 
@@ -590,8 +590,8 @@ func validateAdminMountNamespace(mounts []string) error {
 		if mount == "" {
 			continue
 		}
-		if mount != "/admin/extensions" && !strings.HasPrefix(mount, "/admin/extensions/") {
-			return fmt.Errorf("admin extension path %s must be mounted under /admin/extensions", mount)
+		if mount != "/extensions" && !strings.HasPrefix(mount, "/extensions/") {
+			return fmt.Errorf("admin extension path %s must be mounted under /extensions", mount)
 		}
 	}
 	return nil

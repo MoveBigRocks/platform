@@ -165,7 +165,7 @@ func createAdminRouter(
 		return router
 	}
 
-	adminExtensionRoutes := router.Group("/admin/extensions")
+	adminExtensionRoutes := router.Group("/extensions")
 	adminExtensionRoutes.Use(contextAuthMiddleware.AuthRequired())
 	adminExtensionRoutes.Use(contextAuthMiddleware.RequireOperationalAccess())
 	adminExtensionRoutes.Use(adminFeatureMiddleware)
@@ -248,7 +248,7 @@ func createAdminRouter(
 
 	// Admin action routes (internal SSR support surfaces; no public contract)
 	// These are form/action endpoints backing admin browser UI workflows.
-	adminActionAPI := router.Group("/admin/actions")
+	adminActionAPI := router.Group("/actions")
 	adminActionAPI.Use(contextAuthMiddleware.AuthRequired())
 	adminActionAPI.Use(contextAuthMiddleware.RequireInstanceAccess())
 	adminActionAPI.Use(adminContextMiddleware.WithAdminContext())
@@ -276,7 +276,7 @@ func createAdminRouter(
 	}
 
 	// User management action routes (admin role required)
-	adminUserAPI := router.Group("/admin/actions")
+	adminUserAPI := router.Group("/actions")
 	adminUserAPI.Use(contextAuthMiddleware.AuthRequired())
 	adminUserAPI.Use(contextAuthMiddleware.RequireInstanceAccess(platformdomain.InstanceRoleAdmin))
 	adminUserAPI.Use(adminContextMiddleware.WithAdminContext())
@@ -291,7 +291,7 @@ func createAdminRouter(
 
 	// GraphQL API for admin workflows (session authenticated).
 	// Browser pages such as API tokens and admin tooling call this endpoint.
-	// The path is explicitly admin-internal: /admin/graphql.
+	// The path is explicitly admin-internal: /graphql.
 	// Using new graph-gophers/graphql-go implementation.
 	gqlResolver := graph.NewRootResolver(graph.Config{
 		Service: &serviceresolvers.Config{
@@ -326,11 +326,11 @@ func createAdminRouter(
 	gqlProtected := router.Group("")
 	gqlProtected.Use(contextAuthMiddleware.AuthRequired())
 	gqlProtected.Use(contextAuthMiddleware.RequireInstanceAccess())
-	gqlProtected.POST("/admin/graphql", graph.GinHandler(gqlServer))
+	gqlProtected.POST("/graphql", graph.GinHandler(gqlServer))
 
 	// GraphQL playground (development only)
 	if cfg.Server.Environment != "production" {
-		router.GET("/admin/graphql", gin.WrapH(graph.NewPlaygroundHandler("/admin/graphql")))
+		router.GET("/graphql", gin.WrapH(graph.NewPlaygroundHandler("/graphql")))
 	}
 
 	return router

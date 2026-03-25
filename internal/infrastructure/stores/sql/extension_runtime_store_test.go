@@ -39,7 +39,7 @@ func TestExtensionRuntimeStore_UpsertAndGetRegistration(t *testing.T) {
 			{
 				Name:          "health",
 				Class:         platformdomain.ExtensionEndpointClassHealth,
-				MountPath:     "/admin/extensions/web-analytics/health",
+				MountPath:     "/extensions/web-analytics/health",
 				Methods:       []string{"GET"},
 				Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 				ServiceTarget: "web-analytics.runtime.health",
@@ -104,7 +104,7 @@ func TestExtensionRuntimeStore_CreateAndListMigrations(t *testing.T) {
 			{
 				Name:          "health",
 				Class:         platformdomain.ExtensionEndpointClassHealth,
-				MountPath:     "/admin/extensions/error-tracking/health",
+				MountPath:     "/extensions/error-tracking/health",
 				Methods:       []string{"GET"},
 				Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 				ServiceTarget: "error-tracking.runtime.health",

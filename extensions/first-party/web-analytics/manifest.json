@@ -52,7 +52,7 @@
     {
       "name": "analytics-admin-properties",
       "class": "admin_page",
-      "mountPath": "/admin/extensions/web-analytics",
+      "mountPath": "/extensions/web-analytics",
       "methods": ["GET", "HEAD"],
       "auth": "session",
       "workspaceBinding": "workspace_from_session",
@@ -61,7 +61,7 @@
     {
       "name": "runtime-health",
       "class": "health",
-      "mountPath": "/admin/extensions/web-analytics/health",
+      "mountPath": "/extensions/web-analytics/health",
       "methods": ["GET"],
       "auth": "internal_only",
       "serviceTarget": "web-analytics.runtime.health"

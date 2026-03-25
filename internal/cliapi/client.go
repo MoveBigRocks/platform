@@ -171,7 +171,7 @@ func (c *Client) UploadAttachment(ctx context.Context, params AttachmentUploadPa
 
 	uploadURL := strings.TrimRight(c.config.APIBaseURL, "/") + "/attachments"
 	if c.config.AuthMode == AuthModeSession {
-		uploadURL = strings.TrimRight(c.config.AdminBaseURL, "/") + "/admin/actions/attachments"
+		uploadURL = strings.TrimRight(c.config.AdminBaseURL, "/") + "/actions/attachments"
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, uploadURL, &body)

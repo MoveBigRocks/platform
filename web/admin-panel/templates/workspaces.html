@@ -150,7 +150,7 @@
 
         async function editWorkspace(id) {
             try {
-                const response = await fetch(`/admin/actions/workspaces/${id}`, {
+                const response = await fetch(`/actions/workspaces/${id}`, {
                     credentials: 'same-origin'
                 });
 
@@ -179,7 +179,7 @@
             }
 
             try {
-                const response = await fetch(`/admin/actions/workspaces/${id}`, {
+                const response = await fetch(`/actions/workspaces/${id}`, {
                     method: 'DELETE',
                     credentials: 'same-origin'
                 });
@@ -204,8 +204,8 @@
             delete data.id;
 
             const url = workspaceId
-                ? `/admin/actions/workspaces/${workspaceId}`
-                : '/admin/actions/workspaces';
+                ? `/actions/workspaces/${workspaceId}`
+                : '/actions/workspaces';
             const method = workspaceId ? 'PUT' : 'POST';
 
             try {

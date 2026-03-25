@@ -155,7 +155,7 @@ func TestExtensionManifestValidateServiceBackedRequirements(t *testing.T) {
 			{
 				Name:             "runtime-health",
 				Class:            ExtensionEndpointClassHealth,
-				MountPath:        "/admin/extensions/web-analytics/health",
+				MountPath:        "/extensions/web-analytics/health",
 				Methods:          []string{"get"},
 				Auth:             ExtensionEndpointAuthInternalOnly,
 				WorkspaceBinding: ExtensionWorkspaceBindingInstanceScoped,
@@ -262,7 +262,7 @@ func TestExtensionManifestValidateAcceptsAdminNavigationForAdminPageEndpoints(t 
 			{
 				Name:             "admin-home",
 				Class:            ExtensionEndpointClassAdminPage,
-				MountPath:        "/admin/extensions/web-analytics",
+				MountPath:        "/extensions/web-analytics",
 				Methods:          []string{"get"},
 				Auth:             ExtensionEndpointAuthSession,
 				WorkspaceBinding: ExtensionWorkspaceBindingFromSession,
@@ -271,7 +271,7 @@ func TestExtensionManifestValidateAcceptsAdminNavigationForAdminPageEndpoints(t 
 			{
 				Name:             "runtime-health",
 				Class:            ExtensionEndpointClassHealth,
-				MountPath:        "/admin/extensions/web-analytics/health",
+				MountPath:        "/extensions/web-analytics/health",
 				Methods:          []string{"get"},
 				Auth:             ExtensionEndpointAuthInternalOnly,
 				WorkspaceBinding: ExtensionWorkspaceBindingInstanceScoped,
@@ -320,7 +320,7 @@ func TestExtensionManifestValidateAcceptsEventConsumersAndScheduledJobs(t *testi
 			{
 				Name:             "runtime-health",
 				Class:            ExtensionEndpointClassHealth,
-				MountPath:        "/admin/extensions/web-analytics/health",
+				MountPath:        "/extensions/web-analytics/health",
 				Methods:          []string{"get"},
 				Auth:             ExtensionEndpointAuthInternalOnly,
 				WorkspaceBinding: ExtensionWorkspaceBindingInstanceScoped,
@@ -378,7 +378,7 @@ func TestExtensionManifestValidateRejectsConsumerWithoutSubscribedEvent(t *testi
 			{
 				Name:             "runtime-health",
 				Class:            ExtensionEndpointClassHealth,
-				MountPath:        "/admin/extensions/web-analytics/health",
+				MountPath:        "/extensions/web-analytics/health",
 				Methods:          []string{"get"},
 				Auth:             ExtensionEndpointAuthInternalOnly,
 				WorkspaceBinding: ExtensionWorkspaceBindingInstanceScoped,
@@ -426,7 +426,7 @@ func TestExtensionManifestValidateRejectsAdminNavigationWithoutAdminPageEndpoint
 			{
 				Name:             "runtime-health",
 				Class:            ExtensionEndpointClassHealth,
-				MountPath:        "/admin/extensions/web-analytics/health",
+				MountPath:        "/extensions/web-analytics/health",
 				Methods:          []string{"get"},
 				Auth:             ExtensionEndpointAuthInternalOnly,
 				WorkspaceBinding: ExtensionWorkspaceBindingInstanceScoped,
@@ -473,7 +473,7 @@ func TestExtensionManifestValidateRequiresRuntimeArtifactForUnixSocketProtocol(t
 			{
 				Name:             "runtime-health",
 				Class:            ExtensionEndpointClassHealth,
-				MountPath:        "/admin/extensions/web-analytics/health",
+				MountPath:        "/extensions/web-analytics/health",
 				Methods:          []string{"GET"},
 				Auth:             ExtensionEndpointAuthInternalOnly,
 				WorkspaceBinding: ExtensionWorkspaceBindingInstanceScoped,

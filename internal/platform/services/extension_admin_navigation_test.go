@@ -43,22 +43,22 @@ func TestExtensionService_ListWorkspaceAdminNavigation(t *testing.T) {
 		byHref[item.Href] = item
 	}
 
-	analytics := byHref["/admin/extensions/web-analytics"]
+	analytics := byHref["/extensions/web-analytics"]
 	assert.Equal(t, "Analytics", analytics.Section)
 	assert.Equal(t, "Web Analytics", analytics.Title)
-	assert.Equal(t, "/admin/extensions/web-analytics", analytics.Href)
+	assert.Equal(t, "/extensions/web-analytics", analytics.Href)
 	assert.Equal(t, "analytics", analytics.ActivePage)
 
-	errorTrackingApplications := byHref["/admin/extensions/error-tracking/applications"]
+	errorTrackingApplications := byHref["/extensions/error-tracking/applications"]
 	assert.Equal(t, "Error Tracking", errorTrackingApplications.Section)
 	assert.Equal(t, "Applications", errorTrackingApplications.Title)
-	assert.Equal(t, "/admin/extensions/error-tracking/applications", errorTrackingApplications.Href)
+	assert.Equal(t, "/extensions/error-tracking/applications", errorTrackingApplications.Href)
 	assert.Equal(t, "applications", errorTrackingApplications.ActivePage)
 
-	errorTrackingIssues := byHref["/admin/extensions/error-tracking/issues"]
+	errorTrackingIssues := byHref["/extensions/error-tracking/issues"]
 	assert.Equal(t, "Error Tracking", errorTrackingIssues.Section)
 	assert.Equal(t, "Issues", errorTrackingIssues.Title)
-	assert.Equal(t, "/admin/extensions/error-tracking/issues", errorTrackingIssues.Href)
+	assert.Equal(t, "/extensions/error-tracking/issues", errorTrackingIssues.Href)
 	assert.Equal(t, "issues", errorTrackingIssues.ActivePage)
 }
 
@@ -129,7 +129,7 @@ func TestExtensionService_ListInstanceAdminNavigation(t *testing.T) {
 				{
 					Name:          "settings",
 					Class:         platformdomain.ExtensionEndpointClassAdminPage,
-					MountPath:     "/admin/extensions/enterprise-access",
+					MountPath:     "/extensions/enterprise-access",
 					Methods:       []string{"GET"},
 					Auth:          platformdomain.ExtensionEndpointAuthSession,
 					ServiceTarget: "enterprise-access.admin.settings",
@@ -137,7 +137,7 @@ func TestExtensionService_ListInstanceAdminNavigation(t *testing.T) {
 				{
 					Name:          "health",
 					Class:         platformdomain.ExtensionEndpointClassHealth,
-					MountPath:     "/admin/extensions/enterprise-access/health",
+					MountPath:     "/extensions/enterprise-access/health",
 					Methods:       []string{"GET"},
 					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
 					ServiceTarget: "enterprise-access.runtime.health",
@@ -162,7 +162,7 @@ func TestExtensionService_ListInstanceAdminNavigation(t *testing.T) {
 	items, err := service.ListInstanceAdminNavigation(ctx)
 	require.NoError(t, err)
 	require.Len(t, items, 1)
-	assert.Equal(t, "/admin/extensions/enterprise-access", items[0].Href)
+	assert.Equal(t, "/extensions/enterprise-access", items[0].Href)
 	assert.Equal(t, "Identity", items[0].Section)
 	assert.Equal(t, "Enterprise Access", items[0].Title)
 }

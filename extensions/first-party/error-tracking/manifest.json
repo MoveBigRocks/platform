@@ -53,7 +53,7 @@
     {
       "name": "error-tracking-applications",
       "class": "admin_page",
-      "mountPath": "/admin/extensions/error-tracking/applications",
+      "mountPath": "/extensions/error-tracking/applications",
       "methods": ["GET", "HEAD"],
       "auth": "session",
       "workspaceBinding": "workspace_from_session",
@@ -62,7 +62,7 @@
     {
       "name": "error-tracking-issues",
       "class": "admin_page",
-      "mountPath": "/admin/extensions/error-tracking/issues",
+      "mountPath": "/extensions/error-tracking/issues",
       "methods": ["GET", "HEAD"],
       "auth": "session",
       "workspaceBinding": "workspace_from_session",
@@ -71,7 +71,7 @@
     {
       "name": "runtime-health",
       "class": "health",
-      "mountPath": "/admin/extensions/error-tracking/health",
+      "mountPath": "/extensions/error-tracking/health",
       "methods": ["GET"],
       "auth": "internal_only",
       "serviceTarget": "error-tracking.runtime.health"

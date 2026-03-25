@@ -133,7 +133,7 @@
 
             <div id="layout-main">
                 <div class="max-w-4xl mx-auto">
-                    <form id="rule-form" method="POST" action="{{if .Rule}}/admin/actions/rules/{{.Rule.ID}}{{else}}/admin/actions/rules{{end}}">
+                    <form id="rule-form" method="POST" action="{{if .Rule}}/actions/rules/{{.Rule.ID}}{{else}}/actions/rules{{end}}">
                         {{if .Rule}}<input type="hidden" name="_method" value="PUT">{{end}}
                         <input type="hidden" name="workspace_id" value="{{.WorkspaceID}}">
 
@@ -431,7 +431,7 @@
 
         function deleteRule(ruleId) {
             if (confirm('Are you sure you want to delete this automation? This cannot be undone.')) {
-                fetch('/admin/actions/rules/' + ruleId, {
+                fetch('/actions/rules/' + ruleId, {
                     method: 'DELETE',
                     credentials: 'include'
                 }).then(function(response) {

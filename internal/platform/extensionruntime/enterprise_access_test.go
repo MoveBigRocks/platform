@@ -55,7 +55,7 @@ func TestEnterpriseAccessProviderUpsertSettingsAndHealth(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(w)
-	ctx.Request = httptest.NewRequest(http.MethodPost, "/admin/extensions/enterprise-access/providers", strings.NewReader(string(body)))
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/extensions/enterprise-access/providers", strings.NewReader(string(body)))
 	ctx.Request.Header.Set("Content-Type", "application/json")
 	require.True(t, registry.Dispatch("enterprise-access.admin.providers.upsert", ctx))
 	require.Equal(t, http.StatusOK, w.Code)
@@ -71,7 +71,7 @@ func TestEnterpriseAccessProviderUpsertSettingsAndHealth(t *testing.T) {
 
 	settings := httptest.NewRecorder()
 	settingsCtx, _ := gin.CreateTestContext(settings)
-	settingsCtx.Request = httptest.NewRequest(http.MethodGet, "/admin/extensions/enterprise-access", nil)
+	settingsCtx.Request = httptest.NewRequest(http.MethodGet, "/extensions/enterprise-access", nil)
 	require.True(t, registry.Dispatch("enterprise-access.admin.settings", settingsCtx))
 	require.Equal(t, http.StatusOK, settings.Code)
 	assert.Contains(t, settings.Body.String(), "Acme SSO")
@@ -79,7 +79,7 @@ func TestEnterpriseAccessProviderUpsertSettingsAndHealth(t *testing.T) {
 
 	health := httptest.NewRecorder()
 	healthCtx, _ := gin.CreateTestContext(health)
-	healthCtx.Request = httptest.NewRequest(http.MethodGet, "/admin/extensions/enterprise-access/health", nil)
+	healthCtx.Request = httptest.NewRequest(http.MethodGet, "/extensions/enterprise-access/health", nil)
 	require.True(t, registry.Dispatch("enterprise-access.runtime.health", healthCtx))
 	require.Equal(t, http.StatusOK, health.Code)
 	assert.Contains(t, health.Body.String(), `"status":"healthy"`)
@@ -114,7 +114,7 @@ func TestEnterpriseAccessOIDCStartUsesDiscoveryDocument(t *testing.T) {
 	registry := NewRegistry(env.container)
 	w := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(w)
-	ctx.Request = httptest.NewRequest(http.MethodPost, "/admin/extensions/enterprise-access/oidc/start?providerId=acme-sso&format=json", nil)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/extensions/enterprise-access/oidc/start?providerId=acme-sso&format=json", nil)
 	ctx.Request.Header.Set("Accept", "application/json")
 
 	require.True(t, registry.Dispatch("enterprise-access.auth.oidc.start", ctx))
@@ -171,7 +171,7 @@ func TestEnterpriseAccessOIDCCallbackCreatesSessionForProvisionedOperator(t *tes
 
 	startResp := httptest.NewRecorder()
 	startCtx, _ := gin.CreateTestContext(startResp)
-	startCtx.Request = httptest.NewRequest(http.MethodPost, "/admin/extensions/enterprise-access/oidc/start?providerId=acme-sso&format=json", nil)
+	startCtx.Request = httptest.NewRequest(http.MethodPost, "/extensions/enterprise-access/oidc/start?providerId=acme-sso&format=json", nil)
 	startCtx.Request.Header.Set("Accept", "application/json")
 	require.True(t, registry.Dispatch("enterprise-access.auth.oidc.start", startCtx))
 	require.Equal(t, http.StatusOK, startResp.Code)
@@ -192,7 +192,7 @@ func TestEnterpriseAccessOIDCCallbackCreatesSessionForProvisionedOperator(t *tes
 	callbackCtx.Request = httptest.NewRequest(http.MethodGet, "/webhooks/extensions/enterprise-access/callback/oidc?code=code-123&state="+url.QueryEscape(state), nil)
 	require.True(t, registry.Dispatch("enterprise-access.auth.oidc.callback", callbackCtx))
 	require.Equal(t, http.StatusFound, callbackResp.Code)
-	assert.Contains(t, callbackResp.Header().Get("Location"), "/admin/extensions/enterprise-access")
+	assert.Contains(t, callbackResp.Header().Get("Location"), "/extensions/enterprise-access")
 	assert.Contains(t, callbackResp.Header().Get("Set-Cookie"), "mbr_session=")
 
 	user, err := env.store.Users().GetUserByEmail(context.Background(), "sso-user@example.com")
@@ -248,7 +248,7 @@ func TestEnterpriseAccessOIDCCallbackDoesNotRedirectToExternalReturnTo(t *testin
 
 	startResp := httptest.NewRecorder()
 	startCtx, _ := gin.CreateTestContext(startResp)
-	startCtx.Request = httptest.NewRequest(http.MethodPost, "/admin/extensions/enterprise-access/oidc/start?providerId=acme-sso&format=json&returnTo="+url.QueryEscape("https://evil.example/phish"), nil)
+	startCtx.Request = httptest.NewRequest(http.MethodPost, "/extensions/enterprise-access/oidc/start?providerId=acme-sso&format=json&returnTo="+url.QueryEscape("https://evil.example/phish"), nil)
 	startCtx.Request.Header.Set("Accept", "application/json")
 	require.True(t, registry.Dispatch("enterprise-access.auth.oidc.start", startCtx))
 	require.Equal(t, http.StatusOK, startResp.Code)
@@ -265,7 +265,7 @@ func TestEnterpriseAccessOIDCCallbackDoesNotRedirectToExternalReturnTo(t *testin
 	callbackCtx.Request = httptest.NewRequest(http.MethodGet, "/webhooks/extensions/enterprise-access/callback/oidc?code=code-123&state="+url.QueryEscape(authURL.Query().Get("state")), nil)
 	require.True(t, registry.Dispatch("enterprise-access.auth.oidc.callback", callbackCtx))
 	require.Equal(t, http.StatusFound, callbackResp.Code)
-	assert.Equal(t, "https://admin.mbr.test/admin/extensions/enterprise-access", callbackResp.Header().Get("Location"))
+	assert.Equal(t, "https://admin.mbr.test/extensions/enterprise-access", callbackResp.Header().Get("Location"))
 }
 
 func TestEnterpriseAccessProviderValidationRejectsNonHTTPSDiscoveryURL(t *testing.T) {

@@ -102,13 +102,13 @@ func TestExtensionService_ResolveAdminAssetRouteByWorkspace(t *testing.T) {
 				Scope:         platformdomain.ExtensionScopeWorkspace,
 				Risk:          platformdomain.ExtensionRiskStandard,
 				AdminRoutes: []platformdomain.ExtensionRoute{
-					{PathPrefix: "/admin/extensions/ats", AssetPath: "templates/admin/dashboard.html"},
+					{PathPrefix: "/extensions/ats", AssetPath: "templates/admin/dashboard.html"},
 				},
 				Endpoints: []platformdomain.ExtensionEndpoint{
 					{
 						Name:      "ats-admin-dashboard",
 						Class:     platformdomain.ExtensionEndpointClassAdminPage,
-						MountPath: "/admin/extensions/ats",
+						MountPath: "/extensions/ats",
 						AssetPath: "templates/admin/dashboard.html",
 					},
 				},
@@ -130,12 +130,12 @@ func TestExtensionService_ResolveAdminAssetRouteByWorkspace(t *testing.T) {
 	installForWorkspace(workspaceOne.ID, "<html><body>Workspace One ATS</body></html>")
 	installForWorkspace(workspaceTwo.ID, "<html><body>Workspace Two ATS</body></html>")
 
-	first, err := service.ResolveAdminAssetRoute(ctx, workspaceOne.ID, "/admin/extensions/ats")
+	first, err := service.ResolveAdminAssetRoute(ctx, workspaceOne.ID, "/extensions/ats")
 	require.NoError(t, err)
 	require.NotNil(t, first)
 	assert.Contains(t, string(first.Asset.Content), "Workspace One ATS")
 
-	second, err := service.ResolveAdminAssetRoute(ctx, workspaceTwo.ID, "/admin/extensions/ats")
+	second, err := service.ResolveAdminAssetRoute(ctx, workspaceTwo.ID, "/extensions/ats")
 	require.NoError(t, err)
 	require.NotNil(t, second)
 	assert.Contains(t, string(second.Asset.Content), "Workspace Two ATS")
@@ -331,7 +331,7 @@ func TestExtensionService_InstallRejectsAdminPathOutsideExtensionNamespace(t *te
 	})
 	require.NoError(t, err)
 	assert.Equal(t, platformdomain.ExtensionValidationInvalid, installed.ValidationStatus)
-	assert.Contains(t, installed.ValidationMessage, "must be mounted under /admin/extensions")
+	assert.Contains(t, installed.ValidationMessage, "must be mounted under /extensions")
 }
 
 func TestExtensionService_ResolvePublicServiceRoute(t *testing.T) {
@@ -506,7 +506,7 @@ func TestExtensionService_ResolveAdminServiceRouteByWorkspace(t *testing.T) {
 					{
 						Name:             "dashboard-refresh",
 						Class:            platformdomain.ExtensionEndpointClassAdminAction,
-						MountPath:        "/admin/extensions/ops/actions/refresh",
+						MountPath:        "/extensions/ops/actions/refresh",
 						Methods:          []string{"POST"},
 						Auth:             platformdomain.ExtensionEndpointAuthSession,
 						WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingFromSession,
@@ -523,12 +523,12 @@ func TestExtensionService_ResolveAdminServiceRouteByWorkspace(t *testing.T) {
 	install(workspaceOne.ID, "one")
 	install(workspaceTwo.ID, "two")
 
-	first, err := service.ResolveAdminServiceRoute(ctx, workspaceOne.ID, "POST", "/admin/extensions/ops/actions/refresh")
+	first, err := service.ResolveAdminServiceRoute(ctx, workspaceOne.ID, "POST", "/extensions/ops/actions/refresh")
 	require.NoError(t, err)
 	require.NotNil(t, first)
 	assert.Equal(t, "ops.dashboard.one", first.Endpoint.ServiceTarget)
 
-	second, err := service.ResolveAdminServiceRoute(ctx, workspaceTwo.ID, "POST", "/admin/extensions/ops/actions/refresh")
+	second, err := service.ResolveAdminServiceRoute(ctx, workspaceTwo.ID, "POST", "/extensions/ops/actions/refresh")
 	require.NoError(t, err)
 	require.NotNil(t, second)
 	assert.Equal(t, "ops.dashboard.two", second.Endpoint.ServiceTarget)

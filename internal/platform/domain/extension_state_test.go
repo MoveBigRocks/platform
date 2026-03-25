@@ -36,12 +36,12 @@ func TestExtensionManifestJSONRoundTrip(t *testing.T) {
 		Forms:           []ExtensionFormSeed{{Slug: "apply", Name: "Apply", AutoTags: []string{"candidate"}}},
 		AutomationRules: []ExtensionAutomationSeed{{Key: "analytics-follow-up", Title: "Follow Up"}},
 		PublicRoutes:    []ExtensionRoute{{PathPrefix: "/ext/web-analytics", AssetPath: "public/app.js"}},
-		AdminRoutes:     []ExtensionRoute{{PathPrefix: "/admin/extensions/web-analytics", AssetPath: "admin/index.html"}},
+		AdminRoutes:     []ExtensionRoute{{PathPrefix: "/extensions/web-analytics", AssetPath: "admin/index.html"}},
 		Endpoints: []ExtensionEndpoint{
 			{
 				Name:             "admin-home",
 				Class:            ExtensionEndpointClassAdminPage,
-				MountPath:        "/admin/extensions/web-analytics",
+				MountPath:        "/extensions/web-analytics",
 				Methods:          []string{"GET"},
 				Auth:             ExtensionEndpointAuthSession,
 				WorkspaceBinding: ExtensionWorkspaceBindingFromSession,
@@ -50,7 +50,7 @@ func TestExtensionManifestJSONRoundTrip(t *testing.T) {
 			{
 				Name:             "runtime-health",
 				Class:            ExtensionEndpointClassHealth,
-				MountPath:        "/admin/extensions/web-analytics/health",
+				MountPath:        "/extensions/web-analytics/health",
 				Methods:          []string{"GET"},
 				Auth:             ExtensionEndpointAuthInternalOnly,
 				WorkspaceBinding: ExtensionWorkspaceBindingInstanceScoped,
