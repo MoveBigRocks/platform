@@ -264,9 +264,9 @@ func (s *ExtensionService) listActiveExtensionsForScope(ctx context.Context, sco
 func (s *ExtensionService) listActiveExtensionsForServiceScope(ctx context.Context, scope extensionServiceRouteScope, workspaceID string) ([]*platformdomain.InstalledExtension, error) {
 	if scope == extensionServiceRouteScopeAdmin {
 		if strings.TrimSpace(workspaceID) == "" {
-			installed, err := s.extensionStore.ListInstanceExtensions(ctx)
+			installed, err := s.extensionStore.ListAllExtensions(ctx)
 			if err != nil {
-				return nil, apierrors.DatabaseError("list instance extensions", err)
+				return nil, apierrors.DatabaseError("list all extensions for instance admin", err)
 			}
 			return activeExtensionsOnly(installed), nil
 		}
