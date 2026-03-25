@@ -51,7 +51,7 @@ func TestFormEventHandler_HandleFormSubmitted(t *testing.T) {
 		form.NotificationEmails = []string{"support@example.com"}
 		require.NoError(t, store.Forms().UpdateFormSchema(context.Background(), form))
 
-		submission := servicedomain.NewFormSubmission(form.WorkspaceID, form.ID, shareddomain.MetadataFromMap(map[string]interface{}{
+		submission := servicedomain.NewPublicFormSubmission(form.WorkspaceID, form.ID, shareddomain.MetadataFromMap(map[string]interface{}{
 			"name":    "Jane Doe",
 			"email":   "jane@example.com",
 			"message": "Need help with my account",
@@ -112,7 +112,7 @@ func TestFormEventHandler_HandleFormSubmitted(t *testing.T) {
 		form.NotificationEmails = []string{"ops@example.com"}
 		require.NoError(t, store.Forms().UpdateFormSchema(context.Background(), form))
 
-		submission := servicedomain.NewFormSubmission(form.WorkspaceID, form.ID, shareddomain.MetadataFromMap(map[string]interface{}{
+		submission := servicedomain.NewPublicFormSubmission(form.WorkspaceID, form.ID, shareddomain.MetadataFromMap(map[string]interface{}{
 			"email": "rollback@example.com",
 		}))
 		submission.SubmitterEmail = "rollback@example.com"
