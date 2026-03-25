@@ -446,7 +446,7 @@ func (r *Runtime) isExtensionInstallActive(ctx context.Context, extension *platf
 	if extension.Manifest.Scope == platformdomain.ExtensionScopeInstance {
 		installed, err := r.extensionStore.GetInstanceExtensionBySlug(ctx, extension.Slug)
 		if err != nil || installed == nil {
-			return false, nil
+			return false, nil //nolint:nilerr // not found = not active
 		}
 		return installed.Status == platformdomain.ExtensionStatusActive, nil
 	}
@@ -455,7 +455,7 @@ func (r *Runtime) isExtensionInstallActive(ctx context.Context, extension *platf
 	}
 	installed, err := r.extensionStore.GetInstalledExtensionBySlug(ctx, extension.WorkspaceID, extension.Slug)
 	if err != nil || installed == nil {
-		return false, nil
+		return false, nil //nolint:nilerr // not found = not active
 	}
 	return installed.Status == platformdomain.ExtensionStatusActive, nil
 }

@@ -43,7 +43,7 @@ func (s *ExtensionService) HasActiveExtensionInWorkspace(ctx context.Context, wo
 	}
 	instanceExtension, err := s.extensionStore.GetInstanceExtensionBySlug(ctx, slug)
 	if err != nil || instanceExtension == nil {
-		return false, nil
+		return false, nil //nolint:nilerr // not found = not active
 	}
 	return instanceExtension.Status == platformdomain.ExtensionStatusActive, nil
 }

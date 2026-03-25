@@ -87,7 +87,7 @@ func newWorkspace(t testing.TB, prefix string) *platformdomain.Workspace {
 	now := time.Now().UTC()
 	slug := strings.NewReplacer("/", "-", " ", "-", "_", "-").Replace(t.Name())
 	if slug == "" {
-		slug = "store-contract"
+		slug = "store-contract" //nolint:ineffassign // fallback value used in Workspace below
 	}
 
 	return &platformdomain.Workspace{
