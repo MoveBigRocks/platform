@@ -60,18 +60,11 @@
                 Automations
                 {{if .RuleCount}}<span class="badge">{{.RuleCount}}</span>{{end}}
             </a>
-        </div>
-
-        <!-- Section: Configuration -->
-        <div class="sidebar-menu-section">
-            <p class="sidebar-menu-title">Configuration</p>
-            <div class="space-y-0.5">
-                <a class="sidebar-menu-item {{if eq .ActivePage "forms"}}active{{end}}" href="/forms">
-                    <i data-lucide="file-text" class="h-4 w-4"></i>
-                    Forms
-                    {{if .FormCount}}<span class="badge">{{.FormCount}}</span>{{end}}
-                </a>
-            </div>
+            <a class="sidebar-menu-item {{if eq .ActivePage "forms"}}active{{end}}" href="/forms">
+                <i data-lucide="file-text" class="h-4 w-4"></i>
+                Forms
+                {{if .FormCount}}<span class="badge">{{.FormCount}}</span>{{end}}
+            </a>
         </div>
 
         <!-- Section: Integrations -->

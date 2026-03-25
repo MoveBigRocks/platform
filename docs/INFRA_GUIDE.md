@@ -102,6 +102,10 @@ database-side backup sidecar on the app host.
 - Prometheus: `127.0.0.1:9090` (internal only)
 - App metrics endpoint protected by `METRICS_TOKEN` in production.
 
+### Caddy /metrics routing
+
+The Prometheus `/metrics` endpoint should be blocked by Caddy on **public and API subdomains** to prevent external scraping. However, the **admin subdomain** must NOT block `/metrics` — the admin app serves its own metrics page (embedded Grafana dashboards) at that path behind session auth. See `Caddyfile.example` in the instance template for the correct pattern.
+
 ## Troubleshooting
 
 - SSL/TLS: verify DNS records and Caddy status.

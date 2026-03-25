@@ -69,7 +69,7 @@ func (h *AdminManagementHandler) ShowRules(c *gin.Context) {
 // ShowForms renders the forms list page
 func (h *AdminManagementHandler) ShowForms(c *gin.Context) {
 	ctx := c.Request.Context()
-	pageSubtitle := "Manage customer-facing support forms across all workspaces"
+	pageSubtitle := "Manage forms across all workspaces"
 	workspaceNames := make(map[string]string)
 
 	var (
@@ -79,7 +79,7 @@ func (h *AdminManagementHandler) ShowForms(c *gin.Context) {
 
 	if workspaceID, workspaceName, ok := currentWorkspaceScope(c); ok {
 		forms, err = h.formService.ListWorkspaceForms(ctx, workspaceID)
-		pageSubtitle = "View support forms for " + workspaceName
+		pageSubtitle = "View forms for " + workspaceName
 		workspaceNames[workspaceID] = workspaceName
 	} else {
 		forms, err = h.formService.ListAllForms(ctx)
@@ -139,7 +139,7 @@ func (h *AdminManagementHandler) ShowForms(c *gin.Context) {
 		}
 	}
 
-	pageData := buildAdminPageData(c, "forms", "Support Forms", pageSubtitle, workspaceNames)
+	pageData := buildAdminPageData(c, "forms", "Forms", pageSubtitle, workspaceNames)
 	renderAdminPage(c, "forms.html", pageData, gin.H{
 		"Forms":      allForms,
 		"TotalForms": len(allForms),

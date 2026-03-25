@@ -47,7 +47,7 @@ func (h *AdminManagementHandler) ShowFormEdit(c *gin.Context) {
 		}
 	}
 
-	data := buildAdminTemplateContext(c, "forms", "New Form", "Create a new support form")
+	data := buildAdminTemplateContext(c, "forms", "New Form", "Create a new form")
 	data["Workspaces"] = workspaces
 	data["WorkspaceID"] = workspaceID
 	data["Teams"] = teams
