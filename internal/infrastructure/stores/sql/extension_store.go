@@ -131,6 +131,20 @@ func (s *ExtensionStore) ListInstanceExtensions(ctx context.Context) ([]*platfor
 	return result, nil
 }
 
+func (s *ExtensionStore) ListAllExtensions(ctx context.Context) ([]*platformdomain.InstalledExtension, error) {
+	var rows []models.InstalledExtension
+	query := `SELECT ` + installedExtensionSelectColumns + ` FROM core_platform.installed_extensions WHERE deleted_at IS NULL ORDER BY installed_at DESC`
+	if err := s.db.Get(ctx).SelectContext(ctx, &rows, query); err != nil {
+		return nil, TranslateSqlxError(err, "installed_extensions")
+	}
+
+	result := make([]*platformdomain.InstalledExtension, len(rows))
+	for i := range rows {
+		result[i] = s.mapModelToInstallation(&rows[i])
+	}
+	return result, nil
+}
+
 func (s *ExtensionStore) UpdateInstalledExtension(ctx context.Context, extension *platformdomain.InstalledExtension) error {
 	model, err := s.mapInstallationToModel(extension)
 	if err != nil {

@@ -117,9 +117,9 @@ func (s *ExtensionService) ListInstanceAdminNavigation(ctx context.Context) ([]R
 	if s.extensionStore == nil {
 		return nil, nil
 	}
-	installed, err := s.extensionStore.ListInstanceExtensions(ctx)
+	installed, err := s.allExtensions(ctx)
 	if err != nil {
-		return nil, apierrors.DatabaseError("list instance extensions", err)
+		return nil, apierrors.DatabaseError("list extensions for instance admin", err)
 	}
 	return buildResolvedAdminNavigation(activeExtensionsOnly(installed)), nil
 }
@@ -128,9 +128,9 @@ func (s *ExtensionService) ListInstanceDashboardWidgets(ctx context.Context) ([]
 	if s.extensionStore == nil {
 		return nil, nil
 	}
-	installed, err := s.extensionStore.ListInstanceExtensions(ctx)
+	installed, err := s.allExtensions(ctx)
 	if err != nil {
-		return nil, apierrors.DatabaseError("list instance extensions", err)
+		return nil, apierrors.DatabaseError("list extensions for instance admin", err)
 	}
 	return buildResolvedDashboardWidgets(activeExtensionsOnly(installed)), nil
 }
@@ -176,6 +176,10 @@ func buildResolvedDashboardWidgets(installed []*platformdomain.InstalledExtensio
 		}
 	}
 	return result
+}
+
+func (s *ExtensionService) allExtensions(ctx context.Context) ([]*platformdomain.InstalledExtension, error) {
+	return s.extensionStore.ListAllExtensions(ctx)
 }
 
 func (s *ExtensionService) extensionsVisibleInWorkspace(ctx context.Context, workspaceID string) ([]*platformdomain.InstalledExtension, error) {

@@ -215,6 +215,7 @@ type ExtensionStore interface {
 	GetInstanceExtensionBySlug(ctx context.Context, slug string) (*platformdomain.InstalledExtension, error)
 	ListWorkspaceExtensions(ctx context.Context, workspaceID string) ([]*platformdomain.InstalledExtension, error)
 	ListInstanceExtensions(ctx context.Context) ([]*platformdomain.InstalledExtension, error)
+	ListAllExtensions(ctx context.Context) ([]*platformdomain.InstalledExtension, error)
 	UpdateInstalledExtension(ctx context.Context, extension *platformdomain.InstalledExtension) error
 	DeleteInstalledExtension(ctx context.Context, extensionID string) error
 	GetExtensionBundle(ctx context.Context, extensionID string) ([]byte, error)
