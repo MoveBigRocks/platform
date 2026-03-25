@@ -98,6 +98,9 @@ func createAdminRouter(
 		FromName: cfg.Email.FromName,
 	})
 
+	// Wire email service into auth handler for magic link delivery
+	authHandler.WithEmailService(adminEmailService)
+
 	// Create nonce service for CSRF protection
 	nonceService := platformservices.NewNonceService(
 		platformservices.WithNonceLogger(log),

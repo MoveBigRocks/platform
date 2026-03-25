@@ -20,9 +20,6 @@ import (
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 
-// EmailSendFunc is a function type for sending emails
-type EmailSendFunc func(to, subject, body string) error
-
 // AuthHandler handles authentication and context switching
 type AuthHandler struct {
 	SessionService *platformservices.SessionService // Exported for AdminHandler
@@ -32,7 +29,7 @@ type AuthHandler struct {
 	cookieDomain   string          // Cookie domain (e.g., ".example.com" for cross-subdomain)
 	allowedEmails  map[string]bool // Whitelisted admin emails
 	cliLogin       *platformservices.CLILoginService
-	sendEmail      EmailSendFunc // Email sending function
+	emailService   *platformservices.AdminEmailService
 	logger         *logger.Logger
 }
 
@@ -62,6 +59,12 @@ func NewAuthHandler(
 func (h *AuthHandler) WithCLILogin(adminBaseURL string, cliLogin *platformservices.CLILoginService) *AuthHandler {
 	h.adminBaseURL = strings.TrimRight(strings.TrimSpace(adminBaseURL), "/")
 	h.cliLogin = cliLogin
+	return h
+}
+
+// WithEmailService sets the email service for magic link delivery
+func (h *AuthHandler) WithEmailService(svc *platformservices.AdminEmailService) *AuthHandler {
+	h.emailService = svc
 	return h
 }
 
@@ -146,20 +149,8 @@ func (h *AuthHandler) HandleMagicLinkRequest(c *gin.Context) {
 	magicLinkURL := fmt.Sprintf("%s/auth/verify-magic-link?token=%s", h.baseURL, magicLink.Token)
 
 	// Send magic link via email service
-	if h.sendEmail != nil && h.environment != "development" {
-		subject := "Your login link for Move Big Rocks"
-		body := fmt.Sprintf(`Hello,
-
-You requested a magic link to sign in to Move Big Rocks.
-
-Click here to sign in: %s
-
-This link will expire in 15 minutes. If you didn't request this link, you can safely ignore this email.
-
-- The Move Big Rocks Team`, magicLinkURL)
-
-		if err := h.sendEmail(req.Email, subject, body); err != nil {
-			// Log error but don't fail the request
+	if h.emailService != nil && h.environment != "development" {
+		if err := h.emailService.SendMagicLinkEmail(c.Request.Context(), req.Email, magicLinkURL); err != nil {
 			h.logger.WithError(err).Warn("Failed to send magic link email", "email", req.Email)
 		}
 	}
