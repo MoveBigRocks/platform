@@ -102,6 +102,11 @@ func serveResolvedAdminExtensionServiceRoute(
 	if resolved == nil {
 		return false
 	}
+	// For instance admins viewing workspace-scoped extensions, inherit the
+	// extension's workspace so the service target has correct context.
+	if workspaceID == "" && resolved.Extension != nil && resolved.Extension.WorkspaceID != "" {
+		ctx.Set("workspace_id", resolved.Extension.WorkspaceID)
+	}
 	applyExtensionRouteParams(ctx, resolved.RouteParams)
 	if !enforceResolvedExtensionServiceRoutePolicy(ctx, resolved, cfg, nil) {
 		return true
