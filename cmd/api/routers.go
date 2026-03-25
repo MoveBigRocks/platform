@@ -147,7 +147,7 @@ func createAdminRouter(
 	})
 
 	// Register admin panel routes (login, dashboard, etc.)
-	if err := adminHandler.RegisterAdminRoutes(router, contextAuthMiddleware, adminContextMiddleware); err != nil {
+	if err := adminHandler.RegisterAdminRoutes(router, contextAuthMiddleware, adminContextMiddleware, adminFeatureMiddleware); err != nil {
 		log.Error("Failed to register admin routes", "error", err)
 		// Templates failed to load - register a fallback error page
 		// Health endpoint still works for monitoring, but all other routes show error

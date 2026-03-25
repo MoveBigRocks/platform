@@ -228,6 +228,7 @@ func (h *AdminHandler) RegisterAdminRoutes(
 	router *gin.Engine,
 	contextAuthMiddleware *middleware.ContextAuthMiddleware,
 	adminContextMiddleware *middleware.AdminContextMiddleware,
+	featureMiddleware ...gin.HandlerFunc,
 ) error {
 	tmpl, err := ParseAdminTemplates()
 	if err != nil {
@@ -260,6 +261,9 @@ func (h *AdminHandler) RegisterAdminRoutes(
 	dashboard.Use(contextAuthMiddleware.AuthRequired())
 	dashboard.Use(contextAuthMiddleware.RequireOperationalAccess())
 	dashboard.Use(adminContextMiddleware.WithOperationalContext())
+	for _, mw := range featureMiddleware {
+		dashboard.Use(mw)
+	}
 	{
 		dashboard.GET("/", h.ShowDashboard)
 		dashboard.GET("/dashboard", h.ShowDashboard)
