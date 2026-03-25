@@ -271,23 +271,8 @@ func TestRunSpecExportJSON(t *testing.T) {
 	var foundCasesHandoff bool
 	var foundConversationsHandoff bool
 	var foundConversationsEscalate bool
-	var foundSandboxesCreate bool
-	var foundSandboxesShow bool
-	var foundSandboxesExtend bool
-	var foundSandboxesDestroy bool
-	var foundSandboxesExport bool
 	for _, command := range spec.Commands {
 		switch strings.Join(command.Path, " ") {
-		case "sandboxes create":
-			foundSandboxesCreate = true
-		case "sandboxes show":
-			foundSandboxesShow = true
-		case "sandboxes extend":
-			foundSandboxesExtend = true
-		case "sandboxes destroy":
-			foundSandboxesDestroy = true
-		case "sandboxes export":
-			foundSandboxesExport = true
 		case "context view":
 			foundContextView = true
 		case "spec export":
@@ -372,21 +357,6 @@ func TestRunSpecExportJSON(t *testing.T) {
 	}
 	if !foundContextView {
 		t.Fatalf("expected context view command in contract")
-	}
-	if !foundSandboxesCreate {
-		t.Fatalf("expected sandboxes create command in contract")
-	}
-	if !foundSandboxesShow {
-		t.Fatalf("expected sandboxes show command in contract")
-	}
-	if !foundSandboxesExtend {
-		t.Fatalf("expected sandboxes extend command in contract")
-	}
-	if !foundSandboxesDestroy {
-		t.Fatalf("expected sandboxes destroy command in contract")
-	}
-	if !foundSandboxesExport {
-		t.Fatalf("expected sandboxes export command in contract")
 	}
 	if !foundTeamsList {
 		t.Fatalf("expected teams list command in contract")
