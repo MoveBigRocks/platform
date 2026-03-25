@@ -10,7 +10,6 @@ type rootCommandHandler func(context.Context, []string, io.Writer, io.Writer) in
 
 var rootCommandHandlers = map[string]rootCommandHandler{
 	"auth":              runAuth,
-	"sandboxes":         runSandboxes,
 	"context":           runContext,
 	"spec":              runSpec,
 	"workspaces":        runWorkspaces,

@@ -73,7 +73,6 @@ func (h *AuthHandler) CookieDomain() string {
 	return h.cookieDomain
 }
 
-
 type cliLoginPollRequest struct {
 	PollToken string `json:"pollToken"`
 }

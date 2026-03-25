@@ -19,7 +19,7 @@ func TestRunAgentsCreateJSON(t *testing.T) {
 	newCLIClient = func(cfg cliapi.Config) *cliapi.Client {
 		cfg.HTTPClient = &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-				if r.URL.Path != "/admin/graphql" {
+				if r.URL.Path != "/graphql" {
 					t.Fatalf("unexpected graphql path %q", r.URL.Path)
 				}
 				cookie, err := r.Cookie("mbr_session")

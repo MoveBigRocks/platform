@@ -422,7 +422,7 @@ func normalizeAdminGraphQLURL(raw string) (string, error) {
 	if u.Scheme == "" || u.Host == "" {
 		return "", fmt.Errorf("admin base URL must include scheme and host")
 	}
-	u.Path = strings.TrimRight(u.Path, "/") + "/admin/graphql"
+	u.Path = strings.TrimRight(u.Path, "/") + "/graphql"
 	u.RawQuery = ""
 	u.Fragment = ""
 	return u.String(), nil

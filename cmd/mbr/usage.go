@@ -53,10 +53,6 @@ func printAuthUsage(w io.Writer) {
 	printUsageSection(w, "auth")
 }
 
-func printSandboxesUsage(w io.Writer) {
-	printUsageSection(w, "sandboxes")
-}
-
 func printSpecUsage(w io.Writer) {
 	printUsageSection(w, "spec")
 }
