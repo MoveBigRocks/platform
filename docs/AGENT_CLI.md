@@ -157,12 +157,12 @@ mbr attachments upload PATH [--workspace WORKSPACE_ID] [--case CASE_ID] [--descr
 mbr health check [--url URL] [--token TOKEN] [--json]
 mbr extensions list ([--workspace WORKSPACE_ID] | --instance) [--url URL] [--token TOKEN] [--json]
 mbr extensions show --id EXTENSION_ID [--url URL] [--token TOKEN] [--json]
-mbr extensions deploy BUNDLE_SOURCE [--workspace WORKSPACE_ID] --license-token TOKEN [--config-file PATH | --config-json JSON] [--no-activate] [--no-monitor] [--url URL] [--token TOKEN] [--json]
+mbr extensions deploy BUNDLE_SOURCE [--workspace WORKSPACE_ID] [--license-token TOKEN] [--config-file PATH | --config-json JSON] [--no-activate] [--no-monitor] [--url URL] [--token TOKEN] [--json]
 mbr extensions monitor --id EXTENSION_ID [--url URL] [--token TOKEN] [--json]
 mbr extensions events list [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
 mbr extensions skills list --id EXTENSION_ID [--url URL] [--token TOKEN] [--json]
 mbr extensions skills show --id EXTENSION_ID --name SKILL_NAME [--url URL] [--token TOKEN] [--json]
-mbr extensions install BUNDLE_SOURCE [--workspace WORKSPACE_ID] --license-token TOKEN [--url URL] [--token TOKEN] [--json]
+mbr extensions install BUNDLE_SOURCE [--workspace WORKSPACE_ID] [--license-token TOKEN] [--url URL] [--token TOKEN] [--json]
 mbr extensions upgrade BUNDLE_SOURCE --id EXTENSION_ID [--license-token TOKEN] [--url URL] [--token TOKEN] [--json]
 mbr extensions configure --id EXTENSION_ID (--config-file PATH | --config-json JSON) [--url URL] [--token TOKEN] [--json]
 mbr extensions validate --id EXTENSION_ID [--url URL] [--token TOKEN] [--json]
@@ -360,17 +360,30 @@ The CLI supports the following installation sources:
 - local extension directory with `manifest.json` plus `assets/` for source-first authoring
 - HTTPS bundle URL for simple remote delivery
 - OCI registry reference for signed published bundles
-- marketplace alias resolved into a licensed signed artifact
+- marketplace alias resolved into a signed artifact when a private catalog is in use
 
 Example forms:
 
 ```bash
-mbr extensions install ./my-extension --workspace ws_123 --license-token LICENSE_TOKEN
-mbr extensions install ./dist/my-extension.hext --workspace ws_123 --license-token LICENSE_TOKEN
-mbr extensions install https://downloads.example.com/my-extension-1.0.0.hext --workspace ws_123 --license-token LICENSE_TOKEN
-mbr extensions install ghcr.io/example/my-extension:v1.0.0 --workspace ws_123 --license-token LICENSE_TOKEN
-mbr extensions install vendor/my-extension@1.0.0 --workspace ws_123 --license-token LICENSE_TOKEN
+mbr extensions install ./my-extension --workspace ws_123
+mbr extensions install ./dist/my-extension.hext --workspace ws_123
+mbr extensions install https://downloads.example.com/my-extension-0.1.0.hext --workspace ws_123
+mbr extensions install ghcr.io/example/my-extension:v0.1.0 --workspace ws_123
+mbr extensions install vendor/my-extension@0.1.0 --workspace ws_123 --license-token LICENSE_TOKEN
 ```
+
+The current public first-party distribution model is signed OCI refs rather
+than a marketplace catalog. The intended free public bundle set is:
+
+- `ghcr.io/movebigrocks/mbr-ext-ats:<version>`
+- `ghcr.io/movebigrocks/mbr-ext-error-tracking:<version>`
+- `ghcr.io/movebigrocks/mbr-ext-web-analytics:<version>`
+
+Those bundles are intended to be freely available. The public source and
+publication surface for them is the public first-party extensions repo at
+`MoveBigRocks/extensions`. Public signed bundles can install without an
+instance-bound token. `--license-token` remains available for private catalog
+and instance-bound bundle flows.
 
 When a bundle manifest declares
 `workspacePlan.mode = provision_dedicated_workspace`, the CLI can omit
@@ -383,7 +396,7 @@ be listed with `mbr extensions list --instance`.
 
 Resolver inputs:
 
-- `MBR_MARKETPLACE_URL` points the CLI at the marketplace alias resolver
+- `MBR_MARKETPLACE_URL` points the CLI at the marketplace alias resolver when a private catalog is in use
 - `MBR_REGISTRY_TOKEN` provides bearer auth for private OCI registries
 - `MBR_REGISTRY_USERNAME` and `MBR_REGISTRY_PASSWORD` provide basic auth when bearer auth is not used
 - the server can enforce signed bundle installs with:
@@ -420,7 +433,7 @@ Safe removal flow for installed extensions:
 
 When `INSTANCE_ID` is configured on the server, `mbr health check --json`
 exposes it through the health payload so agents and operators can confirm which
-installation a marketplace entitlement should target.
+installation a signed bundle or instance-bound grant should target.
 
 ## Direct API Access
 

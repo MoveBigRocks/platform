@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "slug": "enterprise-access",
   "name": "Enterprise Access",
-  "version": "1.0.0",
+  "version": "0.8.20",
   "publisher": "DemandOps",
   "kind": "identity",
   "scope": "instance",
@@ -17,7 +17,7 @@
   },
   "runtime": {
     "protocol": "unix_socket_http",
-    "ociReference": "registry.example.com/mbr/enterprise-access:1.0.0",
+    "ociReference": "registry.example.com/mbr/enterprise-access:0.8.20",
     "digest": "sha256:placeholder"
   },
   "description": "OIDC identity provider integration for enterprise single sign-on.",

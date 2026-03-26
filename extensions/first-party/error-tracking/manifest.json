@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "slug": "error-tracking",
   "name": "Error Tracking",
-  "version": "1.0.0",
+  "version": "0.8.20",
   "publisher": "DemandOps",
   "kind": "operational",
   "scope": "workspace",
@@ -17,7 +17,7 @@
   },
   "runtime": {
     "protocol": "unix_socket_http",
-    "ociReference": "registry.example.com/mbr/error-tracking:1.0.0",
+    "ociReference": "registry.example.com/mbr/error-tracking:0.8.20",
     "digest": "sha256:def456"
   },
   "description": "Sentry-compatible error ingestion and issue workflows for a Move Big Rocks workspace.",

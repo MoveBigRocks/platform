@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "slug": "web-analytics",
   "name": "Web Analytics",
-  "version": "1.0.0",
+  "version": "0.8.20",
   "publisher": "DemandOps",
   "kind": "product",
   "scope": "workspace",
@@ -17,7 +17,7 @@
   },
   "runtime": {
     "protocol": "unix_socket_http",
-    "ociReference": "registry.example.com/mbr/web-analytics:1.0.0",
+    "ociReference": "registry.example.com/mbr/web-analytics:0.8.20",
     "digest": "sha256:abc123"
   },
   "description": "Privacy-first web analytics with a lightweight tracking script and event ingest endpoint.",
