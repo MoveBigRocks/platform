@@ -53,7 +53,7 @@ ADRs are decision records and are **not** a substitute for system behavior docum
 
 - **Agent-first**: AI agents are first-class principals alongside human users. Agent identity, scoped permissions, and audit trails are core to the platform.
 - **MCP native**: Agents connect via Model Context Protocol (SSE/HTTP). Tools are workspace-scoped and permission-checked.
-- **Extensions as agent skills**: Extensions are separate processes that add capabilities. They consume events via the outbox table and call GraphQL for data access. Each extension can register MCP tools that appear in the agent's tool set.
+- **Extensions as pluggable runtimes**: Extensions add capabilities through signed bundles plus optional service-backed runtimes. The core repo owns only the generic host contracts, routing, lifecycle, and trust model; first-party runtime code lives outside this repo in sibling extension repos. Extensions may consume events, expose HTTP endpoints, register admin surfaces, and add MCP tools that appear in the agent's tool set.
 - **Human oversight**: The admin panel provides visibility into agent activity. Automation rules can enforce policies on agent actions (auto-approve vs require human approval).
 - **Structured concepts**: `ConceptSpec` and Markdown `KnowledgeResource` instances hold RFCs, templates, constraints, skills, strategic context, delivery context, and extension-defined models in one shared system. Concept spec libraries group related specs by team type or domain and can be shared across workspaces; knowledge resources remain local to each workspace.
 - **Workspace boundary**: a workspace is the logical and security boundary
@@ -99,7 +99,7 @@ For any suspected bug, gap, or drift:
 - **Worker orchestration**: event consumers are in `internal/workers/` and context-specific handlers.
 - **Agent model**: agents are first-class principals in `internal/platform/domain/agent.go` with `hat_*` tokens, workspace membership, and fine-grained permissions.
 - **MCP server**: SSE transport in `internal/mcp/http_handler.go`, tools in `internal/mcp/tools.go`, OAuth 2.1 in `internal/mcp/oauth/`.
-- **Analytics**: privacy-first web analytics lives in `internal/analytics/` with public ingest/script routes and an extension-owned PostgreSQL schema per `docs/RFCs/RFC-0003-web-analytics.md`.
+- **First-party extension ownership**: ATS, error tracking, and web analytics are first-party extensions whose bundle and runtime source now live outside this repo. `platform` hosts them through the generic extension runtime contracts instead of carrying extension-specific source trees.
 - **Knowledge layering**: concept spec libraries can be built in by core, registered instance-wide, provided by extensions, or published across workspaces; actual knowledge and strategic-context instances remain scoped to one workspace and its teams.
 
 ## Test discipline
