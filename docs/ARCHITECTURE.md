@@ -198,7 +198,9 @@ boundaries than ordinary product packs.
 
 Move Big Rocks supports two runtime classes:
 
-- `bundle` extensions for mostly declarative packs such as ATS
+- `bundle` extensions for bundle-first product packs such as ATS, where the
+  extension owns product vocabulary, assets, and workflows while still running
+  on shared primitives
 - `service-backed` extensions for dynamic packs such as analytics, error tracking, enterprise access, and connector packs
 
 The core service is responsible for:

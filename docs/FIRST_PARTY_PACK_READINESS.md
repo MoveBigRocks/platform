@@ -9,7 +9,7 @@ A first-party pack is considered launch-ready when it has:
 
 - a canonical checked-in source in the public first-party extensions repo or the
   controlled first-party repo, depending on its release posture
-- no duplicate mirror manifests left behind in `platform`
+- no stale first-party bundle mirrors or pack fixtures left behind in `platform`
 - install and activation proof in automated tests
 - evidence for its public or admin runtime surface where applicable
 - a clear scope and risk profile consistent with the manifest
@@ -18,8 +18,8 @@ A first-party pack is considered launch-ready when it has:
 
 | Pack | Scope | Core Proof | Runtime / Surface Proof | Launch Note |
 | --- | --- | --- | --- | --- |
-| ATS | Workspace product pack with careers-site and application flow | [`internal/platform/services/extension_reference_ats_test.go`](../internal/platform/services/extension_reference_ats_test.go) | [`internal/platform/services/extension_runtime_test.go`](../internal/platform/services/extension_runtime_test.go) | Targeted as part of the free public first-party bundle set. |
-| Enterprise Access | Instance-scoped identity and privileged admin pack | [`internal/platform/services/extension_reference_ats_test.go`](../internal/platform/services/extension_reference_ats_test.go) | [`internal/platform/services/extension_admin_navigation_test.go`](../internal/platform/services/extension_admin_navigation_test.go) | Separately controlled first-party privileged pack, not part of the free public bundle set. |
+| ATS | Workspace product pack with careers-site and application flow | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go) | [`internal/platform/services/extension_runtime_test.go`](../internal/platform/services/extension_runtime_test.go) | Targeted as part of the free public first-party bundle set. |
+| Enterprise Access | Instance-scoped identity and privileged admin pack | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go) | [`internal/platform/services/extension_admin_navigation_test.go`](../internal/platform/services/extension_admin_navigation_test.go) | Separately controlled first-party privileged pack, not part of the free public bundle set. |
 | Error Tracking | Workspace operational pack with Sentry-compatible ingest and admin pages | [`cmd/api/error_tracking_extraction_test.go`](../cmd/api/error_tracking_extraction_test.go) | [`cmd/api/extension_service_targets_test.go`](../cmd/api/extension_service_targets_test.go) | Targeted as part of the free public first-party bundle set. |
 | Web Analytics | Workspace operational pack with analytics script and admin page | [`cmd/api/analytics_extraction_test.go`](../cmd/api/analytics_extraction_test.go) | [`cmd/api/extension_service_targets_test.go`](../cmd/api/extension_service_targets_test.go) | Targeted as part of the free public first-party bundle set. |
 
@@ -39,6 +39,9 @@ These packs are part of the standard milestone readiness run:
 
 - [`scripts/run-milestone-1-proof.sh`](../scripts/run-milestone-1-proof.sh)
 - [`docs/MILESTONE_1_PROOF.md`](./MILESTONE_1_PROOF.md)
+
+The pack proof tests load ATS, enterprise access, and the SDK sample pack from
+their canonical sibling repos instead of from duplicated `platform` fixtures.
 
 ## Distribution Note
 

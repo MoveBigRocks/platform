@@ -561,7 +561,9 @@ agents through the same CLI and GraphQL contract.
 
 Milestone 1 supports two runtime classes:
 
-- `bundle` extensions for static or mostly declarative packs such as ATS
+- `bundle` extensions for bundle-first product packs such as ATS, where the
+  extension owns its workflow vocabulary and published assets while still
+  building on shared primitives
 - `service-backed` extensions for dynamic packs such as web analytics, error tracking, enterprise access, and connector integrations
 
 Extensions use the same outbox and event bus pattern as core. That means

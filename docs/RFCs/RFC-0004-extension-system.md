@@ -98,7 +98,8 @@ Move Big Rocks supports two extension runtime classes:
 
 Used for:
 
-- static or mostly declarative product packs
+- bundle-first product packs that own workflow vocabulary, assets, and
+  extension-defined behavior while still running on shared primitives
 - seeded collections
 - knowledge and forms assets
 - configurable assets

@@ -41,7 +41,7 @@ func (o *extensionTestOutbox) PublishEvent(ctx context.Context, stream eventbus.
 	return nil
 }
 
-func TestReferenceATSExtensionSeedsAndProcessesApplications(t *testing.T) {
+func TestFirstPartyATSExtensionSeedsAndProcessesApplications(t *testing.T) {
 	store, cleanup := testutil.SetupTestStore(t)
 	defer cleanup()
 
@@ -231,7 +231,7 @@ func TestExtensionSDKTemplateInstallsAndActivates(t *testing.T) {
 	assert.Equal(t, "/extensions/sample-ops-pack", nav[0].Href)
 }
 
-func TestReferenceEnterpriseAccessExtensionInstallsAsInstanceScopedPrivilegedPack(t *testing.T) {
+func TestEnterpriseAccessPackInstallsAsInstanceScopedPrivilegedPack(t *testing.T) {
 	store, cleanup := testutil.SetupTestStore(t)
 	defer cleanup()
 
@@ -293,10 +293,7 @@ func loadRepoExtensionBundle(t *testing.T, relDir string) (platformdomain.Extens
 func loadRepoExtensionPackage(t *testing.T, slug string) (platformdomain.ExtensionManifest, []platformservices.ExtensionAssetInput, []platformservices.ExtensionMigrationInput) {
 	t.Helper()
 
-	_, filename, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-
-	baseDir := filepath.Join(filepath.Dir(filename), "testdata", "extensions", slug)
+	baseDir := canonicalExtensionSourceDir(t, slug)
 	manifestPath := filepath.Join(baseDir, "manifest.json")
 	manifestBytes, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
@@ -354,4 +351,36 @@ func loadRepoExtensionPackage(t *testing.T, slug string) (platformdomain.Extensi
 	}
 
 	return manifest, assets, migrations
+}
+
+func canonicalExtensionSourceDir(t *testing.T, slug string) string {
+	t.Helper()
+
+	workspaceRoot := filepath.Clean(filepath.Join(platformRepoRoot(t), ".."))
+
+	var dir string
+	switch slug {
+	case "ats", "error-tracking", "web-analytics":
+		dir = filepath.Join(workspaceRoot, "extensions", slug)
+	case "enterprise-access":
+		dir = filepath.Join(workspaceRoot, "packs", slug)
+	case "sample-ops-pack":
+		dir = filepath.Join(workspaceRoot, "extension-sdk")
+	default:
+		t.Fatalf("unknown canonical extension source %q", slug)
+	}
+
+	info, err := os.Stat(dir)
+	require.NoError(t, err)
+	require.True(t, info.IsDir(), "expected extension source dir %s", dir)
+	return dir
+}
+
+func platformRepoRoot(t *testing.T) string {
+	t.Helper()
+
+	_, filename, _, ok := runtime.Caller(0)
+	require.True(t, ok)
+
+	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", ".."))
 }
