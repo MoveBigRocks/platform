@@ -24,7 +24,6 @@ import (
 
 	// Domain resolvers - each domain owns its API surface
 	automationresolvers "github.com/movebigrocks/platform/internal/automation/resolvers"
-	observabilityresolvers "github.com/movebigrocks/platform/internal/observability/resolvers"
 	platformresolvers "github.com/movebigrocks/platform/internal/platform/resolvers"
 	serviceresolvers "github.com/movebigrocks/platform/internal/service/resolvers"
 )
@@ -32,10 +31,9 @@ import (
 // RootResolver is the entry point for all GraphQL operations.
 // It delegates to domain-specific resolvers.
 type RootResolver struct {
-	service       *serviceresolvers.Resolver
-	observability *observabilityresolvers.Resolver
-	platform      *platformresolvers.Resolver
-	automation    *automationresolvers.Resolver
+	service    *serviceresolvers.Resolver
+	platform   *platformresolvers.Resolver
+	automation *automationresolvers.Resolver
 
 	agentUserService *platformservices.UserManagementService
 	agentService     *platformservices.AgentService
@@ -43,10 +41,9 @@ type RootResolver struct {
 
 // Config contains all dependencies needed by the GraphQL resolvers
 type Config struct {
-	Service       *serviceresolvers.Config
-	Observability *observabilityresolvers.Config
-	Platform      *platformresolvers.Config
-	Automation    *automationresolvers.Config
+	Service    *serviceresolvers.Config
+	Platform   *platformresolvers.Config
+	Automation *automationresolvers.Config
 }
 
 // NewRootResolver creates a new root resolver with all domain resolvers
@@ -56,14 +53,6 @@ func NewRootResolver(cfg Config) *RootResolver {
 	if cfg.Service != nil {
 		r.service = serviceresolvers.NewResolver(*cfg.Service)
 	}
-	if cfg.Observability != nil {
-		observabilityCfg := *cfg.Observability
-		observabilityCfg.ServiceGraph = r.service
-		if observabilityCfg.CaseService == nil && cfg.Service != nil {
-			observabilityCfg.CaseService = cfg.Service.CaseService
-		}
-		r.observability = observabilityresolvers.NewResolver(observabilityCfg)
-	}
 	if cfg.Platform != nil {
 		platformCfg := *cfg.Platform
 		platformCfg.ServiceGraph = r.service
@@ -72,15 +61,6 @@ func NewRootResolver(cfg Config) *RootResolver {
 		}
 		if platformCfg.QueueService == nil && cfg.Service != nil {
 			platformCfg.QueueService = cfg.Service.QueueService
-		}
-		if platformCfg.ObservabilityGraph == nil && cfg.Observability != nil {
-			platformCfg.ObservabilityGraph = r.observability
-		}
-		if platformCfg.ProjectService == nil && cfg.Observability != nil {
-			platformCfg.ProjectService = cfg.Observability.ProjectService
-		}
-		if platformCfg.IssueService == nil && cfg.Observability != nil {
-			platformCfg.IssueService = cfg.Observability.IssueService
 		}
 		r.platform = platformresolvers.NewResolver(platformCfg)
 
@@ -455,54 +435,6 @@ func (r *RootResolver) ExtensionArtifactDiff(ctx context.Context, args struct {
 	return r.platform.ExtensionArtifactDiff(ctx, args.ID, args.Surface, args.Path, args.FromRevision, args.ToRevision)
 }
 
-// --- Observability Domain Queries (delegated) ---
-
-// Issue delegates to observability resolver
-func (r *RootResolver) Issue(ctx context.Context, args struct{ ID string }) (*observabilityresolvers.IssueResolver, error) {
-	if r.observability == nil {
-		return nil, fmt.Errorf("observability resolver not configured")
-	}
-	return r.observability.Issue(ctx, args.ID)
-}
-
-// Issues delegates to observability resolver
-func (r *RootResolver) Issues(ctx context.Context, args struct {
-	WorkspaceID string
-	Filter      *model.IssueFilterInput
-}) (*observabilityresolvers.IssueConnectionResolver, error) {
-	if r.observability == nil {
-		return nil, fmt.Errorf("observability resolver not configured")
-	}
-	return r.observability.Issues(ctx, args.WorkspaceID, args.Filter)
-}
-
-// Project delegates to observability resolver
-func (r *RootResolver) Project(ctx context.Context, args struct{ ID string }) (*observabilityresolvers.ProjectResolver, error) {
-	if r.observability == nil {
-		return nil, fmt.Errorf("observability resolver not configured")
-	}
-	return r.observability.Project(ctx, args.ID)
-}
-
-// ProjectBySlug delegates to observability resolver
-func (r *RootResolver) ProjectBySlug(ctx context.Context, args struct {
-	WorkspaceID string
-	Slug        string
-}) (*observabilityresolvers.ProjectResolver, error) {
-	if r.observability == nil {
-		return nil, fmt.Errorf("observability resolver not configured")
-	}
-	return r.observability.ProjectBySlug(ctx, args.WorkspaceID, args.Slug)
-}
-
-// ErrorEvent delegates to observability resolver
-func (r *RootResolver) ErrorEvent(ctx context.Context, args struct{ ID string }) (*observabilityresolvers.ErrorEventResolver, error) {
-	if r.observability == nil {
-		return nil, fmt.Errorf("observability resolver not configured")
-	}
-	return r.observability.ErrorEvent(ctx, args.ID)
-}
-
 // --- Platform Domain Queries (delegated) ---
 
 // Workspace delegates to platform resolver
@@ -623,22 +555,6 @@ func (r *RootResolver) AdminForm(ctx context.Context, args struct{ ID string }) 
 		return nil, fmt.Errorf("automation resolver not configured")
 	}
 	return r.automation.AdminForm(ctx, args.ID)
-}
-
-// GitRepo resolves a single git repository by ID.
-func (r *RootResolver) GitRepo(ctx context.Context, args struct{ ID string }) (*observabilityresolvers.GitRepoResolver, error) {
-	if r.observability == nil {
-		return nil, fmt.Errorf("observability resolver not configured")
-	}
-	return r.observability.GitRepo(ctx, args.ID)
-}
-
-// GitReposForApplication resolves git repositories for an application.
-func (r *RootResolver) GitReposForApplication(ctx context.Context, args struct{ ApplicationID string }) ([]*observabilityresolvers.GitRepoResolver, error) {
-	if r.observability == nil {
-		return nil, fmt.Errorf("observability resolver not configured")
-	}
-	return r.observability.GitReposForApplication(ctx, args.ApplicationID)
 }
 
 // =============================================================================
@@ -960,40 +876,6 @@ func valueOrEmpty(value *string) string {
 		return ""
 	}
 	return *value
-}
-
-// --- Observability Domain Mutations (delegated) ---
-
-// UpdateIssueStatus delegates to observability resolver
-func (r *RootResolver) UpdateIssueStatus(ctx context.Context, args struct {
-	ID     string
-	Status string
-}) (*observabilityresolvers.IssueResolver, error) {
-	if r.observability == nil {
-		return nil, fmt.Errorf("observability resolver not configured")
-	}
-	return r.observability.UpdateIssueStatus(ctx, args.ID, args.Status)
-}
-
-// LinkIssueToCase delegates to observability resolver
-func (r *RootResolver) LinkIssueToCase(ctx context.Context, args struct {
-	IssueID string
-	CaseID  string
-}) (*observabilityresolvers.IssueResolver, error) {
-	if r.observability == nil {
-		return nil, fmt.Errorf("observability resolver not configured")
-	}
-	return r.observability.LinkIssueToCase(ctx, args.IssueID, args.CaseID)
-}
-
-// UnlinkIssueFromCase delegates to observability resolver
-func (r *RootResolver) UnlinkIssueFromCase(ctx context.Context, args struct {
-	IssueID string
-}) (*observabilityresolvers.IssueResolver, error) {
-	if r.observability == nil {
-		return nil, fmt.Errorf("observability resolver not configured")
-	}
-	return r.observability.UnlinkIssueFromCase(ctx, args.IssueID)
 }
 
 // --- Platform Domain Mutations (delegated) ---

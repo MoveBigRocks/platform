@@ -5,13 +5,13 @@ These tests verify the error-tracking surface inside Move Big Rocks, the AI-nati
 ## Quick Start
 
 ```bash
-# In-memory test (no server required)
-go test ./tests/sentry -v -run 'TestSentryEnvelopeFormat|TestSentryIngestRoute'
+# Start the API locally before running the SDK smoke tests below.
+go run ./cmd/api
 ```
 
 ## Full SDK Tests
 
-Require running server (`go run ./cmd/api`):
+Require a running server (`go run ./cmd/api`):
 
 ```bash
 # Python
@@ -28,7 +28,6 @@ npm run test
 
 | Test | What it verifies |
 |------|------------------|
-| Go test | Envelope parsing, route-level ingest (`/1/envelope`, `/api/envelope`, `/api/{project}/envelope`), gzip handling, auth header handling |
 | Python test | Real sentry-sdk: exceptions, messages, breadcrumbs, tags |
 | Node.js test | Real @sentry/node: exceptions, stack traces, user context |
 

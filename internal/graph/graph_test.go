@@ -10,7 +10,6 @@ import (
 	"github.com/movebigrocks/platform/internal/graph/model"
 	"github.com/movebigrocks/platform/internal/graph/shared"
 	schema "github.com/movebigrocks/platform/internal/graphql/schema"
-	observabilityresolvers "github.com/movebigrocks/platform/internal/observability/resolvers"
 	platformresolvers "github.com/movebigrocks/platform/internal/platform/resolvers"
 	serviceresolvers "github.com/movebigrocks/platform/internal/service/resolvers"
 	serviceapp "github.com/movebigrocks/platform/internal/service/services"
@@ -82,10 +81,6 @@ func TestGraphQLSchemaValidation(t *testing.T) {
 	cfg := graph.Config{
 		Service: &serviceresolvers.Config{
 			CaseService: nil, // nil services are OK - we're just validating schema
-		},
-		Observability: &observabilityresolvers.Config{
-			IssueService:   nil,
-			ProjectService: nil,
 		},
 		Platform: &platformresolvers.Config{
 			UserService:      nil,

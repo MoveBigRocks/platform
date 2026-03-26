@@ -132,31 +132,10 @@ func main() {
 			printScenarioResults(platformResults)
 		}
 
-		// Phase 2c: Observability Scenarios (error monitoring)
+		// Phase 2c: Automation Scenarios (rules and jobs)
 		fmt.Println()
 		fmt.Println("═══════════════════════════════════════════════════════════════")
-		fmt.Println("Phase 2c: Running Observability Scenarios")
-		fmt.Println("═══════════════════════════════════════════════════════════════")
-
-		observabilityRunner := synth.NewObservabilityScenarioRunner(testServices, *verbose)
-		// Use first workspace for observability tests
-		if len(data.Workspaces) > 0 {
-			fmt.Printf("\n📁 Testing in Workspace: %s\n", data.Workspaces[0].Workspace.Name)
-			fmt.Println("───────────────────────────────────────────────────────────────")
-
-			observabilityResults, err := observabilityRunner.RunAllObservabilityScenarios(ctx, data.Workspaces[0].Workspace.ID)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error running observability scenarios: %v\n", err)
-			} else {
-				allResults = append(allResults, observabilityResults...)
-				printScenarioResults(observabilityResults)
-			}
-		}
-
-		// Phase 2d: Automation Scenarios (rules and jobs)
-		fmt.Println()
-		fmt.Println("═══════════════════════════════════════════════════════════════")
-		fmt.Println("Phase 2d: Running Automation Scenarios")
+		fmt.Println("Phase 2c: Running Automation Scenarios")
 		fmt.Println("═══════════════════════════════════════════════════════════════")
 
 		automationRunner := synth.NewAutomationScenarioRunner(testServices, *verbose)
@@ -174,10 +153,10 @@ func main() {
 			}
 		}
 
-		// Phase 2e: Event Bus Scenarios (event-driven architecture)
+		// Phase 2d: Event Bus Scenarios (event-driven architecture)
 		fmt.Println()
 		fmt.Println("═══════════════════════════════════════════════════════════════")
-		fmt.Println("Phase 2e: Running Event Bus Scenarios")
+		fmt.Println("Phase 2d: Running Event Bus Scenarios")
 		fmt.Println("═══════════════════════════════════════════════════════════════")
 
 		eventBusRunner := synth.NewEventBusScenarioRunner(testServices, absDataDir, *verbose)
@@ -189,10 +168,10 @@ func main() {
 			printScenarioResults(eventBusResults)
 		}
 
-		// Phase 2f: Forms System Scenarios
+		// Phase 2e: Forms System Scenarios
 		fmt.Println()
 		fmt.Println("═══════════════════════════════════════════════════════════════")
-		fmt.Println("Phase 2f: Running Forms System Scenarios")
+		fmt.Println("Phase 2e: Running Forms System Scenarios")
 		fmt.Println("═══════════════════════════════════════════════════════════════")
 
 		if len(data.Workspaces) > 0 {
@@ -209,10 +188,10 @@ func main() {
 			}
 		}
 
-		// Phase 2g: Knowledge Resource Scenarios
+		// Phase 2f: Knowledge Resource Scenarios
 		fmt.Println()
 		fmt.Println("═══════════════════════════════════════════════════════════════")
-		fmt.Println("Phase 2g: Running Knowledge Resource Scenarios")
+		fmt.Println("Phase 2f: Running Knowledge Resource Scenarios")
 		fmt.Println("═══════════════════════════════════════════════════════════════")
 
 		if len(data.Workspaces) > 0 {
@@ -229,10 +208,10 @@ func main() {
 			}
 		}
 
-		// Phase 2h: Email Processing Scenarios
+		// Phase 2g: Email Processing Scenarios
 		fmt.Println()
 		fmt.Println("═══════════════════════════════════════════════════════════════")
-		fmt.Println("Phase 2h: Running Email Processing Scenarios")
+		fmt.Println("Phase 2g: Running Email Processing Scenarios")
 		fmt.Println("═══════════════════════════════════════════════════════════════")
 
 		if len(data.Workspaces) > 0 {
@@ -249,30 +228,10 @@ func main() {
 			}
 		}
 
-		// Phase 2i: Error-Support Integration Scenarios
+		// Phase 2h: Attachments Scenarios
 		fmt.Println()
 		fmt.Println("═══════════════════════════════════════════════════════════════")
-		fmt.Println("Phase 2i: Running Error-Support Integration Scenarios")
-		fmt.Println("═══════════════════════════════════════════════════════════════")
-
-		if len(data.Workspaces) > 0 {
-			fmt.Printf("\n📁 Testing in Workspace: %s\n", data.Workspaces[0].Workspace.Name)
-			fmt.Println("───────────────────────────────────────────────────────────────")
-
-			integrationRunner := synth.NewIntegrationScenarioRunner(testServices, *verbose)
-			integrationResults, err := integrationRunner.RunAllIntegrationScenarios(ctx, data.Workspaces[0].Workspace.ID, data.Workspaces[0].Agents)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error running integration scenarios: %v\n", err)
-			} else {
-				allResults = append(allResults, integrationResults...)
-				printScenarioResults(integrationResults)
-			}
-		}
-
-		// Phase 2j: Attachments Scenarios
-		fmt.Println()
-		fmt.Println("═══════════════════════════════════════════════════════════════")
-		fmt.Println("Phase 2j: Running Attachments Scenarios")
+		fmt.Println("Phase 2h: Running Attachments Scenarios")
 		fmt.Println("═══════════════════════════════════════════════════════════════")
 
 		if len(data.Workspaces) > 0 {

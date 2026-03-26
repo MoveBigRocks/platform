@@ -303,7 +303,6 @@ func createAdminRouter(
 			UserService:         c.Platform.User,
 			ContactService:      c.Platform.Contact,
 			AgentService:        c.Platform.Agent,
-			ExtensionChecker:    c.Platform.Extension,
 		},
 		Platform: &platformresolvers.Config{
 			UserService:      c.Platform.User,
@@ -444,7 +443,6 @@ func createAPIRouter(
 			UserService:         c.Platform.User,
 			ContactService:      c.Platform.Contact,
 			AgentService:        c.Platform.Agent,
-			ExtensionChecker:    c.Platform.Extension,
 		},
 		Platform: &platformresolvers.Config{
 			UserService:      c.Platform.User,

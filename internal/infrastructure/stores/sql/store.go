@@ -31,7 +31,6 @@ type Store struct {
 	jobStore               *JobStore
 	conceptSpecStore       *ConceptSpecStore
 	knowledgeResourceStore *KnowledgeResourceStore
-	errorMonitoringStore   *ErrorMonitoringStore
 	agentStore             *AgentStore
 	idempotencyStore       *IdempotencyStore
 }
@@ -66,7 +65,6 @@ func NewStore(db *DB) (*Store, error) {
 		jobStore:               NewJobStore(sqlxDB),
 		conceptSpecStore:       NewConceptSpecStore(sqlxDB),
 		knowledgeResourceStore: NewKnowledgeResourceStore(sqlxDB),
-		errorMonitoringStore:   NewErrorMonitoringStore(sqlxDB),
 		agentStore:             NewAgentStore(sqlxDB),
 		idempotencyStore:       NewIdempotencyStore(sqlxDB),
 	}, nil
@@ -176,27 +174,6 @@ func (s *Store) KnowledgeResources() shared.KnowledgeResourceStore {
 
 func (s *Store) Agents() shared.AgentStore {
 	return s.agentStore
-}
-
-// Error monitoring sub-stores (the underlying errorMonitoringStore implements all these interfaces)
-func (s *Store) Projects() shared.ProjectStore {
-	return s.errorMonitoringStore
-}
-
-func (s *Store) Issues() shared.IssueStore {
-	return s.errorMonitoringStore
-}
-
-func (s *Store) ErrorEvents() shared.ErrorEventStore {
-	return s.errorMonitoringStore
-}
-
-func (s *Store) IssueCaseIntegration() shared.IssueCaseIntegrationStore {
-	return s.errorMonitoringStore
-}
-
-func (s *Store) ErrorAlerts() shared.ErrorAlertStore {
-	return s.errorMonitoringStore
 }
 
 // WithTransaction executes a function within a transaction context using sqlx

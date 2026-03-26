@@ -5,13 +5,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/movebigrocks/platform/internal/infrastructure/stores"
-	observabilitydomain "github.com/movebigrocks/platform/internal/observability/domain"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	"github.com/movebigrocks/platform/pkg/id"
@@ -147,17 +145,6 @@ func NewIsolatedCase(t testing.TB, workspaceID string) *servicedomain.Case {
 	caseObj.ID = caseID
 	caseObj.GenerateHumanID("test")
 	return caseObj
-}
-
-// NewIsolatedProject creates a test project with unique ID for test isolation.
-func NewIsolatedProject(t testing.TB, workspaceID string) *observabilitydomain.Project {
-	t.Helper()
-	projectID := UniqueProjectID(t)
-	project := observabilitydomain.NewProject(workspaceID, "", "Test Application "+projectID[:8], strings.ToLower(projectID[:12]), "javascript")
-	project.ID = projectID
-	project.CreatedAt = time.Now()
-	project.UpdatedAt = time.Now()
-	return project
 }
 
 // CreateTestWorkspace creates a workspace in the store and returns its ID.

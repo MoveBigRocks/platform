@@ -1,4 +1,4 @@
-.PHONY: dev run build build-server build-cli build-linux build-server-linux build-cli-linux cli-release-local milestone-proof test test-integration test-coverage test-all lint deadcode deadcode-production clean deploy setup-hooks validate-templates create-admin create-agent seed-defaults create-test-project seed-security-test sentry-tests health docs-check sync-agent-cli-doc
+.PHONY: dev run build build-server build-cli build-linux build-server-linux build-cli-linux cli-release-local milestone-proof test test-integration test-coverage test-all lint deadcode deadcode-production clean deploy setup-hooks validate-templates create-admin create-agent seed-defaults seed-security-test sentry-tests health docs-check sync-agent-cli-doc
 
 ifneq (,$(wildcard ./.env))
 include .env
@@ -166,14 +166,6 @@ endif
 # Seed default automation rules for all workspaces or one workspace
 seed-defaults:
 	@go run cmd/tools/seed-defaults/main.go $(if $(WORKSPACE),-workspace "$(WORKSPACE)")
-
-# Create Sentry-compatible test project and print DSN
-create-test-project:
-ifndef WORKSPACE
-	@echo "Usage: make create-test-project WORKSPACE=<workspace-id> [SENTRY_HOST=api.movebigrocks.com]"
-	@exit 1
-endif
-	@SENTRY_HOST=$(or $(SENTRY_HOST),api.movebigrocks.com) go run cmd/tools/create-test-project/main.go "$(WORKSPACE)"
 
 # Seed local security-context demo data in filesystem store
 seed-security-test:

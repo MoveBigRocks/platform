@@ -10,13 +10,10 @@ import (
 
 	automationdomain "github.com/movebigrocks/platform/internal/automation/domain"
 	"github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
-	sqlstore "github.com/movebigrocks/platform/internal/infrastructure/stores/sql"
 	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
-	observabilitydomain "github.com/movebigrocks/platform/internal/observability/domain"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	"github.com/movebigrocks/platform/internal/testutil"
-	"github.com/movebigrocks/platform/internal/testutil/refext"
 	"github.com/movebigrocks/platform/pkg/id"
 )
 
@@ -94,52 +91,6 @@ func TestRuleStoreIncrementRuleStatsOnPostgres(t *testing.T) {
 	require.NotNil(t, updated.LastExecutedAt)
 	assert.WithinDuration(t, executedAt, *updated.LastExecutedAt, time.Second)
 	assert.True(t, updated.UpdatedAt.After(beforeUpdate) || updated.UpdatedAt.Equal(beforeUpdate))
-}
-
-func TestErrorMonitoringStoreDeleteProjectOnPostgres(t *testing.T) {
-	store, cleanup := testutil.SetupTestPostgresStore(t)
-	defer cleanup()
-
-	ctx := context.Background()
-	workspace := testutil.NewIsolatedWorkspace(t)
-	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
-	refext.InstallAndActivateReferenceExtension(t, ctx, store, workspace.ID, "error-tracking")
-
-	project := observabilitydomain.NewProject(workspace.ID, "", "API", "api", "go")
-	require.NoError(t, store.Projects().CreateProject(ctx, project))
-
-	require.NoError(t, store.Projects().DeleteProject(ctx, workspace.ID, project.ID))
-
-	_, err := store.Projects().GetProject(ctx, project.ID)
-	require.ErrorIs(t, err, shared.ErrNotFound)
-}
-
-func TestErrorMonitoringStoreUsesExtensionOwnedSchemaOnPostgres(t *testing.T) {
-	store, cleanup := testutil.SetupTestPostgresStore(t)
-	defer cleanup()
-
-	ctx := context.Background()
-	workspace := testutil.NewIsolatedWorkspace(t)
-	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
-	installed := refext.InstallAndActivateReferenceExtension(t, ctx, store, workspace.ID, "error-tracking")
-
-	project := observabilitydomain.NewProject(workspace.ID, "", "API", "api", "go")
-	require.NoError(t, store.Projects().CreateProject(ctx, project))
-
-	concrete, ok := store.(*sqlstore.Store)
-	require.True(t, ok)
-
-	rawDB, err := concrete.GetSQLDB()
-	require.NoError(t, err)
-
-	var extensionInstallID string
-	err = rawDB.QueryRowContext(ctx, `
-		SELECT extension_install_id
-		FROM ext_demandops_error_tracking.projects
-		WHERE id = $1
-	`, project.ID).Scan(&extensionInstallID)
-	require.NoError(t, err)
-	assert.Equal(t, installed.ID, extensionInstallID)
 }
 
 func TestCaseStoreLinkCaseToKnowledgeResourceOnPostgres(t *testing.T) {

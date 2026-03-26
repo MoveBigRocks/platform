@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	observabilitydomain "github.com/movebigrocks/platform/internal/observability/domain"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	"github.com/movebigrocks/platform/pkg/eventbus"
@@ -93,27 +92,12 @@ type JobMetrics struct {
 }
 
 // RuleContext provides type-safe context for rule evaluation.
-// Only one of Case, Contact, Issue, or Form should be set based on TargetType.
+// Only one of Case, Contact, or Form should be set based on TargetType.
 type RuleContext struct {
-	TargetType string                     `json:"target_type"` // "case", "contact", "issue", "form"
-	Case       *servicedomain.Case        `json:"case,omitempty"`
-	Contact    *platformdomain.Contact    `json:"contact,omitempty"`
-	Issue      *observabilitydomain.Issue `json:"issue,omitempty"`
-	Form       *FormSubmittedEvent        `json:"form,omitempty"`
-}
-
-// Request/Response types for error monitoring
-
-type IngestEventRequest struct {
-	ProjectDSN string                 `json:"project_dsn"`
-	EventData  map[string]interface{} `json:"event_data"`
-}
-
-type IngestResponse struct {
-	Success bool   `json:"success"`
-	EventID string `json:"event_id,omitempty"`
-	IssueID string `json:"issue_id,omitempty"`
-	Error   string `json:"error,omitempty"`
+	TargetType string                  `json:"target_type"` // "case", "contact", "form"
+	Case       *servicedomain.Case     `json:"case,omitempty"`
+	Contact    *platformdomain.Contact `json:"contact,omitempty"`
+	Form       *FormSubmittedEvent     `json:"form,omitempty"`
 }
 
 // =============================================================================
@@ -129,16 +113,6 @@ type CaseFilters struct {
 	Status      string
 	Priority    string
 	AssignedTo  string
-	Limit       int
-	Offset      int
-}
-
-// IssueFilters contains filters for listing issues.
-type IssueFilters struct {
-	WorkspaceID string
-	ProjectID   string
-	Status      string
-	Level       string
 	Limit       int
 	Offset      int
 }

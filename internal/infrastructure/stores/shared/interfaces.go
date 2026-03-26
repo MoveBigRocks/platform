@@ -8,7 +8,6 @@ import (
 
 	automationdomain "github.com/movebigrocks/platform/internal/automation/domain"
 	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
-	observabilitydomain "github.com/movebigrocks/platform/internal/observability/domain"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	"github.com/movebigrocks/platform/internal/shared/contracts"
@@ -34,13 +33,6 @@ type Store interface {
 	InboundEmails() InboundEmailStore
 	EmailThreads() EmailThreadStore
 	EmailSecurity() EmailSecurityStore
-
-	// Error monitoring sub-stores
-	Projects() ProjectStore
-	Issues() IssueStore
-	ErrorEvents() ErrorEventStore
-	IssueCaseIntegration() IssueCaseIntegrationStore
-	ErrorAlerts() ErrorAlertStore
 
 	// Agent sub-stores
 	Agents() AgentStore
@@ -374,75 +366,6 @@ type KnowledgeResourceStore interface {
 	DeleteKnowledgeResource(ctx context.Context, workspaceID, resourceID string) error
 }
 
-// ProjectStore handles project/application management
-type ProjectStore interface {
-	CreateProject(ctx context.Context, project *observabilitydomain.Project) error
-	GetProject(ctx context.Context, projectID string) (*observabilitydomain.Project, error)
-	// GetProjectInWorkspace retrieves a project only if it belongs to the specified workspace.
-	// Returns error if project not found OR belongs to different workspace (defense-in-depth).
-	GetProjectInWorkspace(ctx context.Context, workspaceID, projectID string) (*observabilitydomain.Project, error)
-	GetProjectByKey(ctx context.Context, projectKey string) (*observabilitydomain.Project, error)
-	GetProjectsByIDs(ctx context.Context, projectIDs []string) ([]*observabilitydomain.Project, error)
-	UpdateProject(ctx context.Context, project *observabilitydomain.Project) error
-	// IncrementEventCount atomically increments the event count and updates last_event_at.
-	// Returns the new event count. Uses atomic SQL to prevent race conditions.
-	IncrementEventCount(ctx context.Context, workspaceID, projectID string, lastEventAt *time.Time) (int64, error)
-	ListWorkspaceProjects(ctx context.Context, workspaceID string) ([]*observabilitydomain.Project, error)
-	ListAllProjects(ctx context.Context) ([]*observabilitydomain.Project, error)
-	DeleteProject(ctx context.Context, workspaceID, projectID string) error
-	GetApplication(ctx context.Context, workspaceID, appID string) (*observabilitydomain.Application, error)
-	GetApplicationByKey(ctx context.Context, appKey string) (*observabilitydomain.Application, error)
-	ListWorkspaceApplications(ctx context.Context, workspaceID string) ([]*observabilitydomain.Application, error)
-}
-
-// IssueStore handles issue tracking
-type IssueStore interface {
-	CreateIssue(ctx context.Context, issue *observabilitydomain.Issue) error
-	// CreateOrUpdateIssueByFingerprint atomically creates a new issue or updates an existing one
-	// if an issue with the same (project_id, fingerprint) already exists.
-	// Returns the issue (created or existing) and whether it was newly created.
-	// This prevents race conditions when multiple workers process events with the same fingerprint.
-	CreateOrUpdateIssueByFingerprint(ctx context.Context, issue *observabilitydomain.Issue) (resultIssue *observabilitydomain.Issue, created bool, err error)
-	GetIssue(ctx context.Context, issueID string) (*observabilitydomain.Issue, error)
-	// GetIssueInWorkspace retrieves an issue only if it belongs to the specified workspace.
-	// Returns error if issue not found OR belongs to different workspace (defense-in-depth).
-	GetIssueInWorkspace(ctx context.Context, workspaceID, issueID string) (*observabilitydomain.Issue, error)
-	GetIssuesByIDs(ctx context.Context, issueIDs []string) ([]*observabilitydomain.Issue, error)
-	GetIssueByFingerprint(ctx context.Context, projectID, fingerprint string) (*observabilitydomain.Issue, error)
-	UpdateIssue(ctx context.Context, issue *observabilitydomain.Issue) error
-	ListProjectIssues(ctx context.Context, projectID string, filter IssueFilter) ([]*observabilitydomain.Issue, error)
-	ListIssues(ctx context.Context, filters contracts.IssueFilters) ([]*observabilitydomain.Issue, int, error)
-	// ListAllIssues returns all issues across all workspaces. Requires admin context for RLS bypass.
-	ListAllIssues(ctx context.Context, filters contracts.IssueFilters) ([]*observabilitydomain.Issue, int, error)
-	// AtomicUpdateIssueStats atomically increments event_count and updates last_seen/last_event_id.
-	// This prevents race conditions when multiple concurrent events update the same issue.
-	// Returns the updated issue with the new values.
-	AtomicUpdateIssueStats(ctx context.Context, workspaceID, issueID string, lastEventID string, lastSeen time.Time, incrementUserCount bool) (*observabilitydomain.Issue, error)
-}
-
-// ErrorEventStore handles error events
-type ErrorEventStore interface {
-	CreateErrorEvent(ctx context.Context, event *observabilitydomain.ErrorEvent) error
-	GetErrorEvent(ctx context.Context, eventID string) (*observabilitydomain.ErrorEvent, error)
-	GetIssueEvents(ctx context.Context, issueID string, limit int) ([]*observabilitydomain.ErrorEvent, error)
-	ListProjectEvents(ctx context.Context, projectID string, filter EventFilter) ([]*observabilitydomain.ErrorEvent, error)
-	UpdateEventIssueID(ctx context.Context, workspaceID, eventID, issueID string) error
-}
-
-// IssueCaseIntegrationStore handles issue-case linking
-type IssueCaseIntegrationStore interface {
-	GetErrorEventsByEmail(ctx context.Context, email string, since time.Time) ([]*observabilitydomain.ErrorEvent, error)
-	FindCaseForContactAndIssue(ctx context.Context, contactID, issueID string) (*servicedomain.Case, error)
-	GetUnresolvedIssuesWithCases(ctx context.Context, workspaceID string) ([]*observabilitydomain.Issue, error)
-}
-
-// ErrorAlertStore handles alerting
-type ErrorAlertStore interface {
-	CreateAlert(ctx context.Context, alert *observabilitydomain.Alert) error
-	GetAlert(ctx context.Context, alertID string) (*observabilitydomain.Alert, error)
-	UpdateAlert(ctx context.Context, alert *observabilitydomain.Alert) error
-}
-
 // EmailTemplateStore handles email template operations
 type EmailTemplateStore interface {
 	CreateEmailTemplate(ctx context.Context, template *servicedomain.EmailTemplate) error
@@ -592,45 +515,8 @@ type CaseFilter struct {
 	Offset         int        `json:"offset,omitempty"`
 }
 
-type IssueFilter struct {
-	Status     string     `json:"status,omitempty"`
-	Level      string     `json:"level,omitempty"`
-	AssignedTo string     `json:"assigned_to,omitempty"`
-	Tags       []string   `json:"tags,omitempty"`
-	Since      *time.Time `json:"since,omitempty"`
-	Until      *time.Time `json:"until,omitempty"`
-	Limit      int        `json:"limit,omitempty"`
-	Offset     int        `json:"offset,omitempty"`
-}
-
-type EventFilter struct {
-	IssueID     string     `json:"issue_id,omitempty"`
-	Level       string     `json:"level,omitempty"`
-	UserID      string     `json:"user_id,omitempty"`
-	Environment string     `json:"environment,omitempty"`
-	Release     string     `json:"release,omitempty"`
-	Since       *time.Time `json:"since,omitempty"`
-	Until       *time.Time `json:"until,omitempty"`
-	Limit       int        `json:"limit,omitempty"`
-	Offset      int        `json:"offset,omitempty"`
-}
-
-type IssueResolution struct {
-	Resolution           string    `json:"resolution"`
-	ResolutionNotes      string    `json:"resolution_notes,omitempty"`
-	ResolvedInCommit     string    `json:"resolved_in_commit,omitempty"`
-	ResolvedInVersion    string    `json:"resolved_in_version,omitempty"`
-	ResolvedBy           string    `json:"resolved_by"`
-	ResolvedAt           time.Time `json:"resolved_at"`
-	AutoCloseSystemCases bool      `json:"auto_close_system_cases"`
-	NotifyCustomers      bool      `json:"notify_customers"`
-}
-
 // CaseFilters re-exports contracts.CaseFilters for store packages.
 type CaseFilters = contracts.CaseFilters
-
-// IssueFilters re-exports contracts.IssueFilters for store packages.
-type IssueFilters = contracts.IssueFilters
 
 // =============================================================================
 // Agent Store Interfaces
@@ -659,10 +545,4 @@ type AgentStore interface {
 	GetWorkspaceMembership(ctx context.Context, workspaceID, principalID string, principalType platformdomain.PrincipalType) (*platformdomain.WorkspaceMembership, error)
 	GetWorkspaceMembershipByID(ctx context.Context, membershipID string) (*platformdomain.WorkspaceMembership, error)
 	RevokeWorkspaceMembership(ctx context.Context, membershipID, revokedByID string) error
-}
-
-// GitRepoStore handles git repository connection operations
-type GitRepoStore interface {
-	GetGitRepoByID(ctx context.Context, repoID string) (*observabilitydomain.GitRepo, error)
-	ListGitReposByApplication(ctx context.Context, applicationID string) ([]*observabilitydomain.GitRepo, error)
 }

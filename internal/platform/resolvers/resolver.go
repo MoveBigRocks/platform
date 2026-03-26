@@ -15,8 +15,6 @@ import (
 	"github.com/movebigrocks/platform/internal/graph/model"
 	graphshared "github.com/movebigrocks/platform/internal/graph/shared"
 	apierrors "github.com/movebigrocks/platform/internal/infrastructure/errors"
-	observabilityresolvers "github.com/movebigrocks/platform/internal/observability/resolvers"
-	observabilityservices "github.com/movebigrocks/platform/internal/observability/services"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
 	serviceresolvers "github.com/movebigrocks/platform/internal/service/resolvers"
@@ -33,10 +31,7 @@ type Config struct {
 	ExtensionService   *platformservices.ExtensionService
 	CaseService        *serviceapp.CaseService
 	QueueService       *serviceapp.QueueService
-	IssueService       *observabilityservices.IssueService
-	ProjectService     *observabilityservices.ProjectService
 	ServiceGraph       *serviceresolvers.Resolver
-	ObservabilityGraph *observabilityresolvers.Resolver
 }
 
 // Resolver handles all platform domain GraphQL operations
@@ -48,10 +43,7 @@ type Resolver struct {
 	extensionService   *platformservices.ExtensionService
 	caseService        *serviceapp.CaseService
 	queueService       *serviceapp.QueueService
-	issueService       *observabilityservices.IssueService
-	projectService     *observabilityservices.ProjectService
 	serviceGraph       *serviceresolvers.Resolver
-	observabilityGraph *observabilityresolvers.Resolver
 }
 
 // NewResolver creates a new platform domain resolver
@@ -64,10 +56,7 @@ func NewResolver(cfg Config) *Resolver {
 		extensionService:   cfg.ExtensionService,
 		caseService:        cfg.CaseService,
 		queueService:       cfg.QueueService,
-		issueService:       cfg.IssueService,
-		projectService:     cfg.ProjectService,
 		serviceGraph:       cfg.ServiceGraph,
-		observabilityGraph: cfg.ObservabilityGraph,
 	}
 }
 
@@ -1419,42 +1408,6 @@ func (w *WorkspaceResolver) Queues(ctx context.Context) ([]*serviceresolvers.Que
 		return nil, fmt.Errorf("failed to list queues: %w", err)
 	}
 	return w.r.serviceGraph.NewQueueResolvers(queues), nil
-}
-
-// Issues resolves linked observability issues for the workspace
-func (w *WorkspaceResolver) Issues(ctx context.Context, args struct{ Filter *model.IssueFilterInput }) (*observabilityresolvers.IssueConnectionResolver, error) {
-	if w.r == nil || w.r.issueService == nil || w.r.observabilityGraph == nil {
-		return nil, nil
-	}
-
-	limit := 50
-	if args.Filter != nil && args.Filter.First != nil {
-		limit = int(*args.Filter.First)
-	}
-
-	filters := contracts.IssueFilters{Limit: limit}
-	if args.Filter != nil && args.Filter.Status != nil && len(*args.Filter.Status) > 0 {
-		filters.Status = (*args.Filter.Status)[0]
-	}
-
-	issues, total, err := w.r.issueService.ListWorkspaceIssuesWithFilters(ctx, w.workspace.ID, filters)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list issues: %w", err)
-	}
-	return w.r.observabilityGraph.NewIssueConnectionResolver(issues, total, limit), nil
-}
-
-// Projects resolves linked observability projects for the workspace
-func (w *WorkspaceResolver) Projects(ctx context.Context) ([]*observabilityresolvers.ProjectResolver, error) {
-	if w.r == nil || w.r.projectService == nil || w.r.observabilityGraph == nil {
-		return []*observabilityresolvers.ProjectResolver{}, nil
-	}
-
-	projects, err := w.r.projectService.ListWorkspaceProjects(ctx, w.workspace.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list projects: %w", err)
-	}
-	return w.r.observabilityGraph.NewProjectResolvers(projects), nil
 }
 
 // Extensions resolves installed extensions for this workspace.
