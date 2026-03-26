@@ -93,7 +93,13 @@ type GitService struct {
 }
 
 func NewGitService(rootDir string) *GitService {
-	return &GitService{rootDir: strings.TrimSpace(rootDir)}
+	rootDir = strings.TrimSpace(rootDir)
+	if rootDir != "" {
+		if absoluteRoot, err := filepath.Abs(rootDir); err == nil {
+			rootDir = absoluteRoot
+		}
+	}
+	return &GitService{rootDir: rootDir}
 }
 
 func (s *GitService) Commit(ctx context.Context, params CommitParams) (*CommitResult, error) {

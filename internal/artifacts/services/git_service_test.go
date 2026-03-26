@@ -2,6 +2,9 @@ package artifactservices
 
 import (
 	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -134,5 +137,45 @@ func TestGitServiceDelete(t *testing.T) {
 	}
 	if history[0].Ref != deleted.Ref || history[1].Ref != first.Ref {
 		t.Fatalf("unexpected history order after delete: %#v", history)
+	}
+}
+
+func TestGitServiceRelativeRootDoesNotCreateNestedRepo(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("chdir tempdir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(wd)
+	})
+
+	service := NewGitService("data/artifacts")
+	ctx := context.Background()
+	repository := WorkspaceRepository("ws_123")
+
+	if _, err := service.Write(ctx, WriteParams{
+		Repository:    repository,
+		RelativePath:  "extensions/ats/surfaces/website/index.html",
+		Content:       []byte("<html></html>\n"),
+		CommitMessage: "seed ats website",
+		ActorID:       "system",
+	}); err != nil {
+		t.Fatalf("write with relative root: %v", err)
+	}
+
+	expectedGitDir := filepath.Join(tmp, "data", "artifacts", "workspaces", "ws_123", ".git")
+	if _, err := os.Stat(expectedGitDir); err != nil {
+		t.Fatalf("expected git repo at %s: %v", expectedGitDir, err)
+	}
+
+	unexpectedGitDir := filepath.Join(tmp, "data", "artifacts", "workspaces", "data", "artifacts", "workspaces", "ws_123", ".git")
+	if _, err := os.Stat(unexpectedGitDir); err == nil {
+		t.Fatalf("unexpected nested git repo at %s", unexpectedGitDir)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("stat unexpected nested repo: %v", err)
 	}
 }
