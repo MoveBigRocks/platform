@@ -24,16 +24,11 @@ type AdminStatsService struct {
 	// Trend tracking for quick stats
 	previousStats        map[string]float64
 	extensionGate        adminStatsExtensionGate
-	issueMetricsProvider adminStatsIssueMetricsProvider
 }
 
 type adminStatsExtensionGate interface {
 	HasActiveExtension(ctx context.Context, slug string) (bool, error)
 	HasActiveExtensionInWorkspace(ctx context.Context, workspaceID, slug string) (bool, error)
-}
-
-type adminStatsIssueMetricsProvider interface {
-	CountRecentIssues(ctx context.Context, since time.Time) (int64, error)
 }
 
 // NewAdminStatsService creates a new admin statistics service
@@ -71,17 +66,11 @@ func (s *AdminStatsService) SetExtensionGate(gate adminStatsExtensionGate) {
 	s.extensionGate = gate
 }
 
-func (s *AdminStatsService) SetIssueMetricsProvider(provider adminStatsIssueMetricsProvider) {
-	s.issueMetricsProvider = provider
-}
-
 // DashboardStats represents the key metrics displayed on the admin dashboard
 type DashboardStats struct {
 	WorkspaceCount    int
 	UserCount         int
 	OpenCases         int
-	ErrorsIngested24h int64
-	ErrorRate1h       float64 // errors per minute
 	AvgResolutionTime string  // human-readable duration
 }
 
@@ -138,27 +127,6 @@ func (s *AdminStatsService) GetDashboardStats(ctx context.Context) (*DashboardSt
 	// Get case statistics (no Prometheus metric yet)
 	stats.OpenCases, stats.AvgResolutionTime = s.getCaseStats(ctx)
 
-	// Get error/issue statistics
-	if s.usePrometheus {
-		// Use Prometheus metrics - FAST, no file I/O!
-		errorsLast24h, err := s.prometheusClient.GetRecentErrors(ctx, "24h")
-		if err == nil {
-			stats.ErrorsIngested24h = int64(errorsLast24h)
-
-			// Get real-time error rate (errors per minute over last 1h)
-			errorRate, err := s.prometheusClient.GetErrorRate(ctx, "1h")
-			if err == nil {
-				stats.ErrorRate1h = errorRate
-			}
-		} else {
-			s.logger.WithError(err).Warn("Failed to get error stats from Prometheus, calculating from storage")
-			stats.ErrorsIngested24h, stats.ErrorRate1h = s.getErrorStatsFromStore(ctx)
-		}
-	} else {
-		// Calculate from storage (slower)
-		stats.ErrorsIngested24h, stats.ErrorRate1h = s.getErrorStatsFromStore(ctx)
-	}
-
 	return stats, nil
 }
 
@@ -209,30 +177,6 @@ func (s *AdminStatsService) getCaseStats(ctx context.Context) (int, string) {
 	}
 
 	return openCount, avgResolutionTime
-}
-
-// Helper: Get error statistics by scanning storage (when Prometheus unavailable)
-func (s *AdminStatsService) getErrorStatsFromStore(ctx context.Context) (int64, float64) {
-	if !s.isSurfaceEnabled(ctx, "", "error-tracking") {
-		return 0, 0
-	}
-	if s.issueMetricsProvider == nil {
-		return 0, 0
-	}
-
-	recentIssues, err := s.issueMetricsProvider.CountRecentIssues(ctx, time.Now().Add(-24*time.Hour))
-	if err != nil {
-		s.logger.WithError(err).Warn("Failed to load error stats from observability capability")
-		return 0, 0
-	}
-
-	// Calculate error rate (errors per minute over last 24h average)
-	errorRate := float64(0)
-	if recentIssues > 0 {
-		errorRate = float64(recentIssues) / (24.0 * 60.0)
-	}
-
-	return recentIssues, errorRate
 }
 
 func (s *AdminStatsService) isSurfaceEnabled(ctx context.Context, workspaceID, slug string) bool {
@@ -331,27 +275,6 @@ func (s *AdminStatsService) GetRecentActivity(ctx context.Context, limit int) ([
 func (s *AdminStatsService) GetQuickStats(ctx context.Context) ([]QuickStat, error) {
 	var stats []QuickStat
 
-	// Error Rate - from Prometheus or calculate
-	errorRate := float64(0)
-	if s.usePrometheus {
-		rate, err := s.prometheusClient.GetErrorRate(ctx, "1h")
-		if err == nil {
-			errorRate = rate
-		}
-	} else {
-		// Calculate from storage
-		_, calculatedRate := s.getErrorStatsFromStore(ctx)
-		errorRate = calculatedRate
-	}
-
-	errorRateTrend := s.calculateTrend("error_rate", errorRate)
-	stats = append(stats, QuickStat{
-		Label: "Error Rate",
-		Value: fmt.Sprintf("%.1f/min", errorRate),
-		Icon:  "lucide--activity",
-		Trend: errorRateTrend,
-	})
-
 	// Open Cases
 	openCases, _ := s.getCaseStats(ctx)
 	openCasesTrend := s.calculateTrend("open_cases", float64(openCases))
@@ -370,6 +293,15 @@ func (s *AdminStatsService) GetQuickStats(ctx context.Context) ([]QuickStat, err
 		Value: fmt.Sprintf("%d", workspaceCount),
 		Icon:  "lucide--building-2",
 		Trend: workspaceTrend,
+	})
+
+	// Average Resolution Time
+	_, avgResolutionTime := s.getCaseStats(ctx)
+	stats = append(stats, QuickStat{
+		Label: "Avg Resolution",
+		Value: avgResolutionTime,
+		Icon:  "lucide--clock-3",
+		Trend: "stable",
 	})
 
 	// Active Users (users who logged in last 24h)

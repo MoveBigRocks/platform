@@ -7,11 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/movebigrocks/platform/internal/infrastructure/container"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	"github.com/movebigrocks/platform/internal/platform/extensionruntime"
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
 	"github.com/movebigrocks/platform/internal/testutil"
 )
@@ -92,7 +94,15 @@ func TestCreateAPIRouter_ServesErrorTrackingEnvelopeFromInstalledExtension(t *te
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
-	router := createAPIRouter(cfg, c, nil, nil, nil)
+	registry := &extensionruntime.Registry{}
+	registry.Register("error-tracking.ingest.envelope", func(ctx *gin.Context) {
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid sentry auth header"})
+	})
+	registry.Register("error-tracking.ingest.envelope.project", func(ctx *gin.Context) {
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid sentry auth header"})
+	})
+
+	router := createAPIRouter(cfg, c, nil, nil, registry)
 
 	envelope := strings.NewReader("{\"event_id\":\"00000000000000000000000000000001\"}\n{\"type\":\"event\"}\n{\"event_id\":\"00000000000000000000000000000001\",\"message\":\"boom\",\"platform\":\"javascript\"}\n")
 	req := httptest.NewRequest(http.MethodPost, "/api/777/envelope", envelope)

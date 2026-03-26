@@ -81,11 +81,7 @@ func (f *DefaultWorkspaceRouterFactory) CreateWorkspaceRouter(workspaceID, works
 	// Create context-aware auth middleware
 	contextAuthMiddleware := middleware.NewContextAuthMiddleware(f.sessionService)
 
-	workspaceAPIHandler := platformhandlers.NewWorkspaceAPIHandler(
-		f.caseService,
-		nil,
-		f.extensionService,
-	)
+	workspaceAPIHandler := platformhandlers.NewWorkspaceAPIHandler(f.caseService)
 
 	// Public routes (no auth required)
 	router.GET("/", func(c *gin.Context) {

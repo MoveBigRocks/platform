@@ -9,31 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	automationservices "github.com/movebigrocks/platform/internal/automation/services"
-	observabilitydomain "github.com/movebigrocks/platform/internal/observability/domain"
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
 	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	"github.com/movebigrocks/platform/internal/shared/contracts"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
-
-type adminIssueProvider interface {
-	ListWorkspaceIssues(ctx context.Context, workspaceID string, limit int) ([]*observabilitydomain.Issue, int, error)
-	ListAllIssues(ctx context.Context, filters contracts.IssueFilters) ([]*observabilitydomain.Issue, int, error)
-	GetIssueInWorkspace(ctx context.Context, workspaceID, issueID string) (*observabilitydomain.Issue, error)
-	GetIssueWithProject(ctx context.Context, issueID string) (*observabilitydomain.Issue, *observabilitydomain.Project, error)
-	GetIssueEvents(ctx context.Context, issueID string, limit int) ([]*observabilitydomain.ErrorEvent, error)
-	GetIssuesByIDs(ctx context.Context, issueIDs []string) ([]*observabilitydomain.Issue, error)
-}
-
-type adminProjectProvider interface {
-	ListWorkspaceProjects(ctx context.Context, workspaceID string) ([]*observabilitydomain.Project, error)
-	ListAllProjects(ctx context.Context) ([]*observabilitydomain.Project, error)
-	GetProjectsByIDs(ctx context.Context, projectIDs []string) ([]*observabilitydomain.Project, error)
-	GetProject(ctx context.Context, projectID string) (*observabilitydomain.Project, error)
-	CreateProject(ctx context.Context, project *observabilitydomain.Project) error
-	UpdateProject(ctx context.Context, project *observabilitydomain.Project) error
-	DeleteProject(ctx context.Context, workspaceID, projectID string) error
-}
 
 // AdminManagementHandler handles instance admin management pages and APIs
 type AdminManagementHandler struct {
@@ -44,8 +23,6 @@ type AdminManagementHandler struct {
 	caseService      *serviceapp.CaseService
 	ruleService      *automationservices.RuleService
 	formService      *automationservices.FormService
-	issueService     adminIssueProvider
-	projectService   adminProjectProvider
 	logger           *logger.Logger
 }
 
@@ -58,8 +35,6 @@ func NewAdminManagementHandler(
 	caseService *serviceapp.CaseService,
 	ruleService *automationservices.RuleService,
 	formService *automationservices.FormService,
-	issueService adminIssueProvider,
-	projectService adminProjectProvider,
 ) *AdminManagementHandler {
 	return &AdminManagementHandler{
 		workspaceService: workspaceService,
@@ -69,8 +44,6 @@ func NewAdminManagementHandler(
 		caseService:      caseService,
 		ruleService:      ruleService,
 		formService:      formService,
-		issueService:     issueService,
-		projectService:   projectService,
 		logger:           logger.New().WithField("handler", "admin_management"),
 	}
 }

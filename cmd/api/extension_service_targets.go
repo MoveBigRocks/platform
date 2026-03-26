@@ -76,7 +76,7 @@ func serveResolvedExtensionServiceRoute(
 	if !enforceResolvedExtensionServiceRoutePolicy(ctx, resolved, cfg, principalAuth) {
 		return
 	}
-	if !registry.Dispatch(resolved.Endpoint.ServiceTarget, ctx) {
+	if err := registry.DispatchEndpoint(resolved.Extension, resolved.Endpoint, ctx); err != nil {
 		ctx.AbortWithStatus(http.StatusServiceUnavailable)
 		return
 	}
@@ -111,7 +111,7 @@ func serveResolvedAdminExtensionServiceRoute(
 	if !enforceResolvedExtensionServiceRoutePolicy(ctx, resolved, cfg, nil) {
 		return true
 	}
-	if !registry.Dispatch(resolved.Endpoint.ServiceTarget, ctx) {
+	if err := registry.DispatchEndpoint(resolved.Extension, resolved.Endpoint, ctx); err != nil {
 		ctx.AbortWithStatus(http.StatusServiceUnavailable)
 		return true
 	}

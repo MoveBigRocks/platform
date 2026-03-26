@@ -225,17 +225,6 @@ func initializeMetrics(ctx context.Context, store stores.Store, log *logger.Logg
 		for _, workspace := range workspaces {
 			if workspace.IsAccessible() {
 				activeCount++
-
-				// Initialize active projects gauge for each workspace
-				projects, err := store.Projects().ListWorkspaceProjects(ctx, workspace.ID)
-				if err != nil {
-					log.Warn("Failed to count projects for workspace",
-						"workspace_id", workspace.ID,
-						"error", err)
-				} else {
-					// Set active projects count for this workspace
-					internal_metrics.ActiveProjects.WithLabelValues(workspace.ID).Set(float64(len(projects)))
-				}
 			}
 		}
 

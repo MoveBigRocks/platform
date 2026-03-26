@@ -64,16 +64,16 @@
                             <p class="text-3xl font-semibold tracking-tight text-zinc-900 mt-1">{{if .Stats}}{{.Stats.OpenCases}}{{else}}0{{end}}</p>
                         </div>
 
-                        <!-- Errors Card -->
+                        <!-- Average Resolution Card -->
                         <div class="metric-card">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="metric-card-icon blue">
-                                    <i data-lucide="alert-octagon" class="h-4 w-4"></i>
+                                    <i data-lucide="clock-3" class="h-4 w-4"></i>
                                 </div>
-                                <span class="text-xs font-medium text-zinc-500">{{if .Stats}}{{printf "%.1f" .Stats.ErrorRate1h}}/min avg{{else}}0.0/min avg{{end}}</span>
+                                <span class="text-xs font-medium text-zinc-500">Support quality</span>
                             </div>
-                            <p class="text-sm font-medium text-zinc-500">Errors (24h)</p>
-                            <p class="text-3xl font-semibold tracking-tight text-zinc-900 mt-1">{{if .Stats}}{{.Stats.ErrorsIngested24h}}{{else}}0{{end}}</p>
+                            <p class="text-sm font-medium text-zinc-500">Avg Resolution</p>
+                            <p class="text-3xl font-semibold tracking-tight text-zinc-900 mt-1">{{if and .Stats .Stats.AvgResolutionTime}}{{.Stats.AvgResolutionTime}}{{else}}N/A{{end}}</p>
                         </div>
                     </div>
 

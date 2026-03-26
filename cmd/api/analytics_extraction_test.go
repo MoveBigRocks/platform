@@ -6,11 +6,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/movebigrocks/platform/internal/infrastructure/container"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	"github.com/movebigrocks/platform/internal/platform/extensionruntime"
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
 	"github.com/movebigrocks/platform/internal/testutil"
 )
@@ -75,7 +77,13 @@ func TestCreateAPIRouter_ServesAnalyticsScriptFromInstalledExtension(t *testing.
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
-	router := createAPIRouter(cfg, c, nil, nil, nil)
+	registry := &extensionruntime.Registry{}
+	registry.Register("analytics.asset.script", func(ctx *gin.Context) {
+		ctx.Header("Content-Type", "application/javascript; charset=utf-8")
+		ctx.String(http.StatusOK, "window.__mbrAnalyticsEndpoint = '/api/analytics/event';")
+	})
+
+	router := createAPIRouter(cfg, c, nil, nil, registry)
 
 	req := httptest.NewRequest(http.MethodGet, "/js/analytics.js", nil)
 	w := httptest.NewRecorder()

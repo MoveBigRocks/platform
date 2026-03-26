@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"html/template"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,13 +17,10 @@ import (
 
 	"github.com/movebigrocks/platform/internal/infrastructure/config"
 	"github.com/movebigrocks/platform/internal/infrastructure/container"
-	sqlstore "github.com/movebigrocks/platform/internal/infrastructure/stores/sql"
-	observabilitydomain "github.com/movebigrocks/platform/internal/observability/domain"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	"github.com/movebigrocks/platform/internal/platform/extensionruntime"
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
 	"github.com/movebigrocks/platform/internal/testutil"
-	"github.com/movebigrocks/platform/internal/testutil/refext"
 )
 
 func TestExtensionServiceTargetRegistry_Dispatch(t *testing.T) {
@@ -752,7 +748,9 @@ func TestExtensionServiceTargetRegistry_DispatchesAnalyticsAdminPage(t *testing.
 	gin.SetMode(gin.TestMode)
 	testutil.SetupTestEnv(t)
 
+	runtimeDir := newShortRuntimeDir(t)
 	cfg := testutil.NewTestConfig(t)
+	cfg.ExtensionRuntimeDir = runtimeDir
 
 	cntr, err := container.New(cfg, container.Options{
 		Version:   "test",
@@ -765,55 +763,51 @@ func TestExtensionServiceTargetRegistry_DispatchesAnalyticsAdminPage(t *testing.
 	}()
 
 	registry := extensionruntime.NewRegistry(cntr)
+	cleanup := startUnixSocketTestServer(t, runtimeDir, "demandops/web-analytics", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(r.URL.Path + "|" + r.Header.Get("X-MBR-User-Name")))
+	}))
+	defer cleanup()
 
 	w := httptest.NewRecorder()
-	ginCtx, router := gin.CreateTestContext(w)
-	router.SetHTMLTemplate(template.Must(template.New("analytics_properties.html").Parse(`{{define "analytics_properties.html"}}{{.AnalyticsBasePath}}|analytics-admin{{end}}`)))
+	ginCtx, _ := gin.CreateTestContext(w)
 	ginCtx.Request = httptest.NewRequest(http.MethodGet, "/extensions/web-analytics", nil)
 	ginCtx.Set("name", "Test User")
 	ginCtx.Set("email", "test@example.com")
 
-	ok := registry.Dispatch("analytics.admin.properties", ginCtx)
+	extension := &platformdomain.InstalledExtension{
+		ID:   "ext_web_analytics",
+		Slug: "web-analytics",
+		Manifest: platformdomain.ExtensionManifest{
+			Publisher: "DemandOps",
+			Slug:      "web-analytics",
+			Schema: platformdomain.ExtensionSchemaManifest{
+				PackageKey: "demandops/web-analytics",
+			},
+			Runtime: platformdomain.ExtensionRuntimeSpec{
+				Protocol: platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+			},
+		},
+	}
+	endpoint := platformdomain.ExtensionEndpoint{
+		Name:          "analytics-admin-properties",
+		Class:         platformdomain.ExtensionEndpointClassAdminPage,
+		MountPath:     "/extensions/web-analytics",
+		ServiceTarget: "analytics.admin.properties",
+	}
 
-	require.True(t, ok)
+	require.NoError(t, registry.DispatchEndpoint(extension, endpoint, ginCtx))
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "/extensions/web-analytics")
-	assert.Contains(t, w.Body.String(), "analytics-admin")
+	assert.Contains(t, w.Body.String(), "Test User")
 }
 
 func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingApplicationsPage(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	testDSN, cleanupDB := testutil.SetupTestPostgresDatabase(t)
-	defer cleanupDB()
-
-	tmpDir := t.TempDir()
-	t.Setenv("DATABASE_DSN", testDSN)
-	t.Setenv("STORAGE_PATH", tmpDir)
-	t.Setenv("FILESYSTEM_PATH", tmpDir)
-	t.Setenv("JWT_SECRET", "test-secret-at-least-32-chars-long-for-testing")
-	t.Setenv("ENVIRONMENT", "test")
-	t.Setenv("EMAIL_BACKEND", "mock")
-	t.Setenv("STORAGE_TYPE", "filesystem")
-	t.Setenv("TRACING_ENABLED", "false")
-	t.Setenv("ENABLE_METRICS", "false")
-	t.Setenv("CLAMAV_ADDR", "")
-
 	cfg := testutil.NewTestConfig(t)
-	db, err := sqlstore.NewDBWithConfig(sqlstore.DBConfig{DSN: cfg.Database.EffectiveDSN()})
-	require.NoError(t, err)
-	store, err := sqlstore.NewStore(db)
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, store.Close())
-	}()
-
-	backgroundCtx := context.Background()
-	workspace := testutil.NewIsolatedWorkspace(t)
-	require.NoError(t, store.Workspaces().CreateWorkspace(backgroundCtx, workspace))
-	refext.InstallAndActivateReferenceExtension(t, backgroundCtx, store, workspace.ID, "error-tracking")
-	project := observabilitydomain.NewProject(workspace.ID, "", "Backend API", "backend-api", "go")
-	require.NoError(t, store.Projects().CreateProject(backgroundCtx, project))
+	runtimeDir := newShortRuntimeDir(t)
+	cfg.ExtensionRuntimeDir = runtimeDir
 
 	cntr, err := container.New(cfg, container.Options{
 		Version:   "test",
@@ -826,16 +820,21 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingApplicationsPage(
 	}()
 
 	registry := extensionruntime.NewRegistry(cntr)
+	cleanup := startUnixSocketTestServer(t, runtimeDir, "demandops/error-tracking", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(r.URL.Path + "|" + r.Header.Get("X-MBR-Workspace-ID")))
+	}))
+	defer cleanup()
 
 	w := httptest.NewRecorder()
-	ginCtx, router := gin.CreateTestContext(w)
-	router.SetHTMLTemplate(template.Must(template.New("applications.html").Parse(`{{define "applications.html"}}{{.ApplicationsBasePath}}|{{len .Applications}}{{end}}`)))
-	workspaceID := workspace.ID
-	workspaceName := workspace.Name
-	workspaceSlug := workspace.ShortCode
+	ginCtx, _ := gin.CreateTestContext(w)
+	workspaceID := "ws_applications"
+	workspaceName := "Engineering"
+	workspaceSlug := "engineering"
 	ginCtx.Request = httptest.NewRequest(http.MethodGet, "/extensions/error-tracking/applications", nil)
 	ginCtx.Set("name", "Test User")
 	ginCtx.Set("email", "test@example.com")
+	ginCtx.Set("workspace_id", workspaceID)
 	ginCtx.Set("session", &platformdomain.Session{
 		CurrentContext: platformdomain.Context{
 			Type:          platformdomain.ContextTypeWorkspace,
@@ -846,62 +845,40 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingApplicationsPage(
 		},
 	})
 
-	ok := registry.Dispatch("error-tracking.admin.applications", ginCtx)
+	extension := &platformdomain.InstalledExtension{
+		ID:         "ext_error_tracking",
+		Slug:       "error-tracking",
+		WorkspaceID: workspaceID,
+		Manifest: platformdomain.ExtensionManifest{
+			Publisher: "DemandOps",
+			Slug:      "error-tracking",
+			Schema: platformdomain.ExtensionSchemaManifest{
+				PackageKey: "demandops/error-tracking",
+			},
+			Runtime: platformdomain.ExtensionRuntimeSpec{
+				Protocol: platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+			},
+		},
+	}
+	endpoint := platformdomain.ExtensionEndpoint{
+		Name:          "error-tracking-admin-applications",
+		Class:         platformdomain.ExtensionEndpointClassAdminPage,
+		MountPath:     "/extensions/error-tracking/applications",
+		ServiceTarget: "error-tracking.admin.applications",
+	}
 
-	require.True(t, ok)
+	require.NoError(t, registry.DispatchEndpoint(extension, endpoint, ginCtx))
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "/extensions/error-tracking/applications")
-	assert.Contains(t, w.Body.String(), "|1")
+	assert.Contains(t, w.Body.String(), workspaceID)
 }
 
 func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingIssuesPage(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	testDSN, cleanupDB := testutil.SetupTestPostgresDatabase(t)
-	defer cleanupDB()
-
-	tmpDir := t.TempDir()
-	t.Setenv("DATABASE_DSN", testDSN)
-	t.Setenv("STORAGE_PATH", tmpDir)
-	t.Setenv("FILESYSTEM_PATH", tmpDir)
-	t.Setenv("JWT_SECRET", "test-secret-at-least-32-chars-long-for-testing")
-	t.Setenv("ENVIRONMENT", "test")
-	t.Setenv("EMAIL_BACKEND", "mock")
-	t.Setenv("STORAGE_TYPE", "filesystem")
-	t.Setenv("TRACING_ENABLED", "false")
-	t.Setenv("ENABLE_METRICS", "false")
-	t.Setenv("CLAMAV_ADDR", "")
-
 	cfg := testutil.NewTestConfig(t)
-	db, err := sqlstore.NewDBWithConfig(sqlstore.DBConfig{DSN: cfg.Database.EffectiveDSN()})
-	require.NoError(t, err)
-	store, err := sqlstore.NewStore(db)
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, store.Close())
-	}()
-
-	backgroundCtx := context.Background()
-	workspace := testutil.NewIsolatedWorkspace(t)
-	require.NoError(t, store.Workspaces().CreateWorkspace(backgroundCtx, workspace))
-	refext.InstallAndActivateReferenceExtension(t, backgroundCtx, store, workspace.ID, "error-tracking")
-
-	project := observabilitydomain.NewProject(workspace.ID, "", "Backend API", "backend-api", "go")
-	require.NoError(t, store.Projects().CreateProject(backgroundCtx, project))
-	issue := &observabilitydomain.Issue{
-		ID:          "issue_extension_runtime",
-		WorkspaceID: workspace.ID,
-		ProjectID:   project.ID,
-		ShortID:     "ERR-123",
-		Title:       "NullPointerException",
-		Culprit:     "service.handler",
-		Status:      observabilitydomain.IssueStatusUnresolved,
-		Level:       "error",
-		Fingerprint: "ext-runtime-issue",
-		FirstSeen:   time.Now().Add(-1 * time.Hour),
-		LastSeen:    time.Now(),
-	}
-	require.NoError(t, store.Issues().CreateIssue(backgroundCtx, issue))
+	runtimeDir := newShortRuntimeDir(t)
+	cfg.ExtensionRuntimeDir = runtimeDir
 
 	cntr, err := container.New(cfg, container.Options{
 		Version:   "test",
@@ -914,16 +891,21 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingIssuesPage(t *tes
 	}()
 
 	registry := extensionruntime.NewRegistry(cntr)
+	cleanup := startUnixSocketTestServer(t, runtimeDir, "demandops/error-tracking", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(r.URL.Path + "|" + r.Header.Get("X-MBR-User-Email")))
+	}))
+	defer cleanup()
 
 	w := httptest.NewRecorder()
-	ginCtx, router := gin.CreateTestContext(w)
-	router.SetHTMLTemplate(template.Must(template.New("issues.html").Parse(`{{define "issues.html"}}{{.IssuesBasePath}}|{{len .Issues}}{{end}}`)))
-	workspaceID := workspace.ID
-	workspaceName := workspace.Name
-	workspaceSlug := workspace.ShortCode
+	ginCtx, _ := gin.CreateTestContext(w)
+	workspaceID := "ws_issues"
+	workspaceName := "Engineering"
+	workspaceSlug := "engineering"
 	ginCtx.Request = httptest.NewRequest(http.MethodGet, "/extensions/error-tracking/issues", nil)
 	ginCtx.Set("name", "Test User")
 	ginCtx.Set("email", "test@example.com")
+	ginCtx.Set("workspace_id", workspaceID)
 	ginCtx.Set("session", &platformdomain.Session{
 		CurrentContext: platformdomain.Context{
 			Type:          platformdomain.ContextTypeWorkspace,
@@ -934,10 +916,30 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingIssuesPage(t *tes
 		},
 	})
 
-	ok := registry.Dispatch("error-tracking.admin.issues", ginCtx)
+	extension := &platformdomain.InstalledExtension{
+		ID:         "ext_error_tracking",
+		Slug:       "error-tracking",
+		WorkspaceID: workspaceID,
+		Manifest: platformdomain.ExtensionManifest{
+			Publisher: "DemandOps",
+			Slug:      "error-tracking",
+			Schema: platformdomain.ExtensionSchemaManifest{
+				PackageKey: "demandops/error-tracking",
+			},
+			Runtime: platformdomain.ExtensionRuntimeSpec{
+				Protocol: platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+			},
+		},
+	}
+	endpoint := platformdomain.ExtensionEndpoint{
+		Name:          "error-tracking-admin-issues",
+		Class:         platformdomain.ExtensionEndpointClassAdminPage,
+		MountPath:     "/extensions/error-tracking/issues",
+		ServiceTarget: "error-tracking.admin.issues",
+	}
 
-	require.True(t, ok)
+	require.NoError(t, registry.DispatchEndpoint(extension, endpoint, ginCtx))
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "/extensions/error-tracking/issues")
-	assert.Contains(t, w.Body.String(), "|1")
+	assert.Contains(t, w.Body.String(), "test@example.com")
 }

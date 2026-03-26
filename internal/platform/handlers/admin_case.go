@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/movebigrocks/platform/internal/infrastructure/middleware"
-	observabilitydomain "github.com/movebigrocks/platform/internal/observability/domain"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	serviceapp "github.com/movebigrocks/platform/internal/service/services"
 	"github.com/movebigrocks/platform/internal/shared/contracts"
@@ -116,15 +115,6 @@ func (h *AdminManagementHandler) ShowCaseDetail(c *gin.Context) {
 		slog.Warn("Failed to get case communications", "case_id", caseID, "error", err)
 	}
 
-	// Get linked issues via issueService
-	var linkedIssues []*observabilitydomain.Issue
-	if len(caseObj.LinkedIssueIDs) > 0 {
-		linkedIssues, err = h.issueService.GetIssuesByIDs(ctx, caseObj.LinkedIssueIDs)
-		if err != nil {
-			slog.Warn("Failed to get linked issues", "case_id", caseID, "error", err)
-		}
-	}
-
 	// Get available users for assignment
 	availableUsers := []UserOptionItem{}
 	if _, _, ok := currentWorkspaceScope(c); !ok {
@@ -149,8 +139,6 @@ func (h *AdminManagementHandler) ShowCaseDetail(c *gin.Context) {
 		workspaceName,
 		assigneeName,
 		communications,
-		linkedIssues,
-		errorTrackingIssuesBasePath,
 		availableUsers,
 		base,
 	))

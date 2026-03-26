@@ -89,7 +89,7 @@ func (r *Runtime) ensureEventConsumer(ctx context.Context, extension *platformdo
 			if !active {
 				return nil
 			}
-			if err := r.registry.Consume(consumer.ServiceTarget, handlerCtx, data); err != nil {
+			if err := r.registry.ConsumeExtension(extension, consumer, handlerCtx, data); err != nil {
 				r.recordConsumerFailure(key, err)
 				return err
 			}
@@ -193,7 +193,7 @@ func (r *Runtime) runScheduledJobLoop(ctx context.Context, extension *platformdo
 			r.recordJobIdle(extension, job)
 			return
 		}
-		if err := r.registry.RunJob(job.ServiceTarget, ctx); err != nil {
+		if err := r.registry.RunExtensionJob(extension, job, ctx); err != nil {
 			r.recordJobFailure(extension, job, err)
 			if r.logger != nil {
 				r.logger.Warn("Extension scheduled job failed",

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -165,7 +164,7 @@ func (r *Runtime) EnsureInstalledExtensionRuntime(
 		if serviceTarget == "" {
 			continue
 		}
-		if !r.registry.Has(serviceTarget) {
+		if !r.registry.SupportsServiceTarget(extension.Manifest.Runtime.Protocol, serviceTarget) {
 			r.recordEndpointFailure(extension, endpoint, fmt.Errorf("service target %s is not registered", serviceTarget))
 			return fmt.Errorf("service target %s is not registered", serviceTarget)
 		}
@@ -176,7 +175,7 @@ func (r *Runtime) EnsureInstalledExtensionRuntime(
 		if serviceTarget == "" {
 			continue
 		}
-		if !r.registry.Has(serviceTarget) {
+		if !r.registry.SupportsServiceTarget(extension.Manifest.Runtime.Protocol, serviceTarget) {
 			return fmt.Errorf("service target %s is not registered", serviceTarget)
 		}
 	}
@@ -185,7 +184,7 @@ func (r *Runtime) EnsureInstalledExtensionRuntime(
 		if serviceTarget == "" {
 			continue
 		}
-		if !r.registry.Has(serviceTarget) {
+		if !r.registry.SupportsServiceTarget(extension.Manifest.Runtime.Protocol, serviceTarget) {
 			return fmt.Errorf("service target %s is not registered", serviceTarget)
 		}
 	}
@@ -227,7 +226,7 @@ func (r *Runtime) PrepareInstall(_ context.Context, manifest platformdomain.Exte
 			return fmt.Errorf("privileged endpoint %s may not use public auth", endpoint.Name)
 		}
 		serviceTarget := strings.TrimSpace(endpoint.ServiceTarget)
-		if serviceTarget != "" && !r.registry.Has(serviceTarget) {
+		if serviceTarget != "" && !r.registry.SupportsServiceTarget(manifest.Runtime.Protocol, serviceTarget) {
 			return fmt.Errorf("service target %s is not registered", serviceTarget)
 		}
 	}
@@ -239,7 +238,7 @@ func (r *Runtime) PrepareInstall(_ context.Context, manifest platformdomain.Exte
 		if serviceTarget == "" {
 			continue
 		}
-		if !r.registry.Has(serviceTarget) {
+		if !r.registry.SupportsServiceTarget(manifest.Runtime.Protocol, serviceTarget) {
 			return fmt.Errorf("service target %s is not registered", serviceTarget)
 		}
 	}
@@ -248,7 +247,7 @@ func (r *Runtime) PrepareInstall(_ context.Context, manifest platformdomain.Exte
 		if serviceTarget == "" {
 			continue
 		}
-		if !r.registry.Has(serviceTarget) {
+		if !r.registry.SupportsServiceTarget(manifest.Runtime.Protocol, serviceTarget) {
 			return fmt.Errorf("service target %s is not registered", serviceTarget)
 		}
 	}
@@ -308,7 +307,7 @@ func (r *Runtime) CheckInstalledExtensionHealth(
 	overallStatus := platformdomain.ExtensionHealthHealthy
 	messages := make([]string, 0, len(healthEndpoints))
 	for _, endpoint := range healthEndpoints {
-		status, message, err := r.checkHealthEndpoint(endpoint)
+		status, message, err := r.checkHealthEndpoint(extension, endpoint)
 		if err != nil {
 			r.recordEndpointFailure(extension, endpoint, err)
 			return platformdomain.ExtensionHealthFailed, "", err
@@ -325,8 +324,8 @@ func (r *Runtime) CheckInstalledExtensionHealth(
 	return overallStatus, strings.Join(messages, "; "), nil
 }
 
-func (r *Runtime) checkHealthEndpoint(endpoint platformdomain.ExtensionEndpoint) (platformdomain.ExtensionHealthStatus, string, error) {
-	result, err := r.registry.Probe(endpoint.ServiceTarget, http.MethodGet, endpoint.MountPath, nil)
+func (r *Runtime) checkHealthEndpoint(extension *platformdomain.InstalledExtension, endpoint platformdomain.ExtensionEndpoint) (platformdomain.ExtensionHealthStatus, string, error) {
+	result, err := r.registry.ProbeEndpoint(extension, endpoint)
 	if err != nil {
 		return platformdomain.ExtensionHealthFailed, "", fmt.Errorf("dispatch health target %s: %w", endpoint.ServiceTarget, err)
 	}

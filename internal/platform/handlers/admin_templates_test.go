@@ -27,7 +27,6 @@ func TestAdminTemplatesParse(t *testing.T) {
 		"users.html",
 		"workspaces.html",
 		"cases.html",
-		"issues.html",
 	}
 
 	for _, name := range expectedTemplates {
@@ -140,15 +139,7 @@ func TestCaseDetailTemplateRenders(t *testing.T) {
 		},
 		WorkspaceName:    "Test Workspace",
 		AssignedUserName: "",
-		LinkedIssues: []LinkedIssueItem{
-			{
-				ID:     "issue-1",
-				Title:  "Linked issue",
-				Status: "unresolved",
-			},
-		},
-		IssuesBasePath: "/extensions/error-tracking/issues",
-		Users:          []UserOptionItem{},
+		Users: []UserOptionItem{},
 		StatusOptions: []servicedomain.CaseStatus{
 			servicedomain.CaseStatusNew,
 			servicedomain.CaseStatusOpen,
@@ -171,124 +162,6 @@ func TestCaseDetailTemplateRenders(t *testing.T) {
 	output := buf.String()
 	require.Contains(t, output, "ac-2512-abc123", "case ID should appear in output")
 	require.Contains(t, output, "Test support request", "case subject should appear in output")
-	require.Contains(t, output, "/extensions/error-tracking/issues/issue-1", "linked issue links should use extension path")
-}
-
-func TestIssuesListTemplateRenders(t *testing.T) {
-	tmpl, err := ParseAdminTemplateWithPartials("admin-panel/templates/issues.html")
-	require.NoError(t, err, "failed to parse templates")
-
-	pageData := IssuesPageData{
-		BasePageData: BasePageData{
-			ActivePage:   "issues",
-			PageTitle:    "Error Issues",
-			PageSubtitle: "View all issues",
-			UserName:     "Admin User",
-			UserEmail:    "admin@example.com",
-		},
-		Issues: []IssueListItem{
-			{
-				ID:            "issue-1",
-				ShortID:       "ABC123",
-				Title:         "NullPointerException in UserService",
-				Status:        "unresolved",
-				Level:         "error",
-				EventCount:    42,
-				ProjectID:     "proj-1",
-				ProjectName:   "Backend API",
-				WorkspaceID:   "ws-1",
-				WorkspaceName: "Test Workspace",
-				FirstSeen:     time.Now().Add(-72 * time.Hour),
-				LastSeen:      time.Now(),
-			},
-		},
-		TotalIssues:    1,
-		IssuesBasePath: "/extensions/error-tracking/issues",
-	}
-
-	var buf bytes.Buffer
-	err = tmpl.ExecuteTemplate(&buf, "issues.html", pageData)
-	require.NoError(t, err, "template execution failed")
-
-	output := buf.String()
-	require.Contains(t, output, "NullPointerException", "issue title should appear in output")
-	require.Contains(t, output, "1 issues", "total issues should appear in output")
-	require.Contains(t, output, "/extensions/error-tracking/issues/issue-1", "issue detail links should use extension path")
-}
-
-func TestApplicationsListTemplateRenders(t *testing.T) {
-	tmpl, err := ParseAdminTemplateWithPartials("admin-panel/templates/applications.html")
-	require.NoError(t, err, "failed to parse templates")
-
-	pageData := ApplicationsPageData{
-		BasePageData: BasePageData{
-			ActivePage:   "applications",
-			PageTitle:    "Monitored Applications",
-			PageSubtitle: "View all applications",
-			UserName:     "Admin User",
-			UserEmail:    "admin@example.com",
-		},
-		Applications: []ApplicationListItem{
-			{
-				ID:            "app-1",
-				Name:          "Backend API",
-				Slug:          "backend-api",
-				Platform:      "go",
-				Environment:   "production",
-				Status:        "active",
-				EventCount:    156,
-				WorkspaceID:   "ws-1",
-				WorkspaceName: "Test Workspace",
-			},
-		},
-		TotalApplications:    1,
-		ApplicationsBasePath: "/extensions/error-tracking/applications",
-	}
-
-	var buf bytes.Buffer
-	err = tmpl.ExecuteTemplate(&buf, "applications.html", pageData)
-	require.NoError(t, err, "template execution failed")
-
-	output := buf.String()
-	require.Contains(t, output, "Backend API", "application name should appear in output")
-	require.Contains(t, output, "1 applications across all workspaces", "instance-scoped summary should render correctly")
-	require.Contains(t, output, "/extensions/error-tracking/applications/new", "new application link should use extension path")
-	require.Contains(t, output, "/extensions/error-tracking/applications/app-1", "application detail link should use extension path")
-}
-
-func TestApplicationsListTemplateRendersWorkspaceScopedSummary(t *testing.T) {
-	tmpl, err := ParseAdminTemplateWithPartials("admin-panel/templates/applications.html")
-	require.NoError(t, err, "failed to parse templates")
-
-	pageData := ApplicationsPageData{
-		BasePageData: BasePageData{
-			ActivePage:        "applications",
-			PageTitle:         "Monitored Applications",
-			PageSubtitle:      "View applications for this workspace",
-			UserName:          "Workspace User",
-			UserEmail:         "owner@example.com",
-			IsWorkspaceScoped: true,
-		},
-		Applications: []ApplicationListItem{
-			{
-				ID:            "app-1",
-				Name:          "Frontend",
-				Slug:          "frontend",
-				Status:        "active",
-				WorkspaceID:   "ws-1",
-				WorkspaceName: "Workspace One",
-			},
-		},
-		TotalApplications:    1,
-		ApplicationsBasePath: "/extensions/error-tracking/applications",
-	}
-
-	var buf bytes.Buffer
-	err = tmpl.ExecuteTemplate(&buf, "applications.html", pageData)
-	require.NoError(t, err, "template execution failed")
-
-	output := buf.String()
-	require.Contains(t, output, "1 applications in this workspace", "workspace-scoped summary should render correctly")
 }
 
 func TestSidebarTemplateRendersExtensionNavigation(t *testing.T) {

@@ -28,7 +28,6 @@ import (
 //   - Platform: User, workspace, session, agent, contact services
 //   - Service: Case, email, attachment services
 //   - Automation: Rule, form services (depends on Platform and Service)
-//   - Observability: Issue, project, error processing services
 type Container struct {
 	// Core infrastructure (shared across all domains)
 	Config          *config.Config
@@ -46,10 +45,9 @@ type Container struct {
 	GeoIP geoip.Service
 
 	// Domain containers (grouped by bounded context)
-	Platform      *PlatformContainer
-	Service       *ServiceContainer
-	Automation    *AutomationContainer
-	Observability *ObservabilityContainer
+	Platform   *PlatformContainer
+	Service    *ServiceContainer
+	Automation *AutomationContainer
 
 	// Embedded workers
 	WorkerManager *workers.Manager
@@ -71,8 +69,7 @@ type Options struct {
 //  2. Platform (no domain dependencies)
 //  3. Service (no domain dependencies)
 //  4. Automation (depends on Platform.Contact and Service.Case)
-//  5. Observability (no domain dependencies)
-//  6. Health checker
+//  5. Health checker
 //
 // Architecture: EventBus is purely in-memory for dispatch. The outbox handles
 // durability by saving events to the database, and its worker dispatches to
@@ -122,15 +119,6 @@ func New(cfg *config.Config, opts Options) (*Container, error) {
 		Contact:   c.Platform.Contact, // Dependency on Platform domain
 		Extension: c.Platform.Extension,
 	})
-
-	// Observability has no domain dependencies
-	c.Observability = NewObservabilityContainer(c.Store, c.Outbox, c.Config.ErrorProcessing)
-	if c.Platform != nil && c.Platform.Workspace != nil && c.Observability != nil {
-		c.Platform.Workspace.SetIssueChecker(c.Observability.Issue)
-	}
-	if c.Platform != nil && c.Platform.Stats != nil && c.Observability != nil {
-		c.Platform.Stats.SetIssueMetricsProvider(c.Observability.Issue)
-	}
 
 	// GeoIP service (shared, used by analytics and potentially other modules)
 	var geo geoip.Service
@@ -264,16 +252,6 @@ func (c *Container) Start(ctx context.Context) error {
 		c.Logger.Info("Database metrics collector started")
 	}
 
-	// Start error processing workers
-	if err := c.Observability.StartWorkers(ctx); err != nil {
-		c.Logger.Warn("Failed to start error processing workers", "error", err)
-	} else {
-		c.Logger.Info("Started error monitoring processing workers",
-			"worker_count", c.Config.ErrorProcessing.WorkerCount,
-			"queue_size", c.Config.ErrorProcessing.QueueSize,
-		)
-	}
-
 	// Start embedded worker manager (event handlers)
 	if c.WorkerManager != nil {
 		if err := c.WorkerManager.Start(ctx); err != nil {
@@ -344,11 +322,6 @@ func (c *Container) Stop(timeout time.Duration) error {
 		if err := c.GeoIP.Close(); err != nil {
 			c.Logger.Error("Error closing GeoIP database", "error", err)
 		}
-	}
-
-	// Stop observability workers
-	if err := c.Observability.StopWorkers(); err != nil {
-		c.Logger.Error("Error stopping error processing workers", "error", err)
 	}
 
 	// Stop database metrics collector

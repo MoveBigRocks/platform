@@ -109,7 +109,6 @@ func TestContainerInitialization(t *testing.T) {
 	assert.NotNil(t, c.Platform, "platform container should be initialized")
 	assert.NotNil(t, c.Service, "service container should be initialized")
 	assert.NotNil(t, c.Automation, "automation container should be initialized")
-	assert.NotNil(t, c.Observability, "observability container should be initialized")
 
 	// Verify platform services
 	assert.NotNil(t, c.Platform.Session, "session service should be initialized")
@@ -131,12 +130,6 @@ func TestContainerInitialization(t *testing.T) {
 	assert.NotNil(t, c.Automation.Rule, "rule service should be initialized")
 	assert.NotNil(t, c.Automation.Engine, "rules engine should be initialized")
 	assert.NotNil(t, c.Automation.Form, "form service should be initialized")
-
-	// Verify observability services
-	assert.NotNil(t, c.Observability.Issue, "issue service should be initialized")
-	assert.NotNil(t, c.Observability.Project, "project service should be initialized")
-	assert.NotNil(t, c.Observability.ErrorGrouping, "error grouping service should be initialized")
-	assert.NotNil(t, c.Observability.ErrorProcessor, "error processor should be initialized")
 
 	// Verify health checker
 	assert.NotNil(t, c.HealthChecker, "health checker should be initialized")

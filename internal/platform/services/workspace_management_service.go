@@ -16,13 +16,8 @@ type WorkspaceManagementService struct {
 	workspaceStore shared.WorkspaceStore
 	caseStore      shared.CaseStore
 	userStore      shared.UserStore
-	issueChecker   WorkspaceIssueChecker
 	rulesSeeder    *automationservices.DefaultRulesSeeder
 	logger         *logger.Logger
-}
-
-type WorkspaceIssueChecker interface {
-	CountOpenWorkspaceIssues(ctx context.Context, workspaceID string) (int, error)
 }
 
 // NewWorkspaceManagementService creates a new workspace management service
@@ -39,10 +34,6 @@ func NewWorkspaceManagementService(
 		rulesSeeder:    automationservices.NewDefaultRulesSeeder(ruleStore),
 		logger:         logger.New().WithField("service", "workspace-management"),
 	}
-}
-
-func (s *WorkspaceManagementService) SetIssueChecker(checker WorkspaceIssueChecker) {
-	s.issueChecker = checker
 }
 
 // ListAllWorkspaces lists all workspaces in the instance with additional stats
@@ -181,15 +172,7 @@ func (s *WorkspaceManagementService) DeleteWorkspace(ctx context.Context, id str
 		memberCount = len(members)
 	}
 
-	// Check for open issues only through the optional observability capability.
-	openIssues := 0
-	if s.issueChecker != nil {
-		if count, err := s.issueChecker.CountOpenWorkspaceIssues(ctx, id); err == nil {
-			openIssues = count
-		}
-	}
-
-	if err := workspace.ValidateDeletion(caseCount, memberCount, openIssues); err != nil {
+	if err := workspace.ValidateDeletion(caseCount, memberCount, 0); err != nil {
 		return err
 	}
 

@@ -131,8 +131,6 @@ func createAdminRouter(
 		c.Service.Case,
 		c.Automation.Rule,
 		c.Automation.Form,
-		c.Observability.Issue,
-		c.Observability.Project,
 	)
 	adminFeatureMiddleware := adminManagementHandler.FeatureContextMiddleware()
 	attachmentUploadHandler := servicehandlers.NewAttachmentUploadHandler(c.Service.Attachment, c.Store.Cases())
