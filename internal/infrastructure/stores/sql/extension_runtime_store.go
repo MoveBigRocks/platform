@@ -2,7 +2,9 @@ package sql
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/movebigrocks/platform/internal/infrastructure/stores/sql/models"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
@@ -139,7 +141,7 @@ func (s *ExtensionRuntimeStore) mapRegistrationToModel(registration *platformdom
 		DesiredSchemaVersion:   registration.DesiredSchemaVersion,
 		CurrentSchemaVersion:   registration.CurrentSchemaVersion,
 		Status:                 string(registration.Status),
-		LastError:              registration.LastError,
+		LastError:              nullString(registration.LastError),
 		CreatedAt:              registration.CreatedAt,
 		UpdatedAt:              registration.UpdatedAt,
 	}, nil
@@ -172,7 +174,7 @@ func (s *ExtensionRuntimeStore) mapModelToRegistration(model *models.ExtensionPa
 		DesiredSchemaVersion:   model.DesiredSchemaVersion,
 		CurrentSchemaVersion:   model.CurrentSchemaVersion,
 		Status:                 platformdomain.ExtensionSchemaRegistrationStatus(model.Status),
-		LastError:              model.LastError,
+		LastError:              strings.TrimSpace(model.LastError.String),
 		CreatedAt:              model.CreatedAt,
 		UpdatedAt:              model.UpdatedAt,
 	}
@@ -187,4 +189,12 @@ func (s *ExtensionRuntimeStore) mapModelToMigration(model *models.ExtensionSchem
 		ChecksumSHA256: model.ChecksumSHA256,
 		AppliedAt:      model.AppliedAt,
 	}
+}
+
+func nullString(value string) sql.NullString {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: value, Valid: true}
 }

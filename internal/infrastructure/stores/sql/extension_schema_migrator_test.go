@@ -330,6 +330,98 @@ CREATE TABLE ${SCHEMA_NAME}.issues (
 	require.NoError(t, err)
 }
 
+func TestExtensionSchemaMigrator_AcceptsLegacyMigrationHistoryMarkers(t *testing.T) {
+	store, cleanup := testutil.SetupTestPostgresStore(t)
+	defer cleanup()
+
+	concrete, ok := store.(*sqlstore.Store)
+	require.True(t, ok)
+
+	service := platformservices.NewExtensionService(
+		store.Extensions(),
+		store.Workspaces(),
+		store.Queues(),
+		store.Forms(),
+		store.Rules(),
+		store,
+	)
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
+		WorkspaceID:  workspace.ID,
+		LicenseToken: "lic_schema_legacy_markers",
+		Manifest: platformdomain.ExtensionManifest{
+			SchemaVersion: 1,
+			Slug:          "web-analytics",
+			Name:          "Web Analytics",
+			Version:       "1.0.0",
+			Publisher:     "DemandOps",
+			Kind:          platformdomain.ExtensionKindOperational,
+			Scope:         platformdomain.ExtensionScopeWorkspace,
+			Risk:          platformdomain.ExtensionRiskStandard,
+			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
+			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
+			Schema: platformdomain.ExtensionSchemaManifest{
+				Name:            "ext_demandops_web_analytics",
+				PackageKey:      "demandops/web-analytics",
+				TargetVersion:   "000002",
+				MigrationEngine: "postgres_sql",
+			},
+			Endpoints: []platformdomain.ExtensionEndpoint{
+				{
+					Name:          "runtime-health",
+					Class:         platformdomain.ExtensionEndpointClassHealth,
+					MountPath:     "/extensions/web-analytics/health",
+					Methods:       []string{"GET"},
+					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
+					ServiceTarget: "web-analytics.runtime.health",
+				},
+			},
+			Runtime: platformdomain.ExtensionRuntimeSpec{
+				Protocol:     "unix_socket_http",
+				OCIReference: "registry.example.com/mbr/web-analytics:1.0.0",
+				Digest:       "sha256:abc123",
+			},
+		},
+		Migrations: []platformservices.ExtensionMigrationInput{
+			{
+				Path: "000001_init.up.sql",
+				Content: []byte(`
+CREATE TABLE ${SCHEMA_NAME}.events (
+    id TEXT PRIMARY KEY
+);`),
+			},
+			{
+				Path: "000002_rls.up.sql",
+				Content: []byte(`
+ALTER TABLE ${SCHEMA_NAME}.events
+    ENABLE ROW LEVEL SECURITY;`),
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed))
+
+	rawDB, err := concrete.GetSQLDB()
+	require.NoError(t, err)
+	_, err = rawDB.ExecContext(ctx, `
+		UPDATE core_extension_runtime.schema_migration_history
+		SET checksum_sha256 = CASE version
+			WHEN '000001' THEN 'init'
+			WHEN '000002' THEN 'rls_skipped'
+			ELSE checksum_sha256
+		END
+		WHERE package_key = 'demandops/web-analytics'
+	`)
+	require.NoError(t, err)
+
+	err = concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed)
+	require.NoError(t, err)
+}
+
 func TestExtensionSchemaMigrator_ReferenceExtensionBundlesApply(t *testing.T) {
 	testCases := []struct {
 		name       string

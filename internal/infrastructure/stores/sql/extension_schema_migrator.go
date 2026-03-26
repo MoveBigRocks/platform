@@ -105,7 +105,7 @@ func (m *ExtensionSchemaMigrator) EnsureInstalledExtensionSchema(ctx context.Con
 
 		for _, migration := range migrations {
 			if checksum, ok := applied[migration.Version]; ok {
-				if checksum != migration.Checksum {
+				if comparableLegacyAwareChecksum(checksum) && checksum != migration.Checksum {
 					return fmt.Errorf("extension schema migration checksum drift for version %s", migration.Version)
 				}
 				registration.CurrentSchemaVersion = migration.Version
@@ -228,4 +228,20 @@ func decodeExtensionSchemaMigrations(bundlePayload []byte) ([]sqlMigration, erro
 		return migrations[i].Version < migrations[j].Version
 	})
 	return migrations, nil
+}
+
+func comparableLegacyAwareChecksum(value string) bool {
+	value = strings.TrimSpace(strings.ToLower(value))
+	if len(value) != 64 {
+		return false
+	}
+	for _, r := range value {
+		switch {
+		case r >= '0' && r <= '9':
+		case r >= 'a' && r <= 'f':
+		default:
+			return false
+		}
+	}
+	return true
 }

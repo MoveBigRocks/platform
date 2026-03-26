@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	sqlstore "github.com/movebigrocks/platform/internal/infrastructure/stores/sql"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	"github.com/movebigrocks/platform/internal/testutil"
 )
@@ -153,5 +154,45 @@ func TestExtensionRuntimeStore_CreateAndListMigrations(t *testing.T) {
 	}
 	if migrations[0].Version != "000001" || migrations[1].Version != "000002" {
 		t.Fatalf("unexpected migration versions %#v", migrations)
+	}
+}
+
+func TestExtensionRuntimeStore_GetRegistrationAcceptsNullLastError(t *testing.T) {
+	t.Parallel()
+
+	store, cleanup := testutil.SetupTestSQLStore(t)
+	defer cleanup()
+
+	sqlBackend, ok := store.(*sqlstore.Store)
+	if !ok {
+		t.Fatalf("expected sql store backend, got %T", store)
+	}
+
+	ctx := context.Background()
+	_, err := sqlBackend.SqlxDB().Get(ctx).ExecContext(ctx, `
+		INSERT INTO core_extension_runtime.extension_package_registrations (
+			package_key, schema_name, runtime_class, storage_class, installed_bundle_version,
+			desired_schema_version, current_schema_version, status, last_error, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL, NOW(), NOW())
+	`,
+		"demandops/web-analytics",
+		"ext_demandops_web_analytics",
+		"service_backed",
+		"owned_schema",
+		"0.8.20",
+		"000002",
+		"000002",
+		"ready",
+	)
+	if err != nil {
+		t.Fatalf("insert registration with null last_error: %v", err)
+	}
+
+	registration, err := store.ExtensionRuntime().GetExtensionPackageRegistration(ctx, "demandops/web-analytics")
+	if err != nil {
+		t.Fatalf("get registration: %v", err)
+	}
+	if registration.LastError != "" {
+		t.Fatalf("expected empty last error, got %q", registration.LastError)
 	}
 }
