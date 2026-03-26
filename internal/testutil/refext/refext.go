@@ -131,7 +131,7 @@ func loadReferenceExtensionMigrations(root string) ([]platformservices.Extension
 		return migrations[i].Path < migrations[j].Path
 	})
 	if len(migrations) == 0 {
-		return nil, fmt.Errorf("expected reference extension migrations in %s", root)
+		return nil, fmt.Errorf("expected ATS extension migrations in %s", root)
 	}
 	return migrations, nil
 }
@@ -139,7 +139,7 @@ func loadReferenceExtensionMigrations(root string) ([]platformservices.Extension
 func referenceExtensionRoot() (string, error) {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
-		return "", fmt.Errorf("resolve reference extension root")
+		return "", fmt.Errorf("resolve ATS extension root")
 	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", "extensions", "first-party")), nil
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "extensions")), nil
 }

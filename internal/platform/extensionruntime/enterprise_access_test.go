@@ -420,8 +420,8 @@ func loadEnterpriseAccessReferencePackage(t *testing.T) (platformdomain.Extensio
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)
 
-	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", ".."))
-	baseDir := filepath.Join(repoRoot, "extensions", "first-party", "enterprise-access")
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", "..", ".."))
+	baseDir := filepath.Join(repoRoot, "packs", "enterprise-access")
 	manifestPath := filepath.Join(baseDir, "manifest.json")
 	manifestBytes, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)

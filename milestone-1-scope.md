@@ -84,7 +84,7 @@ together, not a partial platform slice.
   behavior that everything else depends on
 - `Repository and Delivery Model` and `Agent Surface` define how operators and
   agents get to first value and then run the product
-- `Extension Model`, `Paid Extension Flow`, and the first-party pack sections
+- `Extension Model`, `First-Party Bundle Flow`, and the first-party pack sections
   define how Move Big Rocks delivers product depth without bloating core
 
 ## Current Proof Synthesis
@@ -106,26 +106,28 @@ full stack below in one coherent release:
 - a shared GraphQL API
 - installable extensions
 - support for team-authored private extensions
-- a reference ATS extension with a careers site
+- a first-party ATS extension with a careers site
 - an enterprise access extension for SSO
 - a Sentry-compatible error tracking extension
 - a privacy-first web analytics extension
-- a license-and-bundle activation flow for paid extensions
+- a signed-bundle activation flow for first-party and custom extensions
 - a hosted sandbox path that users can spin up for evaluation
 
 The goal is not to ship every product category inside core. The goal is to ship
-a strong base that makes focused extensions easy to buy, install, operate, and
+a strong base that makes focused extensions easy to install, operate, and
 automate.
 
 That breadth is intentional. Milestone 1 is proving the whole product shape,
 not only the core runtime in isolation.
 
-The commercial model is:
+The public distribution model is:
 
 - free self-hosted core
-- paid first-party extensions bought as discrete packs
-- updates included for a defined support window
-- optional renewal for continued updates and support
+- free public first-party standard-risk bundles for ATS, error tracking, and
+  web analytics
+- separately controlled privileged first-party packs such as enterprise access
+- no resale of the platform, access to the platform, or extensions under the
+  public license without separate written permission from Move Big Rocks BV
 
 That base is already the initial product. The free core is valuable on its own
 because it provides:
@@ -270,8 +272,8 @@ Milestone 1 also supports a hosted evaluation path:
 3. The sandbox gets an auto-generated subdomain such as `magic-dumpling-26.movebigrocks.io`.
 4. The sandbox is created and managed through the `mbr` CLI, and then exposes browser access plus the same `mbr` and GraphQL contract.
 5. The sandbox is seeded with demo data and can be used for extension trials and agent workflows.
-6. First-party extensions are available in sandbox mode for evaluation without separate purchase during the sandbox window.
-7. The default trial window is 5 days free, with a simple extension path such as $50 for 30 more days.
+6. The free public first-party bundle set for ATS, error tracking, and web analytics is available in sandbox mode for evaluation. Enterprise access stays separately controlled.
+7. The default sandbox window is 5 days free. If a paid hosted-sandbox extension is offered later, that is payment for extra hosted evaluation time rather than payment for access to the free public bundles.
 8. The sandbox auto-expires or is explicitly destroyed when the trial ends, with an export path available before deletion.
 
 Milestone 1 should also expose:
@@ -445,8 +447,8 @@ The supported baseline includes:
 - `mbr extensions list`
 - `mbr extensions show`
 - `mbr extensions monitor` with runtime health refresh
-- `mbr extensions install` from a local bundle file, local extension directory, HTTPS bundle URL, OCI ref, or marketplace alias, with dedicated-workspace provisioning when the manifest declares it and the operator is using browser/session auth
-- `mbr extensions upgrade` from a local bundle file, local extension directory, HTTPS bundle URL, OCI ref, or marketplace alias
+- `mbr extensions install` from a local bundle file, local extension directory, HTTPS bundle URL, OCI ref, or marketplace alias when a private catalog is later used, with dedicated-workspace provisioning when the manifest declares it and the operator is using browser/session auth
+- `mbr extensions upgrade` from a local bundle file, local extension directory, HTTPS bundle URL, OCI ref, or marketplace alias when a private catalog is later used
 - optional server-side signed bundle enforcement via `INSTANCE_ID`, `EXTENSION_TRUST_REQUIRE_VERIFICATION`, and trusted publisher keys
 - `mbr extensions configure`
 - `mbr extensions validate`
@@ -587,24 +589,29 @@ Endpoint exposure is standardized:
 
 See [docs/EXTENSION_ENDPOINT_MODEL.md](https://github.com/movebigrocks/platform/blob/main/docs/EXTENSION_ENDPOINT_MODEL.md).
 
-## Paid Extension Flow
+## First-Party Bundle Flow
 
-Move Big Rocks does not process payments inside Milestone 1.
+Move Big Rocks does not process payments or run a public marketplace inside
+Milestone 1.
 
-Milestone 1 does support a fully agentic activation flow:
+Milestone 1 does support a fully agentic extension activation flow:
 
-1. The customer buys an extension outside Move Big Rocks.
-2. They receive a license grant bound to their Move Big Rocks instance.
-3. The CLI resolves or receives a signed bundle from a local file, registry ref, or marketplace alias.
-4. An operator or agent installs the bundle into a Move Big Rocks server.
-5. The server validates the signature, digest, manifest, and license.
-6. The extension is activated in the chosen workspace or instance.
-7. Move Big Rocks provisions the declared routes, queues, data, and commands.
-8. The extension is live without manual code deployment.
+1. The operator chooses a signed bundle from a local file, HTTPS URL, OCI ref,
+   or another supported bundle source.
+2. The CLI resolves or receives the bundle.
+3. An operator or agent installs the bundle into a Move Big Rocks server.
+4. The server validates the signature, digest, manifest, and any required
+   bundle-install credential.
+5. The extension is activated in the chosen workspace or instance.
+6. Move Big Rocks provisions the declared routes, queues, data, and commands.
+7. The extension is live without manual code deployment.
 
-The same runtime also supports the non-commercial path: a customer can build
-and install their own private extension on the same primitives instead of
-buying a first-party pack. That includes team-authored private extensions.
+That same runtime supports both paths that matter for Milestone 1:
+
+- a free public first-party bundle set for ATS, error tracking, and web
+  analytics
+- customer-built private extensions on the same primitives, including
+  team-authored private extensions
 
 ## Reference Extension: ATS + Careers Site
 

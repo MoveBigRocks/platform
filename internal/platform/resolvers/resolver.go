@@ -964,7 +964,7 @@ func (r *Resolver) InstallExtension(ctx context.Context, input model.InstallExte
 	extension, err := r.extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:   workspaceID,
 		InstalledByID: installedByID,
-		LicenseToken:  input.LicenseToken,
+		LicenseToken:  derefString(input.LicenseToken),
 		BundleBase64:  derefString(input.BundleBase64),
 		Manifest:      manifest,
 		Assets:        assets,

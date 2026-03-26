@@ -2603,11 +2603,13 @@ func buildInstallExtensionInput(
 	migrations []map[string]any,
 ) map[string]any {
 	input := map[string]any{
-		"licenseToken": licenseToken,
 		"bundleBase64": bundleBase64,
 		"manifest":     manifest,
 		"assets":       assets,
 		"migrations":   migrations,
+	}
+	if strings.TrimSpace(licenseToken) != "" {
+		input["licenseToken"] = licenseToken
 	}
 	if strings.TrimSpace(workspaceID) != "" {
 		input["workspaceID"] = workspaceID

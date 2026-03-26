@@ -16,7 +16,7 @@ product silos.
 - make optional capability packs installable
 - enable agent-driven installation and operation
 - support a commercial bundle-and-license model
-- make ATS the reference extension
+- make ATS the canonical first-party extension
 
 ## Shared Primitives
 
@@ -225,7 +225,7 @@ Supported acquisition paths:
 Service-backed execution uses the supervised service-target runtime and the same
 bundle contract.
 
-## ATS Reference Extension
+## ATS Extension
 
 The ATS package provides:
 

@@ -1,6 +1,6 @@
 # Move Big Rocks
 
-**Replace SaaS tool sprawl with one self-hosted operations platform. Move Big Rocks is free to use with source code available, gives you a growing set of off-the-shelf extensions, and lets you build your own with Claude Code, Codex, or other tools. Manage operational knowledge in structured Markdown with real versioning, team ownership, and agent-native workflows.**
+**Replace SaaS tool sprawl with one self-hosted operations platform. Move Big Rocks is free to use with source code available, gives you a growing set of free off-the-shelf extensions, and lets you build your own with Claude Code, Codex, or other tools. Manage operational knowledge in structured Markdown with real versioning, team ownership, and agent-native workflows.**
 
 This repository is the source of truth for Move Big Rocks core.
 
@@ -88,16 +88,48 @@ products:
 | **Error tracking** | Sentry-compatible ingestion and issue workflows connected to the same queues, cases, and knowledge |
 | **Web analytics** | Cookie-free, privacy-first analytics without pushing operational context into another silo |
 
+The current first-party public bundle set is:
+
+- **ATS**
+- **Error tracking**
+- **Web analytics**
+
+Those standard-risk first-party bundles are intended to be freely available as
+signed public bundles published from the public first-party extensions repo at
+[MoveBigRocks/extensions](https://github.com/MoveBigRocks/extensions).
+Public install guidance lives in
+[`docs/CUSTOMER_INSTANCE_SETUP.md`](docs/CUSTOMER_INSTANCE_SETUP.md),
+[`docs/AGENT_CLI.md`](docs/AGENT_CLI.md), and on the public site at
+[movebigrocks.com/extensions](https://movebigrocks.com/extensions).
+
 Other available extensions include:
 
 - **Enterprise access** — a simple SSO extension that lets your Move Big Rocks
   instance delegate authentication to your company's existing IdP
+
+`enterprise-access` is a separately controlled first-party privileged identity
+pack rather than part of the free public bundle set.
 
 Each pack runs on the same core primitives — same teams, same queues, same
 knowledge, same agent contract. That means your ATS candidates, your error
 tracking issues, and your support cases all live in one system instead of
 three, while adjacent capabilities such as enterprise access can plug into the
 same runtime model too.
+
+## License Model
+
+Move Big Rocks is source-available under BSL 1.1 with an Additional Use Grant
+intended to make the public model clear:
+
+- you can self-host Move Big Rocks for your own organisation
+- you can use the free first-party public bundles
+- you can build your own extensions
+- you may not sell the platform itself
+- you may not sell access to the platform
+- you may not sell extensions for Move Big Rocks without separate written
+  permission from Move Big Rocks BV
+
+See [`LICENSE`](LICENSE) for the governing text.
 
 ## Build Your Own Extensions
 
@@ -314,8 +346,8 @@ Move Big Rocks core stays small and composable:
   catalog nodes, queues, conversations, cases, case labels, Markdown knowledge,
   concept specs, forms, attachments, automation, GraphQL, admin panel, public
   routes, event-driven integrations
-- **Public example extension**: ATS + careers site in
-  `MoveBigRocks/extension-examples`
+- **Public first-party extensions**: ATS, error tracking, and web analytics in
+  the public first-party extensions repo at `MoveBigRocks/extensions`
 - **Optional first-party packs**: enterprise access, error tracking, web
   analytics, operational health, agent-runtime connectors
 
@@ -326,6 +358,7 @@ Production delivery follows a split repo model:
 - **Public core repo** for source, releases, docs, and shared runtime contracts
 - **Public instance template repo** at `MoveBigRocks/instance-template`
 - **Public extension SDK repo** at `MoveBigRocks/extension-sdk`
+- **Public first-party extensions repo** at `MoveBigRocks/extensions`
 - **Private instance repo** created from `MoveBigRocks/instance-template` and
   used as the deployment control plane for one customer installation
 - **Optional custom extension repo** created from `MoveBigRocks/extension-sdk`

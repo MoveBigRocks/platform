@@ -961,9 +961,6 @@ func NewInstalledExtension(workspaceID, installedByID, licenseToken string, mani
 	if manifest.Scope == ExtensionScopeInstance && workspaceID != "" {
 		return nil, fmt.Errorf("workspace_id is not allowed for instance-scoped extensions")
 	}
-	if strings.TrimSpace(licenseToken) == "" {
-		return nil, fmt.Errorf("license_token is required")
-	}
 
 	now := time.Now()
 	config := manifest.DefaultConfig

@@ -116,20 +116,23 @@ func (v *ExtensionBundleTrustVerifier) VerifyBundle(_ context.Context, manifest 
 	}
 
 	license := envelope.Trust.License
-	if strings.TrimSpace(license.InstanceID) != v.instanceID {
-		return fmt.Errorf("bundle license is not valid for instance %s", v.instanceID)
-	}
 	if license.Publisher != "" && strings.TrimSpace(license.Publisher) != strings.TrimSpace(manifest.Publisher) {
 		return fmt.Errorf("bundle license publisher does not match manifest publisher")
 	}
-	if strings.TrimSpace(license.Slug) != strings.TrimSpace(manifest.Slug) {
+	if strings.TrimSpace(license.Slug) != "" && strings.TrimSpace(license.Slug) != strings.TrimSpace(manifest.Slug) {
 		return fmt.Errorf("bundle license slug does not match manifest slug")
 	}
-	if strings.TrimSpace(license.Version) != strings.TrimSpace(manifest.Version) {
+	if strings.TrimSpace(license.Version) != "" && strings.TrimSpace(license.Version) != strings.TrimSpace(manifest.Version) {
 		return fmt.Errorf("bundle license version does not match manifest version")
 	}
-	if tokenHash := checksumSHA256Hex([]byte(strings.TrimSpace(licenseToken))); !strings.EqualFold(strings.TrimSpace(license.TokenSHA256), tokenHash) {
-		return fmt.Errorf("bundle license token does not match the provided token")
+	publicBundle := strings.TrimSpace(license.InstanceID) == "" && strings.TrimSpace(license.TokenSHA256) == ""
+	if !publicBundle {
+		if strings.TrimSpace(license.InstanceID) != v.instanceID {
+			return fmt.Errorf("bundle license is not valid for instance %s", v.instanceID)
+		}
+		if tokenHash := checksumSHA256Hex([]byte(strings.TrimSpace(licenseToken))); !strings.EqualFold(strings.TrimSpace(license.TokenSHA256), tokenHash) {
+			return fmt.Errorf("bundle license token does not match the provided token")
+		}
 	}
 
 	payload, err := canonicalSignedBundlePayload(envelope.Manifest, envelope.Assets, envelope.Migrations, license)

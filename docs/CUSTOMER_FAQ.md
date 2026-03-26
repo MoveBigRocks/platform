@@ -230,20 +230,40 @@ For the concrete outbound and inbound Postmark flow, see [Postmark Setup](https:
 Yes. The email layer stays provider-adapter based so SES and other vendors fit
 without redesigning the domain model.
 
-## How do paid extensions work?
+## Which first-party extensions are free public bundles?
 
-The customer buys them outside Move Big Rocks, receives a license grant or registry
-entitlement, and then installs a signed bundle into the running instance.
+The current free public first-party bundle set is:
 
-## Will I receive source code for paid extensions?
+- `ats`
+- `error-tracking`
+- `web-analytics`
 
-Not by default. First-party commercial extensions normally ship as signed
-bundles. Customer-built extensions are separate and can stay private.
+They are intended to be distributed as signed public bundles from the public
+first-party extensions repo at `MoveBigRocks/extensions`, and install into the
+same extension runtime as private custom extensions. Public signed bundles can
+install without an instance-bound token; controlled bundle flows can still use
+one.
 
-## What if I want enterprise SSO?
+## What about enterprise SSO?
 
-That is the first-party `enterprise-access` identity extension. Core owns
-users, sessions, memberships, and authorization.
+That remains the first-party `enterprise-access` identity extension. It is a
+privileged pack and is not part of the free public bundle set.
+
+## Can I sell Move Big Rocks or sell extensions for it?
+
+Not under the public license.
+
+The public licensing posture is meant to be clear:
+
+- you can self-host Move Big Rocks for your own organisation
+- you can use the free first-party public bundles
+- you can build your own extensions
+- you may not sell the platform itself
+- you may not sell access to the platform
+- you may not sell extensions for Move Big Rocks without separate written
+  permission from Move Big Rocks BV
+
+If you want different commercial rights, that requires a separate agreement.
 
 ## Are analytics and error tracking part of core?
 

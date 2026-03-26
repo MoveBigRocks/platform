@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -142,7 +143,7 @@ func TestFirstPartyReferenceBundlesValidateAgainstCurrentContract(t *testing.T) 
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			root := filepath.Join("..", "..", "extensions", "first-party", tc.name)
+			root := firstPartyBundleRoot(t, tc.name)
 			bundle, err := readBundleFile(root)
 			if err != nil {
 				t.Fatalf("readBundleFile(%s) returned error: %v", tc.name, err)
@@ -181,6 +182,16 @@ func TestFirstPartyReferenceBundlesValidateAgainstCurrentContract(t *testing.T) 
 			}
 		})
 	}
+}
+
+func firstPartyBundleRoot(t *testing.T, slug string) string {
+	t.Helper()
+
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("resolve first-party bundle root")
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", "extensions", slug))
 }
 
 func bundleMigrationVersion(path string) string {
@@ -334,8 +345,8 @@ func TestRunSpecExportJSON(t *testing.T) {
 					required = true
 				}
 			}
-			if !required {
-				t.Fatalf("expected extensions install to require --license-token")
+			if required {
+				t.Fatalf("expected extensions install to advertise --license-token as optional")
 			}
 		case "extensions deploy":
 			foundDeploy = true
@@ -4903,6 +4914,82 @@ func TestRunExtensionsInstallProvisionedWorkspaceJSON(t *testing.T) {
 	}
 	if payload.ProvisionedWorkspace.ID != "ws_provisioned" || payload.ProvisionedWorkspace.ShortCode != "people" {
 		t.Fatalf("unexpected provisioned workspace: %#v", payload.ProvisionedWorkspace)
+	}
+}
+
+func TestRunExtensionsInstallPublicBundleWithoutLicenseToken(t *testing.T) {
+	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
+		if !strings.Contains(req.Query, "mutation CLIInstallExtension") {
+			t.Fatalf("unexpected query: %s", req.Query)
+		}
+		input, ok := req.Variables["input"].(map[string]any)
+		if !ok {
+			t.Fatalf("expected input map, got %#v", req.Variables["input"])
+		}
+		if _, exists := input["licenseToken"]; exists {
+			t.Fatalf("did not expect licenseToken for public bundle install, got %#v", input["licenseToken"])
+		}
+		return map[string]any{
+			"data": map[string]any{
+				"installExtension": map[string]any{
+					"id":                "ext_public",
+					"workspaceID":       "ws_public",
+					"slug":              "ats",
+					"name":              "Applicant Tracking",
+					"publisher":         "DemandOps",
+					"version":           "1.0.0",
+					"kind":              "product",
+					"scope":             "workspace",
+					"risk":              "standard",
+					"status":            "installed",
+					"validationStatus":  "valid",
+					"validationMessage": "manifest and installed assets validated",
+					"healthStatus":      "inactive",
+					"healthMessage":     "extension installed but not active",
+				},
+			},
+		}
+	})
+
+	t.Setenv("MBR_URL", "https://app.mbr.test")
+	t.Setenv("MBR_TOKEN", "hat_test")
+
+	root := t.TempDir()
+	manifest := `{
+	  "slug": "ats",
+	  "name": "Applicant Tracking",
+	  "version": "1.0.0",
+	  "publisher": "DemandOps",
+	  "kind": "product",
+	  "scope": "workspace",
+	  "risk": "standard",
+	  "runtimeClass": "bundle",
+	  "storageClass": "shared_primitives_only"
+	}`
+	if err := os.WriteFile(filepath.Join(root, "manifest.json"), []byte(manifest), 0o600); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{
+		"extensions", "install",
+		root,
+		"--workspace", "ws_public",
+		"--json",
+	}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+
+	var payload struct {
+		Extension extensionOutput `json:"extension"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("decode output: %v", err)
+	}
+	if payload.Extension.ID != "ext_public" || payload.Extension.WorkspaceID == nil || *payload.Extension.WorkspaceID != "ws_public" {
+		t.Fatalf("unexpected install payload: %#v", payload.Extension)
 	}
 }
 

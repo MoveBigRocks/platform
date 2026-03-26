@@ -320,9 +320,9 @@ such as OIDC, SAML, and directory sync, but they do not own sessions, users,
 memberships, or authorization. Core remains the source of truth for those
 concerns.
 
-## Reference Extension: ATS
+## First-Party Extension: ATS
 
-The reference extension is an applicant tracking system with a simple careers
+ATS is the first-party applicant tracking extension with a simple careers
 site:
 
 - each published job owns a queue
@@ -420,40 +420,41 @@ The deployment repo carries security prompts, threat-model prompts, and
 operational runbooks so an agent has a predictable place to check the
 customer's operational policy before shipping custom work.
 
-## Packaging and Economics
+## Packaging and Distribution
 
 Move Big Rocks does not need to process payments inside the product.
 
-The commercial flow is:
+The public bundle flow is:
 
-1. A customer purchases an extension outside Move Big Rocks.
-2. They receive a signed extension bundle and license grant.
-3. An operator or agent installs it into a workspace or instance.
+1. A customer or operator chooses a signed first-party bundle or a custom bundle they built themselves.
+2. They install it into a workspace or instance with the `mbr` CLI.
+3. Move Big Rocks verifies the publisher signature and any instance-bound install credential in use for that bundle flow.
 4. Move Big Rocks provisions the routes, data model, commands, and permissions.
-5. The extension goes live without a separate vendor relationship.
+5. The extension goes live without separate code deployment.
 
-This supports a practical business model:
+This supports the current public model:
 
-- free core for support and general operations
-- low infrastructure spend for the customer
-- one-time purchase plus update-window pricing for first-party extensions
+- free self-hosted core
+- free public standard-risk first-party bundles for ATS, error tracking, and web analytics
+- private custom extensions by default
+- free redistribution when an extension publisher chooses to give an extension away
 - professional services for customizations and custom extension work
-- a curated marketplace of focused packs built on the same base
+- separate written permission required for selling the platform, selling access to it, or selling extensions
 
 That means a customer who does not want the first-party analytics pack can
-build their own analytics extension or buy another pack without changing the
-core architecture.
+build their own analytics extension or use another free extension without
+changing the core architecture.
 
-## Commercial Delivery Model
+## Distribution Model
 
 Packaging follows a clear structure:
 
 - the public core repo is the discovery and deployment entry point
 - the core is deployed from pinned releases, not from customer-maintained forks
-- first-party paid extensions ship as signed bundles
-- customer-built extensions are private by default and can stay private
-- marketplace publication is opt-in
-- privileged identity and connector packs remain first-party only unless their trust model is explicitly expanded
+- free public first-party standard-risk bundles ship as signed OCI bundles
+- customer-built extensions are private by default and can stay private or be given away for free
+- marketplace publication follows real adoption later rather than being a Milestone 1 dependency
+- privileged identity and connector packs remain separately controlled first-party packs unless their trust model is explicitly expanded
 
 ## Optional First-Party Packs
 

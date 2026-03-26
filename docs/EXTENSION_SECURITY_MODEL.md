@@ -17,7 +17,7 @@ The product promise is not just "you can deploy extensions". The promise is:
 
 Move Big Rocks should treat extensions as different trust classes, not one flat bucket.
 
-### First-party commercial extensions
+### First-party extensions
 
 Examples:
 
@@ -31,6 +31,7 @@ Rules:
 - source can stay private
 - bundles must be signed
 - release pipeline is controlled by the Move Big Rocks first-party team
+- standard-risk first-party bundles can be published publicly for free
 - privileged capabilities are allowed only through first-party reviewed paths in Milestone 1
 
 ### Customer-built private extensions
@@ -196,7 +197,8 @@ That is the missing layer between "I can generate code" and "I can safely run th
 Milestone 1 should make the following promise clearly:
 
 - anyone can deploy free core Move Big Rocks and use it as a support and operations foundation
-- customers can safely install first-party paid bundles
+- customers can safely install first-party signed bundles, including a free public bundle set for ATS, error tracking, and web analytics
+- public signed bundles can verify publisher trust without an instance-bound token
 - customers can also build their own standard-risk workspace extensions
 - Move Big Rocks plus the instance repo plus the agent workflow gives them a safer path to production than ad hoc vibe-coded deployment
 - privileged auth and connector extensions are intentionally more restricted, not forgotten

@@ -47,7 +47,7 @@ Have these inputs ready:
 - outbound email choice
 - object storage choice for attachments and backups
 - GitHub account or organization for the private instance repo
-- any purchased extension refs or license grants
+- any first-party bundle refs you plan to install
 
 Recommended defaults for Milestone 1:
 
@@ -144,7 +144,7 @@ The deploy scripts and service files come from the private instance repo itself
 via `deploy/`; only the core runtime artifacts are pinned from the public core
 release.
 
-After deployment, `mbr health check --json` should expose the configured `instanceID` back to the operator. That is the identifier marketplace licenses should bind to.
+After deployment, `mbr health check --json` should expose the configured `instanceID` back to the operator. That is the identifier any per-instance bundle trust or grant should bind to.
 
 The artifact fields are defined in [Release Artifact Contract](https://github.com/MoveBigRocks/platform/blob/main/docs/RELEASE_ARTIFACT_CONTRACT.md).
 
@@ -191,7 +191,8 @@ Typical Milestone 1 secrets:
 - `REGISTRY_TOKEN`
   Optional OCI registry token for private artifact pulls.
 
-If you are using paid extensions, also add the license or registry credentials required by those bundles.
+If you are using remote first-party or custom bundles, also add the registry or
+bundle-install credentials required by those bundles.
 
 For production instances, also treat extension trust verification as mandatory,
 not optional. Production should set:
@@ -202,8 +203,8 @@ not optional. Production should set:
 - `ENTERPRISE_ACCESS_ALLOWED_HOSTS` if `enterprise-access` will be enabled
 - `ENTERPRISE_ACCESS_ALLOW_ENV_SECRET_REFS=false` unless an explicit break-glass exception is approved
 
-Do not install remote or paid extension bundles into production without that
-trust configuration in place.
+Do not install remote extension bundles into production without that trust
+configuration in place.
 
 ## Step 4: Prepare DNS and the Host
 
@@ -252,9 +253,9 @@ Example categories:
 
 The recommended activation flow is:
 
-1. Add the licensed extension ref to `extensions/desired-state.yaml`.
+1. Add the desired extension ref to `extensions/desired-state.yaml`.
 2. Install the bundle into the running instance.
-3. Validate signature, manifest, and license.
+3. Validate signature, manifest, and any required bundle-install credential.
 4. Configure extension-specific settings.
 5. For `enterprise-access`, restrict provider hosts to the approved IdP domains and use non-literal `clientSecretRef` values.
 6. Run the required checks in a preview workspace first.
@@ -268,7 +269,13 @@ Use a dedicated preview workspace on the live instance for this preview pass.
 Current repo baseline:
 
 - local development can install from a bundle file, an extension source directory with `manifest.json` plus `assets/`, or an HTTPS bundle URL
-- the ATS reference extension should come from the public `MoveBigRocks/extension-examples` repo, not from the public core repo
+- the free public first-party bundle sources should come from the public first-party extensions repo at `MoveBigRocks/extensions`, not from the public core repo
+- the intended free public first-party OCI refs are:
+  - `ghcr.io/movebigrocks/mbr-ext-ats:<version>`
+  - `ghcr.io/movebigrocks/mbr-ext-error-tracking:<version>`
+  - `ghcr.io/movebigrocks/mbr-ext-web-analytics:<version>`
+- those public signed bundles can install without an instance-bound token
+- `enterprise-access` remains a separately controlled privileged first-party pack
 
 ## Step 7: Build a Custom Extension Only If You Need One
 
@@ -291,7 +298,10 @@ cd custom-extension
 
 Do not put substantial custom extension source code into the instance repo.
 
-This is not only for niche custom workflows. If you want your own version of something like analytics, an internal dashboard, or another operational workflow, you should be able to build it as an extension instead of waiting for a marketplace pack.
+This is not only for niche custom workflows. If you want your own version of
+something like analytics, an internal dashboard, or another operational
+workflow, you should be able to build it as an extension instead of waiting
+for a marketplace pack.
 
 Simple customizations that should stay in the instance repo:
 

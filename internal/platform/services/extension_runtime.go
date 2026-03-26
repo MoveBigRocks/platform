@@ -217,9 +217,9 @@ func (s *ExtensionService) resolveAssetRoute(ctx context.Context, scope extensio
 func (s *ExtensionService) listActiveExtensionsForScope(ctx context.Context, scope extensionAssetRouteScope, workspaceID string) ([]*platformdomain.InstalledExtension, error) {
 	if scope == extensionAssetRouteScopeAdmin {
 		if strings.TrimSpace(workspaceID) == "" {
-			installed, err := s.extensionStore.ListInstanceExtensions(ctx)
+			installed, err := s.extensionStore.ListAllExtensions(ctx)
 			if err != nil {
-				return nil, apierrors.DatabaseError("list instance extensions", err)
+				return nil, apierrors.DatabaseError("list all extensions for instance admin", err)
 			}
 			return activeExtensionsOnly(installed), nil
 		}

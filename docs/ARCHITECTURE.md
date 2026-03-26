@@ -12,7 +12,7 @@ is intentionally split into a small free core and optional extensions.
 - The CLI is a thin client over GraphQL and a few purpose-built HTTP endpoints.
 - Extensions run out of process and integrate through events, GraphQL, and routed HTTP surfaces.
 - Customer-facing product packs are optional unless they provide a cross-cutting primitive.
-- The free core is the support and operations foundation; paid functionality sits in installable packs and services.
+- The free core is the support and operations foundation; off-the-shelf and customer-built functionality sits in installable packs and services.
 - Conversations are live interaction surfaces; cases are durable work items.
 - Knowledge is Markdown-first and designed for deliberate sharing between humans and agents.
 - Concept specs define structured knowledge concepts and are versioned independently from their instances.

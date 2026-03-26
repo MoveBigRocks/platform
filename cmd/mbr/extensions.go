@@ -138,7 +138,7 @@ func runExtensions(ctx context.Context, args []string, stdout, stderr io.Writer)
 		instanceURL := registerInstanceURLFlag(fs)
 		token := fs.String("token", "", "Bearer token")
 		workspaceID := fs.String("workspace", "", "Workspace ID")
-		licenseToken := fs.String("license-token", "", "Extension license token")
+		licenseToken := fs.String("license-token", "", "Optional extension install credential")
 		configPath := fs.String("config-file", "", "Path to JSON config file")
 		configJSON := fs.String("config-json", "", "Inline JSON config object")
 		skipActivate := fs.Bool("no-activate", false, "Install and validate without activating")
@@ -157,10 +157,6 @@ func runExtensions(ctx context.Context, args []string, stdout, stderr io.Writer)
 			"--json":          false,
 		})
 		if err := fs.Parse(flagArgs); err != nil {
-			return 2
-		}
-		if strings.TrimSpace(*licenseToken) == "" {
-			fmt.Fprintln(stderr, "--license-token is required")
 			return 2
 		}
 		if len(positionals) != 1 {
@@ -283,7 +279,7 @@ func runExtensions(ctx context.Context, args []string, stdout, stderr io.Writer)
 		instanceURL := registerInstanceURLFlag(fs)
 		token := fs.String("token", "", "Bearer token")
 		workspaceID := fs.String("workspace", "", "Workspace ID")
-		licenseToken := fs.String("license-token", "", "Extension license token")
+		licenseToken := fs.String("license-token", "", "Optional extension install credential")
 		jsonOutput := fs.Bool("json", false, "Emit JSON output")
 		flagArgs, positionals := splitSinglePositionalArgs(args[1:], map[string]bool{
 			"--url":           true,
@@ -294,10 +290,6 @@ func runExtensions(ctx context.Context, args []string, stdout, stderr io.Writer)
 			"--json":          false,
 		})
 		if err := fs.Parse(flagArgs); err != nil {
-			return 2
-		}
-		if strings.TrimSpace(*licenseToken) == "" {
-			fmt.Fprintln(stderr, "--license-token is required")
 			return 2
 		}
 		if len(positionals) != 1 {
@@ -349,7 +341,7 @@ func runExtensions(ctx context.Context, args []string, stdout, stderr io.Writer)
 		instanceURL := registerInstanceURLFlag(fs)
 		token := fs.String("token", "", "Bearer token")
 		id := fs.String("id", "", "Extension ID")
-		licenseToken := fs.String("license-token", "", "Optional replacement extension license token")
+		licenseToken := fs.String("license-token", "", "Optional replacement extension install credential")
 		jsonOutput := fs.Bool("json", false, "Emit JSON output")
 		flagArgs, positionals := splitSinglePositionalArgs(args[1:], map[string]bool{
 			"--url":           true,

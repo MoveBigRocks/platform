@@ -1386,7 +1386,7 @@ input InstallExtensionMigrationInput {
 
 input InstallExtensionInput {
   workspaceID: ID
-  licenseToken: String!
+  licenseToken: String
   bundleBase64: String
   manifest: JSON!
   assets: [InstallExtensionAssetInput!]!

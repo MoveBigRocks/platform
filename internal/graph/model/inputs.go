@@ -330,7 +330,7 @@ type InstallExtensionMigrationInput struct {
 // InstallExtensionInput input for installing an extension bundle.
 type InstallExtensionInput struct {
 	WorkspaceID  *string
-	LicenseToken string
+	LicenseToken *string
 	BundleBase64 *string
 	Manifest     graphshared.JSON
 	Assets       []InstallExtensionAssetInput

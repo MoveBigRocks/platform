@@ -233,7 +233,7 @@ To deploy a first instance, the agent will usually ask for:
 - an admin email
 - email provider credentials
 - object storage credentials
-- registry or license information if installing paid extensions
+- bundle registry information and any required install credential if installing remote signed bundles
 
 For a local technical setup, the agent will usually need:
 

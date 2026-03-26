@@ -117,6 +117,46 @@ func TestExtensionService_InstallActivateAndCustomize(t *testing.T) {
 	assert.Equal(t, []string{"applied", "screening"}, stages)
 }
 
+func TestExtensionService_InstallPublicBundleWithoutLicenseToken(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	service := NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+
+	manifest := platformdomain.ExtensionManifest{
+		SchemaVersion: 1,
+		Slug:          "ats",
+		Name:          "Applicant Tracking",
+		Version:       "1.0.0",
+		Publisher:     "DemandOps",
+		Kind:          platformdomain.ExtensionKindProduct,
+		Scope:         platformdomain.ExtensionScopeWorkspace,
+		Risk:          platformdomain.ExtensionRiskStandard,
+		PublicRoutes: []platformdomain.ExtensionRoute{
+			{PathPrefix: "/careers", AssetPath: "templates/careers/index.html"},
+		},
+	}
+
+	installed, err := service.InstallExtension(ctx, InstallExtensionParams{
+		WorkspaceID: workspace.ID,
+		Manifest:    manifest,
+		Assets: []ExtensionAssetInput{
+			{
+				Path:        "templates/careers/index.html",
+				ContentType: "text/html",
+				Content:     []byte("<html><body>Careers</body></html>"),
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, installed)
+	assert.Equal(t, "", installed.LicenseToken)
+}
+
 func TestExtensionService_UpgradePreservesCustomizableAssetsAndActiveState(t *testing.T) {
 	store, cleanup := testutil.SetupTestStore(t)
 	defer cleanup()

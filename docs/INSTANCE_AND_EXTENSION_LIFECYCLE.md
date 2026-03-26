@@ -39,14 +39,14 @@ The ideal Milestone 1 customer journey is:
    - free core first
    - extensions are optional
    - Move Big Rocks is self-hosted
-   - the CLI is the operator and agent surface
+- the CLI is the operator and agent surface
 3. Create one private instance repo from the public instance-template repo.
 4. Open that repo in Codex or Claude Code.
 5. Tell the agent to follow `START_HERE.md`.
 6. Give the agent SSH access, DNS, email, and storage credentials.
 7. End with a working Move Big Rocks installation.
 8. Later:
-   - install paid extensions
+   - install first-party extensions
    - customize branding and content
    - optionally create a private custom extension repo
 
@@ -221,8 +221,12 @@ The extension repo should support a simple local loop:
 The key local development command pattern should stay simple:
 
 ```bash
-mbr extensions install ./my-extension --workspace ws_local --license-token lic_local
+mbr extensions install ./my-extension --workspace ws_local
 ```
+
+Public signed bundles can use the same pattern without an instance-bound token.
+Keep `--license-token` available for controlled bundle flows such as
+instance-bound distribution or a future private catalog.
 
 For service-backed extensions, the local flow should also cover:
 
@@ -268,7 +272,10 @@ The same extension should be installable from:
 - a local source directory during development
 - a local bundle file
 - an OCI ref
-- a marketplace alias
+- a marketplace alias when a private catalog is in use
+
+The current public first-party default is a signed OCI ref rather than a
+marketplace alias.
 
 ## Stage 6: Install in a Sandbox Workspace First
 
@@ -302,7 +309,7 @@ The operator or agent should:
 
 1. record the desired extension ref in `extensions/desired-state.yaml`
 2. install the bundle into the running Move Big Rocks instance
-3. verify signature and license
+3. verify signature and any required bundle-install credential
 4. configure required settings
 5. validate the extension
 6. activate it in the target workspace or instance
@@ -356,7 +363,7 @@ The direction is right:
 - one CLI
 - one agent handoff file
 - optional second repo only for real custom logic
-- extensions as the main path for paid and customer-built capabilities
+- extensions as the main path for off-the-shelf and customer-built capabilities
 
 That is the right product model.
 

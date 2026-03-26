@@ -94,7 +94,7 @@ var sections = []SectionSpec{
 	{Key: "contacts", Title: "contacts", Notes: []string{"`--workspace` defaults from stored CLI context when available."}},
 	{Key: "attachments", Title: "attachments", Notes: []string{"`--workspace` defaults from stored CLI context when available."}},
 	{Key: "health", Title: "health"},
-	{Key: "extensions", Title: "extensions", Notes: []string{"`mbr extensions install` requires `--license-token`. Provisioning a dedicated workspace during install requires browser login or `MBR_SESSION_TOKEN`. Deactivate an extension before uninstalling it. Workspace-scoped extension commands default to stored CLI context when available."}},
+	{Key: "extensions", Title: "extensions", Notes: []string{"`mbr extensions install` accepts an optional `--license-token` for instance-bound or marketplace-managed bundle flows. Public first-party OCI bundles can install without it. Provisioning a dedicated workspace during install requires browser login or `MBR_SESSION_TOKEN`. Deactivate an extension before uninstalling it. Workspace-scoped extension commands default to stored CLI context when available."}},
 	{Key: "extensions-skills", Title: "extensions skills"},
 	{Key: "extensions-events", Title: "extensions events", Notes: []string{"`--workspace` defaults from stored CLI context when available."}},
 }
@@ -1726,7 +1726,7 @@ var commands = []CommandSpec{
 	{
 		Section:      "extensions",
 		Path:         []string{"extensions", "deploy"},
-		Usage:        "mbr extensions deploy BUNDLE_SOURCE [--workspace WORKSPACE_ID] --license-token TOKEN [--config-file PATH | --config-json JSON] [--no-activate] [--no-monitor] [--url URL] [--token TOKEN] [--json]",
+		Usage:        "mbr extensions deploy BUNDLE_SOURCE [--workspace WORKSPACE_ID] [--license-token TOKEN] [--config-file PATH | --config-json JSON] [--no-activate] [--no-monitor] [--url URL] [--token TOKEN] [--json]",
 		Summary:      "Deploy an extension into a preview or target workspace by composing install or upgrade, validate, activate, and monitor.",
 		SupportsJSON: true,
 		AuthMode:     AuthModeBearerOrSession,
@@ -1736,7 +1736,7 @@ var commands = []CommandSpec{
 		Positionals:  []PositionalSpec{{Name: "BUNDLE_SOURCE", Required: true}},
 		Flags: []FlagSpec{
 			{Name: "--workspace"},
-			{Name: "--license-token", Required: true},
+			{Name: "--license-token"},
 			{Name: "--config-file"},
 			{Name: "--config-json"},
 			{Name: "--no-activate"},
@@ -1814,7 +1814,7 @@ var commands = []CommandSpec{
 	{
 		Section:      "extensions",
 		Path:         []string{"extensions", "install"},
-		Usage:        "mbr extensions install BUNDLE_SOURCE [--workspace WORKSPACE_ID] --license-token TOKEN [--url URL] [--token TOKEN] [--json]",
+		Usage:        "mbr extensions install BUNDLE_SOURCE [--workspace WORKSPACE_ID] [--license-token TOKEN] [--url URL] [--token TOKEN] [--json]",
 		Summary:      "Install an extension from a bundle file, directory, HTTPS URL, OCI ref, or marketplace alias.",
 		SupportsJSON: true,
 		AuthMode:     AuthModeBearerOrSession,
@@ -1824,7 +1824,7 @@ var commands = []CommandSpec{
 		Positionals:  []PositionalSpec{{Name: "BUNDLE_SOURCE", Required: true}},
 		Flags: []FlagSpec{
 			{Name: "--workspace"},
-			{Name: "--license-token", Required: true},
+			{Name: "--license-token"},
 			{Name: "--url"},
 			{Name: "--token"},
 			{Name: "--json"},

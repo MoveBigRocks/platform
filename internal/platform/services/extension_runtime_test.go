@@ -141,6 +141,63 @@ func TestExtensionService_ResolveAdminAssetRouteByWorkspace(t *testing.T) {
 	assert.Contains(t, string(second.Asset.Content), "Workspace Two ATS")
 }
 
+func TestExtensionService_ResolveAdminAssetRouteForInstanceAdminIncludesWorkspaceScopedExtensions(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	service := NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+
+	installed, err := service.InstallExtension(ctx, InstallExtensionParams{
+		WorkspaceID:  workspace.ID,
+		LicenseToken: "lic_ats",
+		Manifest: platformdomain.ExtensionManifest{
+			SchemaVersion: 1,
+			Slug:          "ats",
+			Name:          "Applicant Tracking",
+			Version:       "1.0.0",
+			Publisher:     "DemandOps",
+			Kind:          platformdomain.ExtensionKindProduct,
+			Scope:         platformdomain.ExtensionScopeWorkspace,
+			Risk:          platformdomain.ExtensionRiskStandard,
+			Endpoints: []platformdomain.ExtensionEndpoint{
+				{
+					Name:      "ats-admin-dashboard",
+					Class:     platformdomain.ExtensionEndpointClassAdminPage,
+					MountPath: "/extensions/ats",
+					AssetPath: "templates/admin/dashboard.html",
+				},
+			},
+			AdminNavigation: []platformdomain.ExtensionAdminNavigationItem{
+				{
+					Name:     "ats-dashboard",
+					Title:    "ATS",
+					Endpoint: "ats-admin-dashboard",
+				},
+			},
+		},
+		Assets: []ExtensionAssetInput{
+			{
+				Path:        "templates/admin/dashboard.html",
+				ContentType: "text/html",
+				Content:     []byte("<html><body>ATS instance admin</body></html>"),
+			},
+		},
+	})
+	require.NoError(t, err)
+	_, err = service.ActivateExtension(ctx, installed.ID)
+	require.NoError(t, err)
+
+	resolved, err := service.ResolveAdminAssetRoute(ctx, "", "/extensions/ats")
+	require.NoError(t, err)
+	require.NotNil(t, resolved)
+	assert.Equal(t, installed.ID, resolved.Extension.ID)
+	assert.Contains(t, string(resolved.Asset.Content), "ATS instance admin")
+}
+
 func TestExtensionService_ResolveManagedArtifactRoute(t *testing.T) {
 	store, cleanup := testutil.SetupTestStore(t)
 	defer cleanup()

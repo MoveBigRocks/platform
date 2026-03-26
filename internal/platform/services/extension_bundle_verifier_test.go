@@ -142,6 +142,61 @@ func TestExtensionService_RejectsBundleForWrongInstance(t *testing.T) {
 	assert.Contains(t, err.Error(), "not valid for instance")
 }
 
+func TestExtensionService_InstallsTrustedPublicSignedBundleWithoutLicenseToken(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	verifier, err := NewExtensionBundleTrustVerifier("inst_acme_123", true, map[string]map[string]string{
+		"DemandOps": {
+			"demandops-main": base64.StdEncoding.EncodeToString(publicKey),
+		},
+	})
+	require.NoError(t, err)
+
+	service := NewExtensionServiceWithOptions(
+		store.Extensions(),
+		store.Workspaces(),
+		store.Queues(),
+		store.Forms(),
+		store.Rules(),
+		store,
+		WithExtensionBundleVerifier(verifier),
+	)
+
+	manifest := platformdomain.ExtensionManifest{
+		SchemaVersion: 1,
+		Slug:          "web-analytics",
+		Name:          "Web Analytics",
+		Version:       "1.0.0",
+		Publisher:     "DemandOps",
+		Kind:          platformdomain.ExtensionKindProduct,
+		Scope:         platformdomain.ExtensionScopeWorkspace,
+		Risk:          platformdomain.ExtensionRiskStandard,
+	}
+	bundleBase64 := signedBundleBase64(t, manifest, nil, nil, bundleLicenseClaim{
+		Publisher: "DemandOps",
+		Slug:      "web-analytics",
+		Version:   "1.0.0",
+	}, "demandops-main", privateKey)
+
+	installed, err := service.InstallExtension(ctx, InstallExtensionParams{
+		WorkspaceID:  workspace.ID,
+		BundleBase64: bundleBase64,
+		Manifest:     manifest,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, installed)
+	assert.Equal(t, "", installed.LicenseToken)
+	assert.Equal(t, platformdomain.ExtensionStatusInstalled, installed.Status)
+}
+
 func signedBundleBase64(
 	t *testing.T,
 	manifest platformdomain.ExtensionManifest,

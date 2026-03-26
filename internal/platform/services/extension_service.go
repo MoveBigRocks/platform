@@ -299,9 +299,7 @@ func (s *ExtensionService) HasActiveExtension(ctx context.Context, slug string) 
 
 func (s *ExtensionService) InstallExtension(ctx context.Context, params InstallExtensionParams) (*platformdomain.InstalledExtension, error) {
 	params.WorkspaceID = strings.TrimSpace(params.WorkspaceID)
-	if strings.TrimSpace(params.LicenseToken) == "" {
-		return nil, apierrors.NewValidationErrors(apierrors.NewValidationError("license_token", "required"))
-	}
+	params.LicenseToken = strings.TrimSpace(params.LicenseToken)
 	params.Manifest.Normalize()
 	if err := s.validateInstallPolicy(ctx, params.Manifest, params.WorkspaceID); err != nil {
 		return nil, apierrors.Wrap(err, apierrors.ErrorTypeValidation, "extension policy validation failed")

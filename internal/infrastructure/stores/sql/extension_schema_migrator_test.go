@@ -234,6 +234,102 @@ CREATE TABLE ${SCHEMA_NAME}.issues (
 	assert.True(t, strings.Contains(registration.LastError, "checksum drift"))
 }
 
+func TestExtensionSchemaMigrator_AcceptsLegacyRawSQLMigrationBodies(t *testing.T) {
+	store, cleanup := testutil.SetupTestPostgresStore(t)
+	defer cleanup()
+
+	concrete, ok := store.(*sqlstore.Store)
+	require.True(t, ok)
+
+	service := platformservices.NewExtensionService(
+		store.Extensions(),
+		store.Workspaces(),
+		store.Queues(),
+		store.Forms(),
+		store.Rules(),
+		store,
+	)
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
+		WorkspaceID:  workspace.ID,
+		LicenseToken: "lic_schema_legacy",
+		Manifest: platformdomain.ExtensionManifest{
+			SchemaVersion: 1,
+			Slug:          "error-tracking",
+			Name:          "Error Tracking",
+			Version:       "1.0.0",
+			Publisher:     "DemandOps",
+			Kind:          platformdomain.ExtensionKindOperational,
+			Scope:         platformdomain.ExtensionScopeWorkspace,
+			Risk:          platformdomain.ExtensionRiskStandard,
+			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
+			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
+			Schema: platformdomain.ExtensionSchemaManifest{
+				Name:            "ext_demandops_error_tracking",
+				PackageKey:      "demandops/error-tracking",
+				TargetVersion:   "000001",
+				MigrationEngine: "postgres_sql",
+			},
+			Endpoints: []platformdomain.ExtensionEndpoint{
+				{
+					Name:          "runtime-health",
+					Class:         platformdomain.ExtensionEndpointClassHealth,
+					MountPath:     "/extensions/error-tracking/health",
+					Methods:       []string{"GET"},
+					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
+					ServiceTarget: "error-tracking.runtime.health",
+				},
+			},
+			Runtime: platformdomain.ExtensionRuntimeSpec{
+				Protocol:     "unix_socket_http",
+				OCIReference: "registry.example.com/mbr/error-tracking:1.0.0",
+				Digest:       "sha256:def456",
+			},
+		},
+		Migrations: []platformservices.ExtensionMigrationInput{
+			{
+				Path: "000001_init.up.sql",
+				Content: []byte(`
+CREATE TABLE ${SCHEMA_NAME}.issues (
+    id TEXT PRIMARY KEY
+);`),
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed))
+
+	bundlePayload, err := store.Extensions().GetExtensionBundle(ctx, installed.ID)
+	require.NoError(t, err)
+
+	var bundle struct {
+		Manifest   map[string]any `json:"manifest"`
+		Migrations []struct {
+			Path    string `json:"path"`
+			Content string `json:"content"`
+		} `json:"migrations"`
+	}
+	require.NoError(t, json.Unmarshal(bundlePayload, &bundle))
+	require.Len(t, bundle.Migrations, 1)
+	legacySQL, err := base64.StdEncoding.DecodeString(bundle.Migrations[0].Content)
+	require.NoError(t, err)
+	bundle.Migrations[0].Content = string(legacySQL)
+	mutatedPayload, err := json.Marshal(bundle)
+	require.NoError(t, err)
+
+	rawDB, err := concrete.GetSQLDB()
+	require.NoError(t, err)
+	_, err = rawDB.ExecContext(ctx, `UPDATE core_platform.installed_extensions SET bundle_payload = $1 WHERE id = $2`, mutatedPayload, installed.ID)
+	require.NoError(t, err)
+
+	err = concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed)
+	require.NoError(t, err)
+}
+
 func TestExtensionSchemaMigrator_ReferenceExtensionBundlesApply(t *testing.T) {
 	testCases := []struct {
 		name       string
@@ -391,7 +487,7 @@ func loadReferenceExtensionMigrations(t *testing.T, root string) []platformservi
 	sort.Slice(migrations, func(i, j int) bool {
 		return migrations[i].Path < migrations[j].Path
 	})
-	require.NotEmpty(t, migrations, "expected reference extension migrations in %s", root)
+	require.NotEmpty(t, migrations, "expected ATS extension migrations in %s", root)
 	return migrations
 }
 
@@ -400,5 +496,5 @@ func referenceExtensionRoot(t *testing.T, extensionName string) string {
 
 	_, file, _, ok := runtime.Caller(0)
 	require.True(t, ok)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "extensions", "first-party", extensionName))
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "..", "extensions", extensionName))
 }

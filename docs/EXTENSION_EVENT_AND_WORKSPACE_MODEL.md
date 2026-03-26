@@ -192,7 +192,7 @@ Current implementation status:
 
 ## ATS Recommendation
 
-For the reference ATS extension:
+For the ATS extension:
 
 - support a **dedicated ATS workspace** as the recommended default
 - also allow installation into an existing workspace if a customer explicitly wants shared operational context there
@@ -213,7 +213,7 @@ The extension installer should be able to:
 
 ## ATS Data Model
 
-The reference ATS should reuse core primitives as much as possible.
+The ATS extension should reuse core primitives as much as possible.
 
 Recommended mapping:
 
@@ -292,7 +292,7 @@ Tags remain available for non-exclusive labels.
 
 ## Forms and Case Creation
 
-The reference ATS should reuse the base form system.
+The ATS extension should reuse the base form system.
 
 Recommended flow:
 
