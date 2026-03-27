@@ -135,8 +135,6 @@ Move Big Rocks is source-available under the MBR Source Code Available License
   or derivative works built for Move Big Rocks without separate written
   permission from Move Big Rocks BV
 - if you fork or redistribute it, you must keep the license and notices intact
-- each version changes to Apache License, Version 2.0 four years after
-  publication
 
 See [`LICENSE`](LICENSE) for the governing text.
 
