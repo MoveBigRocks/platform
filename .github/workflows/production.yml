@@ -35,7 +35,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch all tags
+        run: git fetch --force --tags origin
 
       - name: Install ORAS
         run: |
@@ -76,8 +80,14 @@ jobs:
       - name: Calculate version
         id: version
         run: |
-          # Get latest tag or default to v1.0.0
-          LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+          # Use the highest released semver tag across the repository, not only
+          # the nearest reachable tag from HEAD. Hotfix tags can live on a side
+          # branch, and git describe would otherwise try to recreate an existing
+          # version on main.
+          LATEST=$(git tag --list 'v*' --sort=-version:refname | head -n 1)
+          if [ -z "$LATEST" ]; then
+            LATEST="v1.0.0"
+          fi
           echo "Latest tag: $LATEST"
 
           # Parse current version
