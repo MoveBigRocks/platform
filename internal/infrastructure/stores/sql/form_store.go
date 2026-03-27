@@ -82,17 +82,17 @@ type formSubmissionEnvelope struct {
 }
 
 type formAccessTokenRow struct {
-	ID           string     `db:"id"`
-	WorkspaceID  string     `db:"workspace_id"`
-	FormSpecID   string     `db:"form_spec_id"`
-	Token        string     `db:"token"`
-	Name         string     `db:"name"`
-	IsActive     bool       `db:"is_active"`
-	ExpiresAt    *time.Time `db:"expires_at"`
+	ID           string         `db:"id"`
+	WorkspaceID  string         `db:"workspace_id"`
+	FormSpecID   string         `db:"form_spec_id"`
+	Token        string         `db:"token"`
+	Name         string         `db:"name"`
+	IsActive     bool           `db:"is_active"`
+	ExpiresAt    *time.Time     `db:"expires_at"`
 	AllowedHosts sql.NullString `db:"allowed_hosts"`
-	LastUsedAt   *time.Time `db:"last_used_at"`
-	CreatedAt    time.Time  `db:"created_at"`
-	UpdatedAt    time.Time  `db:"updated_at"`
+	LastUsedAt   *time.Time     `db:"last_used_at"`
+	CreatedAt    time.Time      `db:"created_at"`
+	UpdatedAt    time.Time      `db:"updated_at"`
 }
 
 func (s *FormStore) CreateFormSchema(ctx context.Context, form *servicedomain.FormSchema) error {
