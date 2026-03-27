@@ -1,110 +1,101 @@
-Business Source License 1.1
+MBR Source Code Available License 1.0
 
-License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
-"Business Source License" is a trademark of MariaDB Corporation Ab.
+Copyright (c) 2026 Move Big Rocks BV. All rights reserved.
 
------------------------------------------------------------------------------
+Licensor: Move Big Rocks BV
+Licensed Work: The contents of this repository, together with any associated
+source code, assets, documentation, and bundled materials distributed by the
+Licensor under this License.
+Change Date: Four years from the date each version of the Licensed Work is
+first publicly distributed by the Licensor.
+Change License: Apache License, Version 2.0
 
-Parameters
+1. Definitions
 
-Licensor:             Move Big Rocks BV
-Licensed Work:        Move Big Rocks
-                      The Licensed Work is (c) 2024 Move Big Rocks BV.
-Additional Use Grant: You may make production use of the Licensed Work for
-                      your own internal business operations and to provide
-                      your own goods or services, provided that you may not:
-                      1. use the Licensed Work for a Hosted Service;
-                      2. sell, sublicense, license, distribute for a fee, or
-                         otherwise commercially monetize the Licensed Work
-                         itself or access to the Licensed Work; or
-                      3. sell, sublicense, license, distribute for a fee, or
-                         otherwise commercially monetize any extension, bundle,
-                         pack, or plugin for the Licensed Work.
+"Derivative Work" means any work based on, adapted from, or derived from the
+Licensed Work, including modifications and other works that would be treated as
+derivative works under applicable copyright law.
 
-                      A "Hosted Service" is a commercial offering that allows
-                      third parties (other than your employees and contractors)
-                      to access the functionality of the Licensed Work by
-                      creating accounts, sending errors, or managing support
-                      cases.
+"Extension" means any extension, plugin, bundle, pack, integration, connector,
+adapter, template, add-on, module, or other work designed for use with the
+Licensed Work, and any derivative work of such material.
 
-Change Date:          Four years from the date the Licensed Work is published.
-Change License:       Apache License, Version 2.0
+"Hosted Service" means any offering that gives third parties, other than your
+employees and contractors acting solely on your behalf, access to the
+functionality of the Licensed Work, a Derivative Work, or an Extension as a
+service.
 
------------------------------------------------------------------------------
+"Commercialize" means to sell, license, sublicense, distribute for a fee,
+charge for access to, or otherwise directly monetize the Licensed Work, a
+Derivative Work, or an Extension as a product, service, add-on, marketplace
+item, or paid deliverable. Commercialize does not include your internal use of
+the Licensed Work in operating your own business or in providing your own
+non-platform goods or services, so long as you do not give third parties access
+to the Licensed Work, a Derivative Work, or an Extension as a Hosted Service
+and do not sell the Licensed Work, a Derivative Work, or an Extension
+themselves.
 
-Terms
+2. License Grant Before the Change Date
 
-The Licensor hereby grants you the right to copy, modify, create derivative
-works, redistribute, and make non-production use of the Licensed Work. The
-Licensor may make an Additional Use Grant, above, permitting limited
-production use.
+Subject to this License, and until the Change Date for a given version of the
+Licensed Work, you may:
 
-Effective on the Change Date, or the fourth anniversary of the first publicly
-available distribution of a specific version of the Licensed Work under this
-License, whichever comes first, the Licensor hereby grants you rights under
-the terms of the Change License, and the rights granted in the paragraph
-above terminate.
+a. use, copy, modify, create Derivative Works of, self-host, and run the
+   Licensed Work;
+b. use the Licensed Work and your Derivative Works for your own internal
+   business operations and in providing your own non-platform goods or
+   services;
+c. create and use your own Extensions and Derivative Works with the Licensed
+   Work; and
+d. redistribute the Licensed Work, Derivative Works, and Extensions, in source
+   or object form, only if you do not Commercialize them, you include this
+   License and all copyright, attribution, and license notices, and you do not
+   offer them as a Hosted Service.
 
-If your use of the Licensed Work does not comply with the requirements
-currently in effect as described in this License, you must purchase a
-commercial license from the Licensor, its affiliated entities, or authorized
-resellers, or you must refrain from using the Licensed Work.
+3. Restrictions Before the Change Date
 
-All copies of the original and modified Licensed Work, and derivative works
-of the Licensed Work, are subject to this License. This License applies
-separately for each version of the Licensed Work and the Change Date may vary
-for each version of the Licensed Work released by Licensor.
+Without the Licensor's prior written permission, you may not:
 
-You must conspicuously display this License on each original or modified copy
-of the Licensed Work. If you receive the Licensed Work in original or
-modified form from a third party, the terms and conditions set forth in this
-License apply to your use of that work.
+a. Commercialize the Licensed Work, any Derivative Work, or access to either;
+b. Commercialize any Extension or access to any Extension;
+c. offer the Licensed Work, any Derivative Work, or any Extension as a Hosted
+   Service;
+d. remove, alter, or obscure any copyright, attribution, trademark, or license
+   notice included with the Licensed Work; or
+e. use the Licensor's names, logos, or trademarks except for reasonable factual
+   reference.
 
-Any use of the Licensed Work in violation of this License will automatically
-terminate your rights under this License for the current and all other
-versions of the Licensed Work.
+4. Reservation of Rights
 
-This License does not grant you any right in any trademark or logo of
-Licensor or its affiliates (provided that you may use a trademark or logo of
-Licensor as expressly required by this License).
+All rights not expressly granted by this License are reserved by the Licensor.
 
-TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSED WORK IS PROVIDED ON
-AN "AS IS" BASIS. LICENSOR HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS,
-EXPRESS OR IMPLIED, INCLUDING (WITHOUT LIMITATION) WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, AND
-TITLE.
+5. Change License
 
-MariaDB hereby grants you permission to use this License's text to license
-your works, and to refer to it using the trademark "Business Source License",
-as long as you comply with the Covenants of Licensor below.
+On the Change Date for a given version of the Licensed Work, the Licensor
+grants you rights under the Change License for that version. After the Change
+Date, the Change License governs that version of the Licensed Work instead of
+Sections 2 and 3 of this License.
 
------------------------------------------------------------------------------
+6. Disclaimer of Warranty
 
-Covenants of Licensor
+THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. YOU BEAR THE
+RISK OF USING THE LICENSED WORK.
 
-In consideration of the right to use this License's text and the "Business
-Source License" name and trademark, Licensor covenants to MariaDB, and to all
-other recipients of the licensed work to be provided by Licensor:
+7. Limitation of Liability
 
-1. To specify as the Change License the GPL Version 2.0 or any later version,
-   or a license that is compatible with GPL Version 2.0 or a later version,
-   where "compatible" means that software provided under the Change License can
-   be included in a program with software provided under GPL Version 2.0 or a
-   later version. Licensor may specify additional Change Licenses without
-   limitation.
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT WILL THE
+LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION
+WITH THE LICENSED WORK OR THE USE OF OR OTHER DEALINGS IN THE LICENSED WORK.
 
-2. To either: (a) specify an additional grant of rights to use that does not
-   impose any additional restriction on the right granted in this License, as
-   the Additional Use Grant; or (b) insert the text "None".
+8. Termination
 
-3. To specify a Change Date.
+If you violate this License, your rights under it terminate automatically. The
+Licensor may reinstate those rights in writing.
 
-4. Not to modify this License in any other way.
+9. Source-Available Notice
 
------------------------------------------------------------------------------
-
-Notice
-
-The Business Source License (this document, or the "License") is not an Open
-Source license. However, the Licensed Work will eventually be made available
-under an Open Source License, as stated in this License.
+This License is source-available. It is not an open source license before the
+Change Date.

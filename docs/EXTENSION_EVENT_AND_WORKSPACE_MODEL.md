@@ -374,7 +374,7 @@ This keeps the careers site lightweight while preserving Move Big Rocks's operat
 
 ## Marketplace Implications
 
-If third parties are later going to sell extensions, they need the same event and workspace model:
+If Move Big Rocks later authorizes third parties to sell extensions through an official marketplace or similar program, they need the same event and workspace model:
 
 - typed extension-owned events
 - stable core event subscriptions

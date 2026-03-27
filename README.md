@@ -6,7 +6,7 @@ This repository is the source of truth for Move Big Rocks core.
 
 Public site: [movebigrocks.com](https://movebigrocks.com)
 
-[![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-blue.svg)](LICENSE)
+[![License: MBR Source Available](https://img.shields.io/badge/License-MBR%20Source%20Available-blue.svg)](LICENSE)
 
 ## The Problem
 
@@ -118,16 +118,20 @@ same runtime model too.
 
 ## License Model
 
-Move Big Rocks is source-available under BSL 1.1 with an Additional Use Grant
-intended to make the public model clear:
+Move Big Rocks is source-available under the MBR Source Code Available License
+1.0. The public model is meant to be clear:
 
 - you can self-host Move Big Rocks for your own organisation
 - you can use the free first-party public bundles
 - you can build your own extensions
-- you may not sell the platform itself
+- you may not sell or otherwise commercialize the platform itself or derivative
+  works of it
 - you may not sell access to the platform
-- you may not sell extensions for Move Big Rocks without separate written
-  permission from Move Big Rocks BV
+- you may not sell or otherwise commercialize extensions, add-ons, or
+  derivative works built for Move Big Rocks without separate written permission
+  from Move Big Rocks BV
+- each version changes to Apache License, Version 2.0 four years after
+  publication
 
 See [`LICENSE`](LICENSE) for the governing text.
 

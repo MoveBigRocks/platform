@@ -19,9 +19,9 @@ Keep `enterprise-access` separate as a privileged first-party identity pack.
 - Move Big Rocks core is source-available and self-hostable.
 - ATS, error tracking, and web analytics are free public first-party bundles.
 - Teams can build their own extensions.
-- The public license does not permit selling the platform, selling access to
-  the platform, or selling extensions without separate written permission from
-  Move Big Rocks BV.
+- The public license does not permit commercializing the platform, derivative
+  works of it, access to the platform, or extensions without separate written
+  permission from Move Big Rocks BV.
 
 ## Distribution Model
 

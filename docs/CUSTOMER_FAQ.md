@@ -258,10 +258,12 @@ The public licensing posture is meant to be clear:
 - you can self-host Move Big Rocks for your own organisation
 - you can use the free first-party public bundles
 - you can build your own extensions
-- you may not sell the platform itself
+- you may not sell or otherwise commercialize the platform itself or derivative
+  works of it
 - you may not sell access to the platform
-- you may not sell extensions for Move Big Rocks without separate written
-  permission from Move Big Rocks BV
+- you may not sell or otherwise commercialize extensions, add-ons, or
+  derivative works built for Move Big Rocks without separate written permission
+  from Move Big Rocks BV
 
 If you want different commercial rights, that requires a separate agreement.
 

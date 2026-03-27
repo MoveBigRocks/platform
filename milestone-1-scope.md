@@ -126,8 +126,9 @@ The public distribution model is:
 - free public first-party standard-risk bundles for ATS, error tracking, and
   web analytics
 - separately controlled privileged first-party packs such as enterprise access
-- no resale of the platform, access to the platform, or extensions under the
-  public license without separate written permission from Move Big Rocks BV
+- no commercialization of the platform, derivative works of it, access to the
+  platform, or extensions under the public license without separate written
+  permission from Move Big Rocks BV
 
 That base is already the initial product. The free core is valuable on its own
 because it provides:

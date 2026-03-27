@@ -439,7 +439,7 @@ This supports the current public model:
 - private custom extensions by default
 - free redistribution when an extension publisher chooses to give an extension away
 - professional services for customizations and custom extension work
-- separate written permission required for selling the platform, selling access to it, or selling extensions
+- separate written permission required for commercializing the platform, derivative works of it, access to it, or extensions
 
 That means a customer who does not want the first-party analytics pack can
 build their own analytics extension or use another free extension without
