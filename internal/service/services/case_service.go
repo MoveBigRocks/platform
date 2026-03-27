@@ -243,6 +243,32 @@ func (cs *CaseService) CreateCaseFromEmail(ctx context.Context, workspaceID, sub
 	})
 }
 
+// CreateCaseFromInboundEmail creates a case from an inbound email and records the
+// inbound message as the first case communication.
+func (cs *CaseService) CreateCaseFromInboundEmail(ctx context.Context, email *servicedomain.InboundEmail) (*servicedomain.Case, *servicedomain.Communication, error) {
+	if email == nil {
+		return nil, nil, apierrors.NewValidationErrors(apierrors.NewValidationError("email", "required"))
+	}
+
+	caseObj, err := cs.CreateCaseFromEmail(
+		ctx,
+		email.WorkspaceID,
+		email.Subject,
+		inboundEmailBody(email),
+		email.FromEmail,
+		email.FromName,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	comm, updatedCase, err := cs.AddInboundEmailToCase(ctx, caseObj.ID, email)
+	if err != nil {
+		return nil, nil, err
+	}
+	return updatedCase, comm, nil
+}
+
 // CreateCaseFromForm creates a case from a form submission
 func (cs *CaseService) CreateCaseFromForm(ctx context.Context, workspaceID, subject, description string, params CreateCaseParams) (*servicedomain.Case, error) {
 	params.WorkspaceID = workspaceID
@@ -394,6 +420,63 @@ func (cs *CaseService) AddCommunication(ctx context.Context, comm *servicedomain
 		return apierrors.DatabaseError("update case timestamp", err)
 	}
 	return nil
+}
+
+// AddInboundEmailToCase records an inbound email as a case communication and
+// applies the standard customer-reply case state transitions.
+func (cs *CaseService) AddInboundEmailToCase(ctx context.Context, caseID string, email *servicedomain.InboundEmail) (*servicedomain.Communication, *servicedomain.Case, error) {
+	if strings.TrimSpace(caseID) == "" {
+		return nil, nil, apierrors.NewValidationErrors(apierrors.NewValidationError("case_id", "required"))
+	}
+	if email == nil {
+		return nil, nil, apierrors.NewValidationErrors(apierrors.NewValidationError("email", "required"))
+	}
+
+	caseObj, err := cs.GetCase(ctx, caseID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	comm := newInboundEmailCommunication(caseObj, email)
+	oldStatus := caseObj.Status
+
+	switch caseObj.Status {
+	case servicedomain.CaseStatusPending:
+		caseObj.Status = servicedomain.CaseStatusOpen
+	case servicedomain.CaseStatusResolved, servicedomain.CaseStatusClosed:
+		if err := caseObj.Reopen(); err != nil {
+			return nil, nil, apierrors.Wrap(err, apierrors.ErrorTypeValidation, "customer reply state transition failed")
+		}
+	}
+	caseObj.IncrementMessageCount()
+
+	if err := caseObj.Validate(); err != nil {
+		return nil, nil, apierrors.Wrap(err, apierrors.ErrorTypeValidation, "case validation failed")
+	}
+
+	run := func(txCtx context.Context) error {
+		if err := cs.caseStore.CreateCommunication(txCtx, comm); err != nil {
+			return apierrors.DatabaseError("create communication", err)
+		}
+		if err := cs.caseStore.UpdateCase(txCtx, caseObj); err != nil {
+			return apierrors.DatabaseError("update case", err)
+		}
+		return nil
+	}
+
+	if cs.tx != nil {
+		if err := cs.tx.WithTransaction(ctx, run); err != nil {
+			return nil, nil, err
+		}
+	} else if err := run(ctx); err != nil {
+		return nil, nil, err
+	}
+
+	if caseObj.Status != oldStatus {
+		cs.publishCaseStatusChangedEvent(ctx, caseObj, oldStatus, caseObj.Status)
+	}
+
+	return comm, caseObj, nil
 }
 
 // =============================================================================
@@ -1090,4 +1173,35 @@ func (cs *CaseService) CreateCommunication(ctx context.Context, comm *servicedom
 // Alias for GetCaseCommunications for API consistency
 func (cs *CaseService) ListCaseCommunications(ctx context.Context, caseID string) ([]*servicedomain.Communication, error) {
 	return cs.GetCaseCommunications(ctx, caseID)
+}
+
+func newInboundEmailCommunication(caseObj *servicedomain.Case, email *servicedomain.InboundEmail) *servicedomain.Communication {
+	comm := servicedomain.NewCommunication(caseObj.ID, caseObj.WorkspaceID, shareddomain.CommTypeEmail, inboundEmailBody(email))
+	comm.Direction = shareddomain.DirectionInbound
+	comm.IsInternal = false
+	comm.FromEmail = email.FromEmail
+	comm.FromName = email.FromName
+	comm.ToEmails = append([]string(nil), email.ToEmails...)
+	comm.CCEmails = append([]string(nil), email.CCEmails...)
+	comm.BCCEmails = append([]string(nil), email.BCCEmails...)
+	comm.Subject = email.Subject
+	comm.BodyHTML = email.HTMLContent
+	comm.MessageID = email.MessageID
+	comm.InReplyTo = email.InReplyTo
+	comm.References = append([]string(nil), email.References...)
+	comm.AttachmentIDs = append([]string(nil), email.AttachmentIDs...)
+	now := time.Now().UTC()
+	comm.CreatedAt = now
+	comm.UpdatedAt = now
+	return comm
+}
+
+func inboundEmailBody(email *servicedomain.InboundEmail) string {
+	if email == nil {
+		return ""
+	}
+	if body := strings.TrimSpace(email.TextContent); body != "" {
+		return body
+	}
+	return strings.TrimSpace(email.HTMLContent)
 }

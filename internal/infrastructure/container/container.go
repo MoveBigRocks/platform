@@ -144,6 +144,7 @@ func New(cfg *config.Config, opts Options) (*Container, error) {
 		RulesEngine:      c.Automation.Engine,
 		FormService:      c.Automation.Form,
 		CaseService:      c.Service.Case,
+		EmailService:     c.Service.Email,
 		Outbox:           c.Outbox,
 		TxRunner:         c.Store,
 	})

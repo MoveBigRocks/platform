@@ -28,6 +28,7 @@ type Manager struct {
 	ruleEvalHandler *automationhandlers.RuleEvaluationHandler
 	jobHandler      *automationhandlers.JobEventHandler
 	formHandler     *servicehandlers.FormEventHandler
+	emailHandler    *servicehandlers.EmailEventHandler
 	// Lifecycle
 	startOnce sync.Once
 	stopOnce  sync.Once
@@ -42,12 +43,13 @@ type ManagerDeps struct {
 	IdempotencyStore eventbus.IdempotencyStore
 
 	// Services needed by handlers
-	RulesEngine *automationservices.RulesEngine
-	JobService  *automationservices.JobService
-	FormService *automationservices.FormService
-	CaseService *serviceapp.CaseService
-	Outbox      contracts.OutboxPublisher
-	TxRunner    contracts.TransactionRunner
+	RulesEngine  *automationservices.RulesEngine
+	JobService   *automationservices.JobService
+	FormService  *automationservices.FormService
+	CaseService  *serviceapp.CaseService
+	EmailService *serviceapp.EmailService
+	Outbox       contracts.OutboxPublisher
+	TxRunner     contracts.TransactionRunner
 }
 
 // NewManager creates a new embedded worker manager.
@@ -86,6 +88,13 @@ func NewManager(deps ManagerDeps) *Manager {
 			deps.CaseService,
 			deps.Outbox,
 			deps.TxRunner,
+			deps.Logger,
+		)
+	}
+
+	if deps.EmailService != nil {
+		m.emailHandler = servicehandlers.NewEmailEventHandler(
+			deps.EmailService,
 			deps.Logger,
 		)
 	}
@@ -175,6 +184,13 @@ func (m *Manager) registerHandlers() error {
 			return fmt.Errorf("register form handlers: %w", err)
 		}
 		m.logger.Info("Form event handlers registered")
+	}
+
+	if m.emailHandler != nil {
+		if err := m.emailHandler.RegisterHandlers(subscribe); err != nil {
+			return fmt.Errorf("register email handlers: %w", err)
+		}
+		m.logger.Info("Email event handlers registered")
 	}
 
 	return nil
