@@ -95,22 +95,64 @@ func TestCreateAPIRouter_ServesErrorTrackingEnvelopeFromInstalledExtension(t *te
 	require.NoError(t, err)
 
 	registry := &extensionruntime.Registry{}
+	var dispatchedTarget string
 	registry.Register("error-tracking.ingest.envelope", func(ctx *gin.Context) {
+		dispatchedTarget = "error-tracking.ingest.envelope"
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid sentry auth header"})
 	})
 	registry.Register("error-tracking.ingest.envelope.project", func(ctx *gin.Context) {
+		dispatchedTarget = "error-tracking.ingest.envelope.project"
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid sentry auth header"})
 	})
 
 	router := createAPIRouter(cfg, c, nil, nil, registry)
 
-	envelope := strings.NewReader("{\"event_id\":\"00000000000000000000000000000001\"}\n{\"type\":\"event\"}\n{\"event_id\":\"00000000000000000000000000000001\",\"message\":\"boom\",\"platform\":\"javascript\"}\n")
-	req := httptest.NewRequest(http.MethodPost, "/api/777/envelope", envelope)
-	req.Header.Set("Content-Type", "application/x-sentry-envelope")
+	testCases := []struct {
+		name           string
+		path           string
+		expectedTarget string
+	}{
+		{
+			name:           "project route",
+			path:           "/api/777/envelope",
+			expectedTarget: "error-tracking.ingest.envelope.project",
+		},
+		{
+			name:           "project route trailing slash",
+			path:           "/api/777/envelope/",
+			expectedTarget: "error-tracking.ingest.envelope.project",
+		},
+		{
+			name:           "compatibility api route",
+			path:           "/api/envelope",
+			expectedTarget: "error-tracking.ingest.envelope",
+		},
+		{
+			name:           "compatibility api route trailing slash",
+			path:           "/api/envelope/",
+			expectedTarget: "error-tracking.ingest.envelope",
+		},
+		{
+			name:           "legacy v1 route",
+			path:           "/1/envelope",
+			expectedTarget: "error-tracking.ingest.envelope",
+		},
+	}
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dispatchedTarget = ""
 
-	require.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "invalid sentry auth header")
+			envelope := strings.NewReader("{\"event_id\":\"00000000000000000000000000000001\"}\n{\"type\":\"event\"}\n{\"event_id\":\"00000000000000000000000000000001\",\"message\":\"boom\",\"platform\":\"javascript\"}\n")
+			req := httptest.NewRequest(http.MethodPost, tc.path, envelope)
+			req.Header.Set("Content-Type", "application/x-sentry-envelope")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusUnauthorized, w.Code)
+			assert.Equal(t, tc.expectedTarget, dispatchedTarget)
+			assert.Contains(t, w.Body.String(), "invalid sentry auth header")
+		})
+	}
 }
