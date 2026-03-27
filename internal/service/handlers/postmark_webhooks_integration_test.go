@@ -4,22 +4,81 @@ package servicehandlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
+	serviceapp "github.com/movebigrocks/platform/internal/service/services"
 	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/pkg/eventbus"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 
 func init() {
 	gin.SetMode(gin.TestMode)
+}
+
+type capturedWebhookEvent struct {
+	stream eventbus.Stream
+	data   interface{}
+}
+
+type capturedWebhookBus struct {
+	published []capturedWebhookEvent
+}
+
+func (b *capturedWebhookBus) PublishEvent(stream eventbus.Stream, event eventbus.Event) error {
+	b.published = append(b.published, capturedWebhookEvent{stream: stream, data: event})
+	return nil
+}
+
+func (b *capturedWebhookBus) PublishEventWithRetry(stream eventbus.Stream, event eventbus.Event, _ int) error {
+	return b.PublishEvent(stream, event)
+}
+
+func (b *capturedWebhookBus) Subscribe(eventbus.Stream, string, string, func(context.Context, []byte) error) error {
+	return nil
+}
+
+func (b *capturedWebhookBus) GetStreamInfo(eventbus.Stream) (int64, int64, error) {
+	return 0, 0, nil
+}
+
+func (b *capturedWebhookBus) GetPendingMessages(eventbus.Stream, string) (int64, error) {
+	return 0, nil
+}
+
+func (b *capturedWebhookBus) HealthCheck() error {
+	return nil
+}
+
+func (b *capturedWebhookBus) Shutdown(time.Duration) error {
+	return nil
+}
+
+func (b *capturedWebhookBus) Close() error {
+	return nil
+}
+
+func (b *capturedWebhookBus) PublishValidated(stream eventbus.Stream, event eventbus.Event) error {
+	return b.PublishEvent(stream, event)
+}
+
+func (b *capturedWebhookBus) Publish(stream eventbus.Stream, data interface{}) error {
+	b.published = append(b.published, capturedWebhookEvent{stream: stream, data: data})
+	return nil
+}
+
+func (b *capturedWebhookBus) PublishWithType(stream eventbus.Stream, _ eventbus.EventType, _ string, data interface{}) error {
+	return b.Publish(stream, data)
 }
 
 func TestHandleInboundEmail_WorkspaceValidation(t *testing.T) {
@@ -160,4 +219,101 @@ func TestHandleInboundEmail_WorkspaceValidation(t *testing.T) {
 				"Should find workspace by slug")
 		}
 	})
+}
+
+func TestHandleInboundEmail_StoresEmailAndPublishesEvent(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := t.Context()
+	log := logger.NewNop()
+
+	workspace := testutil.NewIsolatedWorkspace(t)
+	workspace.Name = "Inbound Email Workspace"
+	workspace.Slug = "inbound-email-workspace"
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	workspaceService := platformservices.NewWorkspaceManagementService(
+		store.Workspaces(),
+		store.Cases(),
+		store.Users(),
+		store.Rules(),
+	)
+	emailService, err := serviceapp.NewEmailService(store, serviceapp.EmailConfig{Provider: "mock"}, nil)
+	require.NoError(t, err)
+	eventBus := &capturedWebhookBus{}
+
+	handler := NewPostmarkWebhookHandlers(
+		workspaceService,
+		emailService,
+		nil,
+		"test-secret-123",
+		eventBus,
+		log,
+	)
+
+	router := gin.New()
+	router.POST("/webhooks/postmark/:secret/inbound", handler.HandleInboundEmail)
+
+	tests := []struct {
+		name string
+		to   string
+	}{
+		{
+			name: "stores inbound email for workspace ID recipient",
+			to:   workspace.ID + "@support.movebigrocks.test",
+		},
+		{
+			name: "stores inbound email for workspace slug recipient",
+			to:   workspace.Slug + "@support.movebigrocks.test",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			payload := map[string]interface{}{
+				"From":      "sender@example.com",
+				"To":        tc.to,
+				"Subject":   "Billing help",
+				"TextBody":  "I need help with my invoice.",
+				"HtmlBody":  "<p>I need help with my invoice.</p>",
+				"MessageID": "msg-" + testutil.UniqueID("inbound"),
+			}
+			body, err := json.Marshal(payload)
+			require.NoError(t, err)
+
+			req := httptest.NewRequest(http.MethodPost, "/webhooks/postmark/test-secret-123/inbound", bytes.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			beforeEvents := len(eventBus.published)
+			router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusOK, w.Code)
+
+			var resp map[string]string
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+			emailID := resp["email_id"]
+			require.NotEmpty(t, emailID)
+
+			stored, err := store.InboundEmails().GetInboundEmail(ctx, emailID)
+			require.NoError(t, err)
+			assert.Equal(t, workspace.ID, stored.WorkspaceID)
+			assert.Equal(t, "sender@example.com", stored.FromEmail)
+			assert.Equal(t, "Billing help", stored.Subject)
+			assert.Equal(t, "I need help with my invoice.", stored.TextContent)
+			assert.Equal(t, []string{tc.to}, stored.ToEmails)
+			assert.Equal(t, "pending", string(stored.ProcessingStatus))
+
+			require.Len(t, eventBus.published, beforeEvents+1)
+			lastEvent := eventBus.published[len(eventBus.published)-1]
+			assert.Equal(t, eventbus.StreamEmailEvents, lastEvent.stream)
+
+			eventPayload, ok := lastEvent.data.(map[string]interface{})
+			require.True(t, ok)
+			assert.Equal(t, "email_received", eventPayload["event_type"])
+			assert.Equal(t, emailID, eventPayload["email_id"])
+			assert.Equal(t, workspace.ID, eventPayload["workspace_id"])
+		})
+	}
 }
