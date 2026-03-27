@@ -85,13 +85,17 @@ products:
 | Pack | What it does |
 |------|-------------|
 | **ATS** | Applicant tracking with careers site, candidate workflows, and interview kits on the same operational base |
+| **Community feature requests** | Public idea board and voting with internal triage on the same operational base |
 | **Error tracking** | Sentry-compatible ingestion and issue workflows connected to the same queues, cases, and knowledge |
+| **Sales pipeline** | Lightweight CRM and opportunity pipeline tracking inside the same workspace runtime |
 | **Web analytics** | Cookie-free, privacy-first analytics without pushing operational context into another silo |
 
 The current first-party public bundle set is:
 
 - **ATS**
+- **Community feature requests**
 - **Error tracking**
+- **Sales pipeline**
 - **Web analytics**
 
 Those standard-risk first-party bundles are intended to be freely available as
@@ -112,8 +116,9 @@ pack rather than part of the free public bundle set.
 
 Each pack runs on the same core primitives — same teams, same queues, same
 knowledge, same agent contract. That means your ATS candidates, your error
-tracking issues, and your support cases all live in one system instead of
-three, while adjacent capabilities such as enterprise access can plug into the
+tracking issues, your sales pipeline deals, your public feature requests, and
+your support cases can all live in one system instead of five disconnected
+tools, while adjacent capabilities such as enterprise access can plug into the
 same runtime model too.
 
 ## License Model
@@ -300,7 +305,7 @@ like that path to become real.
 - **Owned first deployment**: no vendor sandbox required; start on
   infrastructure you control and keep the path to production honest
 - **Single source of truth**: GraphQL backed by shared services and audit trails
-- **Optional product layers**: ATS, enterprise access, error tracking, web analytics, operational health, and agent-runtime connectors install as extensions
+- **Optional product layers**: ATS, community feature requests, sales pipeline, enterprise access, error tracking, web analytics, operational health, and agent-runtime connectors install as extensions
 - **Self-hosted by default**: one Go service, PostgreSQL, predictable deployment
 
 ## Pick The Right Repo
@@ -353,10 +358,11 @@ Move Big Rocks core stays small and composable:
   catalog nodes, queues, conversations, cases, case labels, Markdown knowledge,
   concept specs, forms, attachments, automation, GraphQL, admin panel, public
   routes, event-driven integrations
-- **Public first-party extensions**: ATS, error tracking, and web analytics in
-  the public first-party extensions repo at `MoveBigRocks/extensions`
-- **Optional first-party packs**: enterprise access, error tracking, web
-  analytics, operational health, agent-runtime connectors
+- **Public first-party extensions**: ATS, community feature requests, error
+  tracking, sales pipeline, and web analytics in the public first-party
+  extensions repo at `MoveBigRocks/extensions`
+- **Optional first-party packs**: enterprise access, operational health,
+  agent-runtime connectors
 
 ## Delivery Model
 
