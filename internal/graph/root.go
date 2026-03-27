@@ -376,6 +376,38 @@ func (r *RootResolver) InstanceExtensions(ctx context.Context) ([]*platformresol
 	return r.platform.InstanceExtensions(ctx)
 }
 
+// WorkspaceExtensionAdminNavigation delegates to the platform resolver.
+func (r *RootResolver) WorkspaceExtensionAdminNavigation(ctx context.Context, args struct{ WorkspaceID string }) ([]*platformresolvers.ResolvedExtensionAdminNavigationItemResolver, error) {
+	if r.platform == nil {
+		return nil, fmt.Errorf("platform resolver not configured")
+	}
+	return r.platform.WorkspaceExtensionAdminNavigation(ctx, args.WorkspaceID)
+}
+
+// WorkspaceExtensionDashboardWidgets delegates to the platform resolver.
+func (r *RootResolver) WorkspaceExtensionDashboardWidgets(ctx context.Context, args struct{ WorkspaceID string }) ([]*platformresolvers.ResolvedExtensionDashboardWidgetResolver, error) {
+	if r.platform == nil {
+		return nil, fmt.Errorf("platform resolver not configured")
+	}
+	return r.platform.WorkspaceExtensionDashboardWidgets(ctx, args.WorkspaceID)
+}
+
+// InstanceExtensionAdminNavigation delegates to the platform resolver.
+func (r *RootResolver) InstanceExtensionAdminNavigation(ctx context.Context) ([]*platformresolvers.ResolvedExtensionAdminNavigationItemResolver, error) {
+	if r.platform == nil {
+		return nil, fmt.Errorf("platform resolver not configured")
+	}
+	return r.platform.InstanceExtensionAdminNavigation(ctx)
+}
+
+// InstanceExtensionDashboardWidgets delegates to the platform resolver.
+func (r *RootResolver) InstanceExtensionDashboardWidgets(ctx context.Context) ([]*platformresolvers.ResolvedExtensionDashboardWidgetResolver, error) {
+	if r.platform == nil {
+		return nil, fmt.Errorf("platform resolver not configured")
+	}
+	return r.platform.InstanceExtensionDashboardWidgets(ctx)
+}
+
 // ExtensionEventCatalog delegates to platform resolver.
 func (r *RootResolver) ExtensionEventCatalog(ctx context.Context, args struct{ WorkspaceID string }) ([]*platformresolvers.ExtensionRuntimeEventResolver, error) {
 	if r.platform == nil {

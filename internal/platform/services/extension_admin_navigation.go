@@ -2,6 +2,7 @@ package platformservices
 
 import (
 	"context"
+	"net/url"
 	"strings"
 
 	apierrors "github.com/movebigrocks/platform/internal/infrastructure/errors"
@@ -11,6 +12,7 @@ import (
 type ResolvedExtensionAdminNavigationItem struct {
 	ExtensionID   string
 	ExtensionSlug string
+	WorkspaceID   string
 	Section       string
 	Title         string
 	Icon          string
@@ -21,6 +23,7 @@ type ResolvedExtensionAdminNavigationItem struct {
 type ResolvedExtensionDashboardWidget struct {
 	ExtensionID   string
 	ExtensionSlug string
+	WorkspaceID   string
 	Title         string
 	Description   string
 	Icon          string
@@ -69,6 +72,7 @@ func (s *ExtensionService) ListWorkspaceAdminNavigation(ctx context.Context, wor
 			result = append(result, ResolvedExtensionAdminNavigationItem{
 				ExtensionID:   extension.ID,
 				ExtensionSlug: extension.Slug,
+				WorkspaceID:   extension.WorkspaceID,
 				Section:       item.Section,
 				Title:         item.Title,
 				Icon:          item.Icon,
@@ -102,6 +106,7 @@ func (s *ExtensionService) ListWorkspaceDashboardWidgets(ctx context.Context, wo
 			result = append(result, ResolvedExtensionDashboardWidget{
 				ExtensionID:   extension.ID,
 				ExtensionSlug: extension.Slug,
+				WorkspaceID:   extension.WorkspaceID,
 				Title:         widget.Title,
 				Description:   widget.Description,
 				Icon:          widget.Icon,
@@ -121,7 +126,7 @@ func (s *ExtensionService) ListInstanceAdminNavigation(ctx context.Context) ([]R
 	if err != nil {
 		return nil, apierrors.DatabaseError("list extensions for instance admin", err)
 	}
-	return buildResolvedAdminNavigation(activeExtensionsOnly(installed)), nil
+	return buildResolvedAdminNavigation(activeExtensionsOnly(installed), true), nil
 }
 
 func (s *ExtensionService) ListInstanceDashboardWidgets(ctx context.Context) ([]ResolvedExtensionDashboardWidget, error) {
@@ -132,10 +137,10 @@ func (s *ExtensionService) ListInstanceDashboardWidgets(ctx context.Context) ([]
 	if err != nil {
 		return nil, apierrors.DatabaseError("list extensions for instance admin", err)
 	}
-	return buildResolvedDashboardWidgets(activeExtensionsOnly(installed)), nil
+	return buildResolvedDashboardWidgets(activeExtensionsOnly(installed), true), nil
 }
 
-func buildResolvedAdminNavigation(installed []*platformdomain.InstalledExtension) []ResolvedExtensionAdminNavigationItem {
+func buildResolvedAdminNavigation(installed []*platformdomain.InstalledExtension, instanceAdmin bool) []ResolvedExtensionAdminNavigationItem {
 	result := make([]ResolvedExtensionAdminNavigationItem, 0)
 	for _, extension := range activeExtensionsOnly(installed) {
 		for _, item := range extension.Manifest.AdminNavigation {
@@ -146,10 +151,11 @@ func buildResolvedAdminNavigation(installed []*platformdomain.InstalledExtension
 			result = append(result, ResolvedExtensionAdminNavigationItem{
 				ExtensionID:   extension.ID,
 				ExtensionSlug: extension.Slug,
+				WorkspaceID:   extension.WorkspaceID,
 				Section:       item.Section,
 				Title:         item.Title,
 				Icon:          item.Icon,
-				Href:          endpoint.MountPath,
+				Href:          resolvedAdminHref(endpoint.MountPath, extension.WorkspaceID, instanceAdmin),
 				ActivePage:    item.ActivePage,
 			})
 		}
@@ -157,7 +163,7 @@ func buildResolvedAdminNavigation(installed []*platformdomain.InstalledExtension
 	return result
 }
 
-func buildResolvedDashboardWidgets(installed []*platformdomain.InstalledExtension) []ResolvedExtensionDashboardWidget {
+func buildResolvedDashboardWidgets(installed []*platformdomain.InstalledExtension, instanceAdmin bool) []ResolvedExtensionDashboardWidget {
 	result := make([]ResolvedExtensionDashboardWidget, 0)
 	for _, extension := range activeExtensionsOnly(installed) {
 		for _, widget := range extension.Manifest.DashboardWidgets {
@@ -168,14 +174,34 @@ func buildResolvedDashboardWidgets(installed []*platformdomain.InstalledExtensio
 			result = append(result, ResolvedExtensionDashboardWidget{
 				ExtensionID:   extension.ID,
 				ExtensionSlug: extension.Slug,
+				WorkspaceID:   extension.WorkspaceID,
 				Title:         widget.Title,
 				Description:   widget.Description,
 				Icon:          widget.Icon,
-				Href:          endpoint.MountPath,
+				Href:          resolvedAdminHref(endpoint.MountPath, extension.WorkspaceID, instanceAdmin),
 			})
 		}
 	}
 	return result
+}
+
+func resolvedAdminHref(baseHref, workspaceID string, instanceAdmin bool) string {
+	baseHref = strings.TrimSpace(baseHref)
+	workspaceID = strings.TrimSpace(workspaceID)
+	if !instanceAdmin || workspaceID == "" || baseHref == "" {
+		return baseHref
+	}
+
+	parsed, err := url.Parse(baseHref)
+	if err != nil {
+		return baseHref
+	}
+	query := parsed.Query()
+	if strings.TrimSpace(query.Get("workspace")) == "" {
+		query.Set("workspace", workspaceID)
+	}
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
 }
 
 func (s *ExtensionService) allExtensions(ctx context.Context) ([]*platformdomain.InstalledExtension, error) {

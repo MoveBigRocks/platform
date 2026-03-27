@@ -385,6 +385,79 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesWorkspaceScopedEndpoi
 	assert.Contains(t, w.Body.String(), `"action":"refresh"`)
 }
 
+func TestServeResolvedAdminExtensionServiceRoute_InstanceAdminQueryWorkspaceSelectsInstall(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspaceOne := testutil.NewIsolatedWorkspace(t)
+	workspaceTwo := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspaceOne))
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspaceTwo))
+
+	extensionService := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+	install := func(workspaceID, target string) {
+		installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
+			WorkspaceID:  workspaceID,
+			LicenseToken: "lic_" + workspaceID,
+			Manifest: platformdomain.ExtensionManifest{
+				SchemaVersion: 1,
+				Slug:          "sales-pipeline",
+				Name:          "Sales Pipeline",
+				Version:       "1.0.0",
+				Publisher:     "DemandOps",
+				Kind:          platformdomain.ExtensionKindOperational,
+				Scope:         platformdomain.ExtensionScopeWorkspace,
+				Risk:          platformdomain.ExtensionRiskStandard,
+				Endpoints: []platformdomain.ExtensionEndpoint{
+					{
+						Name:             "dashboard",
+						Class:            platformdomain.ExtensionEndpointClassAdminPage,
+						MountPath:        "/extensions/sales-pipeline",
+						Methods:          []string{"GET"},
+						Auth:             platformdomain.ExtensionEndpointAuthSession,
+						WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingFromSession,
+						ServiceTarget:    "sales.dashboard." + target,
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		_, err = extensionService.ActivateExtension(ctx, installed.ID)
+		require.NoError(t, err)
+	}
+
+	install(workspaceOne.ID, "one")
+	install(workspaceTwo.ID, "two")
+
+	registry := &extensionruntime.Registry{}
+	registry.Register("sales.dashboard.one", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"target": "one", "workspaceID": c.GetString("workspace_id")})
+	})
+	registry.Register("sales.dashboard.two", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"target": "two", "workspaceID": c.GetString("workspace_id")})
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/extensions/sales-pipeline?workspace="+workspaceTwo.ID, nil)
+	c.Set("auth_context", &platformdomain.AuthContext{
+		Principal:     &platformdomain.User{ID: "user_admin", Email: "admin@example.com"},
+		PrincipalType: platformdomain.PrincipalTypeUser,
+		AuthMethod:    platformdomain.AuthMethodSession,
+		InstanceRole:  instanceRolePtr(platformdomain.InstanceRoleAdmin),
+	})
+
+	handled := serveResolvedAdminExtensionServiceRoute(c, extensionService, registry, resolvedAdminRouteWorkspaceID(c), nil)
+
+	require.True(t, handled)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"target":"two"`)
+	assert.Contains(t, w.Body.String(), `"workspaceID":"`+workspaceTwo.ID+`"`)
+}
+
 func TestServeResolvedAdminExtensionServiceRoute_BlocksInstanceScopedEndpointFromWorkspaceContext(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -846,8 +919,8 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingApplicationsPage(
 	})
 
 	extension := &platformdomain.InstalledExtension{
-		ID:         "ext_error_tracking",
-		Slug:       "error-tracking",
+		ID:          "ext_error_tracking",
+		Slug:        "error-tracking",
 		WorkspaceID: workspaceID,
 		Manifest: platformdomain.ExtensionManifest{
 			Publisher: "DemandOps",
@@ -917,8 +990,8 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingIssuesPage(t *tes
 	})
 
 	extension := &platformdomain.InstalledExtension{
-		ID:         "ext_error_tracking",
-		Slug:       "error-tracking",
+		ID:          "ext_error_tracking",
+		Slug:        "error-tracking",
 		WorkspaceID: workspaceID,
 		Manifest: platformdomain.ExtensionManifest{
 			Publisher: "DemandOps",

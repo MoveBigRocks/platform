@@ -1,0 +1,27 @@
+{{define "extension_bundle.html"}}
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>{{.ExtensionDocumentTitle}} - Move Big Rocks Admin Panel</title>
+        {{template "head" .}}
+        {{if .ExtensionHeadContent}}{{.ExtensionHeadContent}}{{end}}
+        <style>
+            .extension-bundle-root {
+                min-height: calc(100vh - var(--topbar-height) - 3rem);
+            }
+        </style>
+    </head>
+
+    <body class="bg-gray-50/50 text-zinc-900 antialiased h-screen flex overflow-hidden">
+        {{template "sidebar" .}}
+
+        <main id="layout-content">
+            {{template "topbar" .}}
+
+            <div id="layout-main">
+                <div class="extension-bundle-root">{{.ExtensionBodyContent}}</div>
+            </div>
+        </main>
+    </body>
+</html>
+{{end}}

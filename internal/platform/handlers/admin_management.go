@@ -107,6 +107,17 @@ func (h *AdminManagementHandler) extensionNavigation(ctx context.Context, worksp
 		return nil
 	}
 
+	workspaceNames := map[string]string{}
+	if workspaceID == "" {
+		ids := make([]string, 0, len(items))
+		for _, item := range items {
+			if strings.TrimSpace(item.WorkspaceID) != "" {
+				ids = append(ids, item.WorkspaceID)
+			}
+		}
+		workspaceNames = h.getWorkspaceNamesMap(ctx, ids)
+	}
+
 	sectionOrder := make([]string, 0)
 	sections := make(map[string][]AdminExtensionNavItem)
 	for _, item := range items {
@@ -117,8 +128,14 @@ func (h *AdminManagementHandler) extensionNavigation(ctx context.Context, worksp
 		if _, exists := sections[section]; !exists {
 			sectionOrder = append(sectionOrder, section)
 		}
+		title := item.Title
+		if workspaceID == "" {
+			if label := displayWorkspaceLabel(item.WorkspaceID, workspaceNames); label != "" {
+				title = title + " · " + label
+			}
+		}
 		sections[section] = append(sections[section], AdminExtensionNavItem{
-			Title:      item.Title,
+			Title:      title,
 			Icon:       item.Icon,
 			Href:       item.Href,
 			ActivePage: item.ActivePage,
@@ -157,14 +174,46 @@ func (h *AdminManagementHandler) extensionWidgets(ctx context.Context, workspace
 		return nil
 	}
 
+	workspaceNames := map[string]string{}
+	if workspaceID == "" {
+		ids := make([]string, 0, len(widgets))
+		for _, widget := range widgets {
+			if strings.TrimSpace(widget.WorkspaceID) != "" {
+				ids = append(ids, widget.WorkspaceID)
+			}
+		}
+		workspaceNames = h.getWorkspaceNamesMap(ctx, ids)
+	}
+
 	result := make([]AdminExtensionWidget, 0, len(widgets))
 	for _, widget := range widgets {
+		title := widget.Title
+		description := widget.Description
+		if workspaceID == "" {
+			if label := displayWorkspaceLabel(widget.WorkspaceID, workspaceNames); label != "" {
+				title = title + " · " + label
+				if strings.TrimSpace(description) == "" {
+					description = "Installed in " + label
+				}
+			}
+		}
 		result = append(result, AdminExtensionWidget{
-			Title:       widget.Title,
-			Description: widget.Description,
+			Title:       title,
+			Description: description,
 			Icon:        widget.Icon,
 			Href:        widget.Href,
 		})
 	}
 	return result
+}
+
+func displayWorkspaceLabel(workspaceID string, names map[string]string) string {
+	workspaceID = strings.TrimSpace(workspaceID)
+	if workspaceID == "" {
+		return ""
+	}
+	if label := strings.TrimSpace(names[workspaceID]); label != "" {
+		return label
+	}
+	return workspaceID
 }

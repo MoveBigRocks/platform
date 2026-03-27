@@ -3,6 +3,7 @@ package platformservices_test
 import (
 	"context"
 	"encoding/base64"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -165,4 +166,40 @@ func TestExtensionService_ListInstanceAdminNavigation(t *testing.T) {
 	assert.Equal(t, "/extensions/enterprise-access", items[0].Href)
 	assert.Equal(t, "Identity", items[0].Section)
 	assert.Equal(t, "Enterprise Access", items[0].Title)
+}
+
+func TestExtensionService_ListInstanceAdminNavigationForWorkspaceExtensionUsesWorkspaceHref(t *testing.T) {
+	store, cleanup := testutil.SetupTestPostgresStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	service := platformservices.NewExtensionService(
+		store.Extensions(),
+		store.Workspaces(),
+		store.Queues(),
+		store.Forms(),
+		store.Rules(),
+		store,
+	)
+
+	manifest, assets := loadTestExtensionBundle(t, "ats")
+	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
+		WorkspaceID:   workspace.ID,
+		InstalledByID: "user_123",
+		LicenseToken:  "lic_ats",
+		Manifest:      manifest,
+		Assets:        assets,
+	})
+	require.NoError(t, err)
+	_, err = service.ActivateExtension(ctx, installed.ID)
+	require.NoError(t, err)
+
+	items, err := service.ListInstanceAdminNavigation(ctx)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, workspace.ID, items[0].WorkspaceID)
+	assert.Equal(t, "/extensions/ats?workspace="+url.QueryEscape(workspace.ID), items[0].Href)
 }

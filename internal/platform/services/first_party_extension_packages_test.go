@@ -143,6 +143,83 @@ func TestFirstPartyATSExtensionSeedsAndProcessesApplications(t *testing.T) {
 	assert.Equal(t, "job-application", formSlug)
 }
 
+func TestFirstPartySalesPipelineExtensionInstallsAndActivates(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	manifest, assets, migrations := loadTestExtensionPackage(t, "sales-pipeline")
+	service := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+
+	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
+		WorkspaceID:   workspace.ID,
+		InstalledByID: "user_123",
+		LicenseToken:  "lic_sales",
+		Manifest:      manifest,
+		Assets:        assets,
+		Migrations:    migrations,
+	})
+	require.NoError(t, err)
+
+	activated, err := service.ActivateExtension(ctx, installed.ID)
+	require.NoError(t, err)
+	assert.Equal(t, platformdomain.ExtensionStatusActive, activated.Status)
+	assert.Equal(t, platformdomain.ExtensionValidationValid, activated.ValidationStatus)
+
+	form, err := store.Forms().GetFormBySlug(ctx, workspace.ID, "sales-deal-intake")
+	require.NoError(t, err)
+	assert.Equal(t, "sales-deal-intake", form.Slug)
+	assert.True(t, form.AutoCreateCase)
+
+	queue, err := store.Queues().GetQueueBySlug(ctx, workspace.ID, "sales-follow-up")
+	require.NoError(t, err)
+	assert.Equal(t, "Sales Follow-up", queue.Name)
+
+	nav, err := service.ListWorkspaceAdminNavigation(ctx, workspace.ID)
+	require.NoError(t, err)
+	require.Len(t, nav, 1)
+	assert.Equal(t, "/extensions/sales-pipeline", nav[0].Href)
+}
+
+func TestFirstPartyCommunityFeatureRequestsExtensionInstallsAndActivates(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	manifest, assets, migrations := loadTestExtensionPackage(t, "community-feature-requests")
+	service := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+
+	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
+		WorkspaceID:   workspace.ID,
+		InstalledByID: "user_123",
+		LicenseToken:  "lic_community",
+		Manifest:      manifest,
+		Assets:        assets,
+		Migrations:    migrations,
+	})
+	require.NoError(t, err)
+
+	activated, err := service.ActivateExtension(ctx, installed.ID)
+	require.NoError(t, err)
+	assert.Equal(t, platformdomain.ExtensionStatusActive, activated.Status)
+	assert.Equal(t, platformdomain.ExtensionValidationValid, activated.ValidationStatus)
+
+	queue, err := store.Queues().GetQueueBySlug(ctx, workspace.ID, "community-triage")
+	require.NoError(t, err)
+	assert.Equal(t, "Community Triage", queue.Name)
+
+	nav, err := service.ListWorkspaceAdminNavigation(ctx, workspace.ID)
+	require.NoError(t, err)
+	require.Len(t, nav, 1)
+	assert.Equal(t, "/extensions/community-feature-requests", nav[0].Href)
+}
+
 func TestExtensionServiceRejectsFormTriggeredCaseOnlyRule(t *testing.T) {
 	store, cleanup := testutil.SetupTestStore(t)
 	defer cleanup()
@@ -360,7 +437,7 @@ func canonicalExtensionSourceDir(t *testing.T, slug string) string {
 
 	var dir string
 	switch slug {
-	case "ats", "error-tracking", "web-analytics":
+	case "ats", "community-feature-requests", "error-tracking", "sales-pipeline", "web-analytics":
 		dir = filepath.Join(workspaceRoot, "extensions", slug)
 	case "enterprise-access":
 		dir = filepath.Join(workspaceRoot, "packs", slug)

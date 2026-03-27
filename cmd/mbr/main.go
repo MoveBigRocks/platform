@@ -922,6 +922,63 @@ type extensionDashboardWidgetOutput struct {
 	Endpoint    string  `json:"endpoint"`
 }
 
+type resolvedExtensionAdminNavigationItemOutput struct {
+	ExtensionID   string  `json:"extensionID"`
+	ExtensionSlug string  `json:"extensionSlug"`
+	WorkspaceID   *string `json:"workspaceID,omitempty"`
+	Section       *string `json:"section"`
+	Title         string  `json:"title"`
+	Icon          *string `json:"icon"`
+	Href          string  `json:"href"`
+	ActivePage    *string `json:"activePage"`
+}
+
+type resolvedExtensionDashboardWidgetOutput struct {
+	ExtensionID   string  `json:"extensionID"`
+	ExtensionSlug string  `json:"extensionSlug"`
+	WorkspaceID   *string `json:"workspaceID,omitempty"`
+	Title         string  `json:"title"`
+	Description   *string `json:"description"`
+	Icon          *string `json:"icon"`
+	Href          string  `json:"href"`
+}
+
+type extensionSeededResourcesOutput struct {
+	Queues          []extensionSeededQueueStateOutput          `json:"queues"`
+	Forms           []extensionSeededFormStateOutput           `json:"forms"`
+	AutomationRules []extensionSeededAutomationRuleStateOutput `json:"automationRules"`
+}
+
+type extensionSeededQueueStateOutput struct {
+	Slug        string         `json:"slug"`
+	ResourceID  *string        `json:"resourceID"`
+	Exists      bool           `json:"exists"`
+	MatchesSeed bool           `json:"matchesSeed"`
+	Problems    []string       `json:"problems"`
+	Expected    map[string]any `json:"expected"`
+	Actual      map[string]any `json:"actual,omitempty"`
+}
+
+type extensionSeededFormStateOutput struct {
+	Slug        string         `json:"slug"`
+	ResourceID  *string        `json:"resourceID"`
+	Exists      bool           `json:"exists"`
+	MatchesSeed bool           `json:"matchesSeed"`
+	Problems    []string       `json:"problems"`
+	Expected    map[string]any `json:"expected"`
+	Actual      map[string]any `json:"actual,omitempty"`
+}
+
+type extensionSeededAutomationRuleStateOutput struct {
+	Key         string         `json:"key"`
+	ResourceID  *string        `json:"resourceID"`
+	Exists      bool           `json:"exists"`
+	MatchesSeed bool           `json:"matchesSeed"`
+	Problems    []string       `json:"problems"`
+	Expected    map[string]any `json:"expected"`
+	Actual      map[string]any `json:"actual,omitempty"`
+}
+
 type extensionEventConsumerOutput struct {
 	Name          string   `json:"name"`
 	Description   *string  `json:"description"`
@@ -1043,34 +1100,37 @@ type extensionRuntimeEndpointStateOutput struct {
 
 type extensionDetailOutput struct {
 	extensionOutput
-	Description        *string                              `json:"description"`
-	RuntimeClass       string                               `json:"runtimeClass"`
-	StorageClass       string                               `json:"storageClass"`
-	Schema             *extensionSchemaOutput               `json:"schema"`
-	WorkspacePlan      *extensionWorkspacePlanOutput        `json:"workspacePlan"`
-	Permissions        []string                             `json:"permissions"`
-	ArtifactSurfaces   []extensionArtifactSurfaceOutput     `json:"artifactSurfaces"`
-	PublicRoutes       []extensionRouteOutput               `json:"publicRoutes"`
-	AdminRoutes        []extensionRouteOutput               `json:"adminRoutes"`
-	Endpoints          []extensionEndpointOutput            `json:"endpoints"`
-	AdminNavigation    []extensionAdminNavigationItemOutput `json:"adminNavigation"`
-	DashboardWidgets   []extensionDashboardWidgetOutput     `json:"dashboardWidgets"`
-	Events             extensionEventCatalogOutput          `json:"events"`
-	EventConsumers     []extensionEventConsumerOutput       `json:"eventConsumers"`
-	ScheduledJobs      []extensionScheduledJobOutput        `json:"scheduledJobs"`
-	Commands           []extensionCommandOutput             `json:"commands"`
-	AgentSkills        []extensionAgentSkillOutput          `json:"agentSkills"`
-	Customizable       []string                             `json:"customizableAssets"`
-	BundleSHA256       string                               `json:"bundleSHA256"`
-	BundleSize         int                                  `json:"bundleSize"`
-	InstalledByID      *string                              `json:"installedByID"`
-	InstalledAt        string                               `json:"installedAt"`
-	ActivatedAt        *string                              `json:"activatedAt"`
-	DeactivatedAt      *string                              `json:"deactivatedAt"`
-	ValidatedAt        *string                              `json:"validatedAt"`
-	LastHealthCheckAt  *string                              `json:"lastHealthCheckAt"`
-	RuntimeDiagnostics extensionRuntimeDiagnosticsOutput    `json:"runtimeDiagnostics"`
-	Assets             []extensionAssetOutput               `json:"assets"`
+	Description              *string                                      `json:"description"`
+	RuntimeClass             string                                       `json:"runtimeClass"`
+	StorageClass             string                                       `json:"storageClass"`
+	Schema                   *extensionSchemaOutput                       `json:"schema"`
+	WorkspacePlan            *extensionWorkspacePlanOutput                `json:"workspacePlan"`
+	Permissions              []string                                     `json:"permissions"`
+	ArtifactSurfaces         []extensionArtifactSurfaceOutput             `json:"artifactSurfaces"`
+	PublicRoutes             []extensionRouteOutput                       `json:"publicRoutes"`
+	AdminRoutes              []extensionRouteOutput                       `json:"adminRoutes"`
+	Endpoints                []extensionEndpointOutput                    `json:"endpoints"`
+	AdminNavigation          []extensionAdminNavigationItemOutput         `json:"adminNavigation"`
+	DashboardWidgets         []extensionDashboardWidgetOutput             `json:"dashboardWidgets"`
+	ResolvedAdminNavigation  []resolvedExtensionAdminNavigationItemOutput `json:"resolvedAdminNavigation"`
+	ResolvedDashboardWidgets []resolvedExtensionDashboardWidgetOutput     `json:"resolvedDashboardWidgets"`
+	SeededResources          extensionSeededResourcesOutput               `json:"seededResources"`
+	Events                   extensionEventCatalogOutput                  `json:"events"`
+	EventConsumers           []extensionEventConsumerOutput               `json:"eventConsumers"`
+	ScheduledJobs            []extensionScheduledJobOutput                `json:"scheduledJobs"`
+	Commands                 []extensionCommandOutput                     `json:"commands"`
+	AgentSkills              []extensionAgentSkillOutput                  `json:"agentSkills"`
+	Customizable             []string                                     `json:"customizableAssets"`
+	BundleSHA256             string                                       `json:"bundleSHA256"`
+	BundleSize               int                                          `json:"bundleSize"`
+	InstalledByID            *string                                      `json:"installedByID"`
+	InstalledAt              string                                       `json:"installedAt"`
+	ActivatedAt              *string                                      `json:"activatedAt"`
+	DeactivatedAt            *string                                      `json:"deactivatedAt"`
+	ValidatedAt              *string                                      `json:"validatedAt"`
+	LastHealthCheckAt        *string                                      `json:"lastHealthCheckAt"`
+	RuntimeDiagnostics       extensionRuntimeDiagnosticsOutput            `json:"runtimeDiagnostics"`
+	Assets                   []extensionAssetOutput                       `json:"assets"`
 }
 
 type bundleFile struct {
@@ -2361,6 +2421,54 @@ func fetchExtensionDetail(ctx context.Context, client *cliapi.Client, id string)
 		      icon
 		      endpoint
 		    }
+		    resolvedAdminNavigation {
+		      extensionID
+		      extensionSlug
+		      workspaceID
+		      section
+		      title
+		      icon
+		      href
+		      activePage
+		    }
+		    resolvedDashboardWidgets {
+		      extensionID
+		      extensionSlug
+		      workspaceID
+		      title
+		      description
+		      icon
+		      href
+		    }
+		    seededResources {
+		      queues {
+		        slug
+		        resourceID
+		        exists
+		        matchesSeed
+		        problems
+		        expected
+		        actual
+		      }
+		      forms {
+		        slug
+		        resourceID
+		        exists
+		        matchesSeed
+		        problems
+		        expected
+		        actual
+		      }
+		      automationRules {
+		        key
+		        resourceID
+		        exists
+		        matchesSeed
+		        problems
+		        expected
+		        actual
+		      }
+		    }
 		    events {
 		      publishes {
 		        type
@@ -2718,6 +2826,60 @@ func printExtensionDetail(stdout io.Writer, extension extensionDetailOutput) {
 			)
 		}
 	}
+	if len(extension.ResolvedAdminNavigation) > 0 {
+		fmt.Fprintln(stdout, "resolvedAdminNavigation:")
+		for _, item := range extension.ResolvedAdminNavigation {
+			fmt.Fprintf(stdout, "  %s\t%s\t%s\t%s\n",
+				item.ExtensionSlug,
+				coalesce(item.Section, ""),
+				item.Title,
+				item.Href,
+			)
+		}
+	}
+	if len(extension.ResolvedDashboardWidgets) > 0 {
+		fmt.Fprintln(stdout, "resolvedDashboardWidgets:")
+		for _, widget := range extension.ResolvedDashboardWidgets {
+			fmt.Fprintf(stdout, "  %s\t%s\t%s\n",
+				widget.ExtensionSlug,
+				widget.Title,
+				widget.Href,
+			)
+		}
+	}
+	if len(extension.SeededResources.Queues) > 0 || len(extension.SeededResources.Forms) > 0 || len(extension.SeededResources.AutomationRules) > 0 {
+		fmt.Fprintln(stdout, "seededResources:")
+		for _, queue := range extension.SeededResources.Queues {
+			fmt.Fprintf(stdout, "  queue\t%s\t%s\t%s\n",
+				queue.Slug,
+				extensionSeedStateLabel(queue.Exists, queue.MatchesSeed),
+				coalesce(queue.ResourceID, ""),
+			)
+			for _, problem := range queue.Problems {
+				fmt.Fprintf(stdout, "    problem\t%s\n", problem)
+			}
+		}
+		for _, form := range extension.SeededResources.Forms {
+			fmt.Fprintf(stdout, "  form\t%s\t%s\t%s\n",
+				form.Slug,
+				extensionSeedStateLabel(form.Exists, form.MatchesSeed),
+				coalesce(form.ResourceID, ""),
+			)
+			for _, problem := range form.Problems {
+				fmt.Fprintf(stdout, "    problem\t%s\n", problem)
+			}
+		}
+		for _, rule := range extension.SeededResources.AutomationRules {
+			fmt.Fprintf(stdout, "  automationRule\t%s\t%s\t%s\n",
+				rule.Key,
+				extensionSeedStateLabel(rule.Exists, rule.MatchesSeed),
+				coalesce(rule.ResourceID, ""),
+			)
+			for _, problem := range rule.Problems {
+				fmt.Fprintf(stdout, "    problem\t%s\n", problem)
+			}
+		}
+	}
 	if len(extension.Events.Publishes) > 0 || len(extension.Events.Subscribes) > 0 {
 		fmt.Fprintln(stdout, "events:")
 		for _, event := range extension.Events.Publishes {
@@ -2860,6 +3022,17 @@ func printExtensionDetail(stdout io.Writer, extension extensionDetailOutput) {
 		for _, asset := range extension.Assets {
 			fmt.Fprintf(stdout, "  %s\t%s\t%s\t%d\n", asset.Path, asset.Kind, asset.ContentType, asset.Size)
 		}
+	}
+}
+
+func extensionSeedStateLabel(exists, matchesSeed bool) string {
+	switch {
+	case !exists:
+		return "missing"
+	case matchesSeed:
+		return "ok"
+	default:
+		return "drift"
 	}
 }
 

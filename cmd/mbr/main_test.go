@@ -135,6 +135,8 @@ func TestFirstPartyReferenceBundlesValidateAgainstCurrentContract(t *testing.T) 
 		expectMigrations bool
 	}{
 		{name: "ats", expectMigrations: false},
+		{name: "community-feature-requests", expectMigrations: true},
+		{name: "sales-pipeline", expectMigrations: true},
 		{name: "web-analytics", expectMigrations: true},
 		{name: "error-tracking", expectMigrations: true},
 	}
@@ -257,7 +259,9 @@ func TestRunSpecExportJSON(t *testing.T) {
 	var foundSpecExport bool
 	var foundInstall bool
 	var foundDeploy bool
+	var foundLint bool
 	var foundUninstall bool
+	var foundVerify bool
 	var foundContextView bool
 	var foundCatalogList bool
 	var foundFormSpecsList bool
@@ -350,6 +354,13 @@ func TestRunSpecExportJSON(t *testing.T) {
 			}
 		case "extensions deploy":
 			foundDeploy = true
+		case "extensions lint":
+			foundLint = true
+			if command.AuthMode != clispec.AuthModeNone {
+				t.Fatalf("expected extensions lint auth mode %q, got %q", clispec.AuthModeNone, command.AuthMode)
+			}
+		case "extensions verify":
+			foundVerify = true
 		case "extensions uninstall":
 			foundUninstall = true
 			flags := map[string]bool{}
@@ -444,8 +455,14 @@ func TestRunSpecExportJSON(t *testing.T) {
 	if !foundDeploy {
 		t.Fatalf("expected extensions deploy command in contract")
 	}
+	if !foundLint {
+		t.Fatalf("expected extensions lint command in contract")
+	}
 	if !foundUninstall {
 		t.Fatalf("expected extensions uninstall command in contract")
+	}
+	if !foundVerify {
+		t.Fatalf("expected extensions verify command in contract")
 	}
 }
 

@@ -19,7 +19,6 @@ import (
 	apierrors "github.com/movebigrocks/platform/internal/infrastructure/errors"
 	"github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	"github.com/movebigrocks/platform/internal/shared/contracts"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	"github.com/movebigrocks/platform/pkg/logger"
@@ -1029,14 +1028,14 @@ func checksumBytes(value []byte) string {
 
 func (s *ExtensionService) provisionQueues(ctx context.Context, extension *platformdomain.InstalledExtension) error {
 	for _, seed := range extension.Manifest.Queues {
-		if _, err := s.queueStore.GetQueueBySlug(ctx, extension.WorkspaceID, seed.Slug); err == nil {
+		queue, err := buildSeededQueue(extension, seed)
+		if err != nil {
+			return apierrors.Wrap(err, apierrors.ErrorTypeValidation, "invalid seeded queue")
+		}
+		if _, err := s.queueStore.GetQueueBySlug(ctx, extension.WorkspaceID, queue.Slug); err == nil {
 			continue
 		} else if !errors.Is(err, shared.ErrNotFound) {
 			return apierrors.DatabaseError("lookup seeded queue", err)
-		}
-		queue := servicedomain.NewQueue(extension.WorkspaceID, seed.Name, seed.Slug, seed.Description)
-		if err := queue.Validate(); err != nil {
-			return apierrors.Wrap(err, apierrors.ErrorTypeValidation, "invalid seeded queue")
 		}
 		if err := s.queueStore.CreateQueue(ctx, queue); err != nil {
 			return apierrors.DatabaseError("create seeded queue", err)
@@ -1064,25 +1063,7 @@ func (s *ExtensionService) provisionForms(ctx context.Context, extension *platfo
 			continue
 		}
 
-		form := servicedomain.NewFormSchema(extension.WorkspaceID, seed.Name, seed.Slug, seededBy(extension))
-		form.Description = seed.Description
-		if seed.Status != "" {
-			form.Status = servicedomain.FormStatus(seed.Status)
-		}
-		form.IsPublic = seed.IsPublic
-		form.RequiresAuth = seed.RequiresAuth
-		form.AllowMultiple = seed.AllowMultiple
-		form.CollectEmail = seed.CollectEmail
-		form.AutoCreateCase = seed.AutoCreateCase
-		form.AutoCasePriority = seed.AutoCasePriority
-		form.AutoCaseType = seed.AutoCaseType
-		form.AutoTags = append([]string{}, seed.AutoTags...)
-		form.SubmissionMessage = seed.SubmissionMessage
-		form.RedirectURL = seed.RedirectURL
-		form.Theme = seed.Theme
-		form.SchemaData = seed.Schema.Clone()
-		form.UISchema = seed.UISchema.Clone()
-		form.ValidationRules = seed.ValidationRules.Clone()
+		form := buildSeededForm(extension, seed)
 
 		if err := s.formStore.CreateFormSchema(ctx, form); err != nil {
 			return apierrors.DatabaseError("create seeded form", err)
@@ -1115,25 +1096,10 @@ func (s *ExtensionService) provisionAutomationRules(ctx context.Context, extensi
 			continue
 		}
 
-		conditions, err := decodeTypedConditions(seed.Conditions)
+		rule, err := buildSeededAutomationRule(extension, seed)
 		if err != nil {
-			return apierrors.Wrap(err, apierrors.ErrorTypeValidation, "invalid seeded automation conditions")
+			return apierrors.Wrap(err, apierrors.ErrorTypeValidation, "invalid seeded automation rule")
 		}
-		actions, err := decodeTypedActions(seed.Actions)
-		if err != nil {
-			return apierrors.Wrap(err, apierrors.ErrorTypeValidation, "invalid seeded automation actions")
-		}
-
-		rule := automationdomain.NewRule(extension.WorkspaceID, seed.Title, seededBy(extension))
-		rule.Description = seed.Description
-		rule.IsActive = seed.IsActive
-		rule.IsSystem = true
-		rule.SystemRuleKey = seed.Key
-		rule.Priority = seed.Priority
-		rule.MaxExecutionsPerHour = seed.MaxExecutionsPerHour
-		rule.MaxExecutionsPerDay = seed.MaxExecutionsPerDay
-		rule.Conditions = conditions
-		rule.Actions = actions
 
 		if err := s.ruleStore.CreateRule(ctx, rule); err != nil {
 			return apierrors.DatabaseError("create seeded automation rule", err)

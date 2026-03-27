@@ -124,6 +124,14 @@ func runExtensions(ctx context.Context, args []string, stdout, stderr io.Writer)
 			fmt.Fprintf(stdout, "%s\t%s\t%s\t%s\t%s\n", extension.ID, extension.Slug, extension.Version, extension.Status, extension.HealthStatus)
 		}
 		return 0
+	case "lint":
+		return runExtensionLint(ctx, args[1:], stdout, stderr)
+	case "verify":
+		return runExtensionVerify(ctx, args[1:], stdout, stderr)
+	case "nav":
+		return runExtensionNavigation(ctx, args[1:], stdout, stderr)
+	case "widgets":
+		return runExtensionWidgets(ctx, args[1:], stdout, stderr)
 	case "show":
 		return runExtensionInspect(ctx, args[1:], stdout, stderr)
 	case "monitor":
@@ -894,6 +902,242 @@ func runExtensionInspect(ctx context.Context, args []string, stdout, stderr io.W
 	return 0
 }
 
+func runExtensionLint(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("mbr extensions lint", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	contractPath := fs.String("contract", "", "Path to extension.contract.json")
+	writeContract := fs.Bool("write-contract", false, "Write the derived extension contract back to disk")
+	jsonOutput := fs.Bool("json", false, "Emit JSON output")
+	flagArgs, positionals := splitSinglePositionalArgs(args, map[string]bool{
+		"--contract":       true,
+		"--write-contract": false,
+		"--json":           false,
+	})
+	if err := fs.Parse(flagArgs); err != nil {
+		return 2
+	}
+	if len(positionals) != 1 {
+		fmt.Fprintln(stderr, "source directory is required")
+		return 2
+	}
+
+	prepared, err := prepareExtensionSource(ctx, positionals[0], *contractPath)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+
+	if *writeContract {
+		if !prepared.lint.ManifestValid {
+			if *jsonOutput {
+				if writeErr := writeJSON(stdout, prepared.lint, stderr); writeErr != 0 {
+					return writeErr
+				}
+			} else {
+				printExtensionLint(stdout, prepared.lint)
+			}
+			return 1
+		}
+		if err := writeExtensionContract(prepared.contractPath, prepared.lint.Derived); err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		prepared, err = prepareExtensionSource(ctx, positionals[0], *contractPath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+	}
+
+	if *jsonOutput {
+		if writeErr := writeJSON(stdout, prepared.lint, stderr); writeErr != 0 {
+			return writeErr
+		}
+	} else {
+		printExtensionLint(stdout, prepared.lint)
+	}
+
+	if prepared.lint.ManifestValid && prepared.lint.ContractValid {
+		return 0
+	}
+	return 1
+}
+
+func printExtensionLint(stdout io.Writer, lint extensionLintOutput) {
+	fmt.Fprintf(stdout, "source:\t%s\n", lint.Source)
+	fmt.Fprintf(stdout, "contractPath:\t%s\n", lint.ContractPath)
+	fmt.Fprintf(stdout, "slug:\t%s\n", lint.ExtensionSlug)
+	fmt.Fprintf(stdout, "manifest:\t%t\t%s\n", lint.ManifestValid, lint.ManifestMessage)
+	fmt.Fprintf(stdout, "contract:\t%t\n", lint.ContractValid)
+	if len(lint.Problems) == 0 {
+		fmt.Fprintln(stdout, "problems:\tnone")
+		return
+	}
+	fmt.Fprintln(stdout, "problems:")
+	for _, problem := range lint.Problems {
+		fmt.Fprintf(stdout, "  - %s\n", problem)
+	}
+}
+
+func runExtensionVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("mbr extensions verify", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	instanceURL := registerInstanceURLFlag(fs)
+	token := fs.String("token", "", "Bearer token")
+	workspaceID := fs.String("workspace", "", "Workspace ID")
+	licenseToken := fs.String("license-token", "", "Optional extension install credential")
+	contractPath := fs.String("contract", "", "Path to extension.contract.json")
+	jsonOutput := fs.Bool("json", false, "Emit JSON output")
+	flagArgs, positionals := splitSinglePositionalArgs(args, map[string]bool{
+		"--url":           true,
+		"--api-url":       true,
+		"--token":         true,
+		"--workspace":     true,
+		"--license-token": true,
+		"--contract":      true,
+		"--json":          false,
+	})
+	if err := fs.Parse(flagArgs); err != nil {
+		return 2
+	}
+	if len(positionals) != 1 {
+		fmt.Fprintln(stderr, "source directory is required")
+		return 2
+	}
+
+	prepared, err := prepareExtensionSource(ctx, positionals[0], *contractPath)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+
+	cfg, err := loadCLIConfig(*instanceURL, *token)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	client := newCLIClient(cfg)
+
+	result, err := verifyPreparedExtensionSource(ctx, prepared, client, cfg, *workspaceID, *licenseToken)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if *jsonOutput {
+		return writeJSON(stdout, result, stderr)
+	}
+
+	fmt.Fprintf(stdout, "source:\t%s\n", result.Source)
+	fmt.Fprintf(stdout, "contractPath:\t%s\n", result.ContractPath)
+	if result.WorkspaceID != nil {
+		fmt.Fprintf(stdout, "workspaceID:\t%s\n", *result.WorkspaceID)
+	}
+	fmt.Fprintf(stdout, "operation:\t%s\n", result.Operation)
+	fmt.Fprintf(stdout, "%s\t%s\t%s\t%s\t%s\n",
+		result.Detail.ID,
+		result.Detail.Slug,
+		result.Detail.Version,
+		result.Detail.ValidationStatus,
+		result.Detail.HealthStatus,
+	)
+	return 0
+}
+
+func runExtensionNavigation(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("mbr extensions nav", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	instanceURL := registerInstanceURLFlag(fs)
+	token := fs.String("token", "", "Bearer token")
+	workspaceID := fs.String("workspace", "", "Workspace ID")
+	instanceScope := fs.Bool("instance", false, "List instance-scoped navigation items")
+	jsonOutput := fs.Bool("json", false, "Emit JSON output")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+
+	workspaceValue, ok := resolveExtensionScopeTarget(*workspaceID, *instanceScope, stderr)
+	if !ok {
+		return 2
+	}
+
+	cfg, err := loadCLIConfig(*instanceURL, *token)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	client := newCLIClient(cfg)
+
+	items, err := fetchResolvedExtensionAdminNavigation(ctx, client, workspaceValue, *instanceScope)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if *jsonOutput {
+		return writeJSON(stdout, items, stderr)
+	}
+	if len(items) == 0 {
+		fmt.Fprintln(stdout, "no extension admin navigation items")
+		return 0
+	}
+	for _, item := range items {
+		fmt.Fprintf(stdout, "%s\t%s\t%s\t%s\t%s\n",
+			item.ExtensionSlug,
+			coalesce(item.Section, ""),
+			item.Title,
+			item.Href,
+			coalesce(item.ActivePage, ""),
+		)
+	}
+	return 0
+}
+
+func runExtensionWidgets(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("mbr extensions widgets", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	instanceURL := registerInstanceURLFlag(fs)
+	token := fs.String("token", "", "Bearer token")
+	workspaceID := fs.String("workspace", "", "Workspace ID")
+	instanceScope := fs.Bool("instance", false, "List instance-scoped dashboard widgets")
+	jsonOutput := fs.Bool("json", false, "Emit JSON output")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+
+	workspaceValue, ok := resolveExtensionScopeTarget(*workspaceID, *instanceScope, stderr)
+	if !ok {
+		return 2
+	}
+
+	cfg, err := loadCLIConfig(*instanceURL, *token)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	client := newCLIClient(cfg)
+
+	items, err := fetchResolvedExtensionDashboardWidgets(ctx, client, workspaceValue, *instanceScope)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if *jsonOutput {
+		return writeJSON(stdout, items, stderr)
+	}
+	if len(items) == 0 {
+		fmt.Fprintln(stdout, "no extension dashboard widgets")
+		return 0
+	}
+	for _, item := range items {
+		fmt.Fprintf(stdout, "%s\t%s\t%s\t%s\n",
+			item.ExtensionSlug,
+			item.Title,
+			item.Href,
+			coalesce(item.Description, ""),
+		)
+	}
+	return 0
+}
+
 func runExtensionMonitor(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("mbr extensions monitor", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -938,4 +1182,116 @@ func runExtensionMonitor(ctx context.Context, args []string, stdout, stderr io.W
 	}
 	printExtensionDetail(stdout, extension)
 	return 0
+}
+
+func resolveExtensionScopeTarget(workspaceID string, instanceScope bool, stderr io.Writer) (string, bool) {
+	stored, err := cliapi.LoadStoredConfig()
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return "", false
+	}
+	workspaceValue := resolveStoredWorkspaceID(workspaceID, stored)
+	if instanceScope && strings.TrimSpace(workspaceID) != "" {
+		fmt.Fprintln(stderr, "--workspace and --instance cannot be used together")
+		return "", false
+	}
+	if !instanceScope && workspaceValue == "" {
+		fmt.Fprintln(stderr, "--workspace is required unless --instance is set")
+		return "", false
+	}
+	return workspaceValue, true
+}
+
+func fetchResolvedExtensionAdminNavigation(ctx context.Context, client *cliapi.Client, workspaceID string, instanceScope bool) ([]resolvedExtensionAdminNavigationItemOutput, error) {
+	if instanceScope {
+		var payload struct {
+			Items []resolvedExtensionAdminNavigationItemOutput `json:"instanceExtensionAdminNavigation"`
+		}
+		err := client.Query(ctx, `
+			query CLIInstanceExtensionAdminNavigation {
+			  instanceExtensionAdminNavigation {
+			    extensionID
+			    extensionSlug
+			    workspaceID
+			    section
+			    title
+			    icon
+			    href
+			    activePage
+			  }
+			}
+		`, nil, &payload)
+		if err != nil {
+			return nil, err
+		}
+		return payload.Items, nil
+	}
+
+	var payload struct {
+		Items []resolvedExtensionAdminNavigationItemOutput `json:"workspaceExtensionAdminNavigation"`
+	}
+	err := client.Query(ctx, `
+		query CLIWorkspaceExtensionAdminNavigation($workspaceID: ID!) {
+		  workspaceExtensionAdminNavigation(workspaceID: $workspaceID) {
+		    extensionID
+		    extensionSlug
+		    workspaceID
+		    section
+		    title
+		    icon
+		    href
+		    activePage
+		  }
+		}
+	`, map[string]any{"workspaceID": workspaceID}, &payload)
+	if err != nil {
+		return nil, err
+	}
+	return payload.Items, nil
+}
+
+func fetchResolvedExtensionDashboardWidgets(ctx context.Context, client *cliapi.Client, workspaceID string, instanceScope bool) ([]resolvedExtensionDashboardWidgetOutput, error) {
+	if instanceScope {
+		var payload struct {
+			Items []resolvedExtensionDashboardWidgetOutput `json:"instanceExtensionDashboardWidgets"`
+		}
+		err := client.Query(ctx, `
+			query CLIInstanceExtensionDashboardWidgets {
+			  instanceExtensionDashboardWidgets {
+			    extensionID
+			    extensionSlug
+			    workspaceID
+			    title
+			    description
+			    icon
+			    href
+			  }
+			}
+		`, nil, &payload)
+		if err != nil {
+			return nil, err
+		}
+		return payload.Items, nil
+	}
+
+	var payload struct {
+		Items []resolvedExtensionDashboardWidgetOutput `json:"workspaceExtensionDashboardWidgets"`
+	}
+	err := client.Query(ctx, `
+		query CLIWorkspaceExtensionDashboardWidgets($workspaceID: ID!) {
+		  workspaceExtensionDashboardWidgets(workspaceID: $workspaceID) {
+		    extensionID
+		    extensionSlug
+		    workspaceID
+		    title
+		    description
+		    icon
+		    href
+		  }
+		}
+	`, map[string]any{"workspaceID": workspaceID}, &payload)
+	if err != nil {
+		return nil, err
+	}
+	return payload.Items, nil
 }

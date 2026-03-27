@@ -168,7 +168,7 @@ func createAdminRouter(
 	adminExtensionRoutes.Use(contextAuthMiddleware.RequireOperationalAccess())
 	adminExtensionRoutes.Use(adminFeatureMiddleware)
 	adminExtensionRoutes.Any("/*extensionPath", func(ctx *gin.Context) {
-		workspaceID := ctx.GetString("workspace_id")
+		workspaceID := resolvedAdminRouteWorkspaceID(ctx)
 		if serveResolvedAdminExtensionServiceRoute(ctx, c.Platform.Extension, adminServiceTargets, workspaceID, cfg) {
 			return
 		}
@@ -588,6 +588,9 @@ func serveResolvedExtensionRoute(
 		ctx.AbortWithStatus(http.StatusNotFound)
 		return
 	}
+	if admin {
+		applyResolvedExtensionWorkspaceContext(ctx, resolved.Extension)
+	}
 
 	if resolved.Asset.Checksum != "" {
 		etag := `"` + resolved.Asset.Checksum + `"`
@@ -606,6 +609,16 @@ func serveResolvedExtensionRoute(
 
 	if ctx.Request.Method == http.MethodHead {
 		ctx.Data(http.StatusOK, resolved.Asset.ContentType, nil)
+		return
+	}
+	if admin &&
+		resolved.Extension != nil &&
+		resolved.Extension.Manifest.RuntimeClass == platformdomain.ExtensionRuntimeClassBundle &&
+		(resolved.Asset.Kind == platformdomain.ExtensionAssetKindTemplate || resolved.Asset.ContentType == "text/html") {
+		if err := platformhandlers.RenderAdminBundlePage(ctx, resolved); err != nil {
+			ctx.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 	ctx.Data(http.StatusOK, resolved.Asset.ContentType, resolved.Asset.Content)

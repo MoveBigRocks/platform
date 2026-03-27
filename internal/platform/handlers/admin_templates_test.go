@@ -2,6 +2,7 @@ package platformhandlers
 
 import (
 	"bytes"
+	"html/template"
 	"testing"
 	"time"
 
@@ -139,7 +140,7 @@ func TestCaseDetailTemplateRenders(t *testing.T) {
 		},
 		WorkspaceName:    "Test Workspace",
 		AssignedUserName: "",
-		Users: []UserOptionItem{},
+		Users:            []UserOptionItem{},
 		StatusOptions: []servicedomain.CaseStatus{
 			servicedomain.CaseStatusNew,
 			servicedomain.CaseStatusOpen,
@@ -230,4 +231,42 @@ func TestDashboardTemplateRendersExtensionWidgets(t *testing.T) {
 	require.Contains(t, output, "Extensions", "extensions section title should render")
 	require.Contains(t, output, "ATS Workspace", "extension widget title should render")
 	require.Contains(t, output, "/extensions/ats", "extension widget href should render")
+}
+
+func TestExtensionBundleTemplateRendersSharedShell(t *testing.T) {
+	tmpl, err := ParseAdminTemplateWithPartials("admin-panel/templates/extension_bundle.html")
+	require.NoError(t, err, "failed to parse templates")
+
+	pageData := gin.H{
+		"ActivePage":             "ats",
+		"PageTitle":              "Applicant Tracking",
+		"PageSubtitle":           "Publish vacancies and manage applicants.",
+		"UserName":               "Admin User",
+		"UserEmail":              "admin@example.com",
+		"UserRole":               "admin",
+		"ExtensionDocumentTitle": "ATS Dashboard",
+		"ExtensionBodyContent":   template.HTML(`<section><h1>Applicant Tracking</h1><p>Hiring overview</p></section>`),
+		"ExtensionNav": []AdminExtensionNavSection{
+			{
+				Title: "Extensions",
+				Items: []AdminExtensionNavItem{
+					{
+						Title:      "ATS",
+						Icon:       "briefcase-business",
+						Href:       "/extensions/ats",
+						ActivePage: "ats",
+					},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	err = tmpl.ExecuteTemplate(&buf, "extension_bundle.html", pageData)
+	require.NoError(t, err, "template execution failed")
+
+	output := buf.String()
+	require.Contains(t, output, "Applicant Tracking", "extension content should render")
+	require.Contains(t, output, "/extensions/ats", "extension navigation should remain visible")
+	require.Contains(t, output, "Move Big Rocks Admin Panel", "shared shell title should render")
 }

@@ -754,6 +754,63 @@ type ExtensionDashboardWidget {
   endpoint: String!
 }
 
+type ResolvedExtensionAdminNavigationItem {
+  extensionID: ID!
+  extensionSlug: String!
+  workspaceID: ID
+  section: String
+  title: String!
+  icon: String
+  href: String!
+  activePage: String
+}
+
+type ResolvedExtensionDashboardWidget {
+  extensionID: ID!
+  extensionSlug: String!
+  workspaceID: ID
+  title: String!
+  description: String
+  icon: String
+  href: String!
+}
+
+type ExtensionSeededResources {
+  queues: [ExtensionSeededQueueState!]!
+  forms: [ExtensionSeededFormState!]!
+  automationRules: [ExtensionSeededAutomationRuleState!]!
+}
+
+type ExtensionSeededQueueState {
+  slug: String!
+  resourceID: ID
+  exists: Boolean!
+  matchesSeed: Boolean!
+  problems: [String!]!
+  expected: JSON!
+  actual: JSON
+}
+
+type ExtensionSeededFormState {
+  slug: String!
+  resourceID: ID
+  exists: Boolean!
+  matchesSeed: Boolean!
+  problems: [String!]!
+  expected: JSON!
+  actual: JSON
+}
+
+type ExtensionSeededAutomationRuleState {
+  key: String!
+  resourceID: ID
+  exists: Boolean!
+  matchesSeed: Boolean!
+  problems: [String!]!
+  expected: JSON!
+  actual: JSON
+}
+
 type ExtensionEventConsumer {
   name: String!
   description: String
@@ -861,6 +918,9 @@ type InstalledExtension {
   endpoints: [ExtensionEndpoint!]!
   adminNavigation: [ExtensionAdminNavigationItem!]!
   dashboardWidgets: [ExtensionDashboardWidget!]!
+  resolvedAdminNavigation: [ResolvedExtensionAdminNavigationItem!]!
+  resolvedDashboardWidgets: [ResolvedExtensionDashboardWidget!]!
+  seededResources: ExtensionSeededResources!
   events: ExtensionEventCatalog!
   eventConsumers: [ExtensionEventConsumer!]!
   scheduledJobs: [ExtensionScheduledJob!]!
@@ -1085,6 +1145,10 @@ type Query {
   extension(id: ID!): InstalledExtension
   extensions(workspaceID: ID!): [InstalledExtension!]!
   instanceExtensions: [InstalledExtension!]!
+  workspaceExtensionAdminNavigation(workspaceID: ID!): [ResolvedExtensionAdminNavigationItem!]!
+  workspaceExtensionDashboardWidgets(workspaceID: ID!): [ResolvedExtensionDashboardWidget!]!
+  instanceExtensionAdminNavigation: [ResolvedExtensionAdminNavigationItem!]!
+  instanceExtensionDashboardWidgets: [ResolvedExtensionDashboardWidget!]!
   extensionEventCatalog(workspaceID: ID!): [ExtensionRuntimeEvent!]!
   extensionArtifactFiles(id: ID!, surface: String!): [ExtensionArtifactFile!]!
   extensionArtifactContent(id: ID!, surface: String!, path: String!, ref: String): String!
