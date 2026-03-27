@@ -24,39 +24,39 @@ import (
 
 // Config holds the dependencies for platform domain resolvers
 type Config struct {
-	UserService        *platformservices.UserManagementService
-	WorkspaceService   *platformservices.WorkspaceManagementService
-	AgentService       *platformservices.AgentService
-	ContactService     *platformservices.ContactService
-	ExtensionService   *platformservices.ExtensionService
-	CaseService        *serviceapp.CaseService
-	QueueService       *serviceapp.QueueService
-	ServiceGraph       *serviceresolvers.Resolver
+	UserService      *platformservices.UserManagementService
+	WorkspaceService *platformservices.WorkspaceManagementService
+	AgentService     *platformservices.AgentService
+	ContactService   *platformservices.ContactService
+	ExtensionService *platformservices.ExtensionService
+	CaseService      *serviceapp.CaseService
+	QueueService     *serviceapp.QueueService
+	ServiceGraph     *serviceresolvers.Resolver
 }
 
 // Resolver handles all platform domain GraphQL operations
 type Resolver struct {
-	userService        *platformservices.UserManagementService
-	workspaceService   *platformservices.WorkspaceManagementService
-	agentService       *platformservices.AgentService
-	contactService     *platformservices.ContactService
-	extensionService   *platformservices.ExtensionService
-	caseService        *serviceapp.CaseService
-	queueService       *serviceapp.QueueService
-	serviceGraph       *serviceresolvers.Resolver
+	userService      *platformservices.UserManagementService
+	workspaceService *platformservices.WorkspaceManagementService
+	agentService     *platformservices.AgentService
+	contactService   *platformservices.ContactService
+	extensionService *platformservices.ExtensionService
+	caseService      *serviceapp.CaseService
+	queueService     *serviceapp.QueueService
+	serviceGraph     *serviceresolvers.Resolver
 }
 
 // NewResolver creates a new platform domain resolver
 func NewResolver(cfg Config) *Resolver {
 	return &Resolver{
-		userService:        cfg.UserService,
-		workspaceService:   cfg.WorkspaceService,
-		agentService:       cfg.AgentService,
-		contactService:     cfg.ContactService,
-		extensionService:   cfg.ExtensionService,
-		caseService:        cfg.CaseService,
-		queueService:       cfg.QueueService,
-		serviceGraph:       cfg.ServiceGraph,
+		userService:      cfg.UserService,
+		workspaceService: cfg.WorkspaceService,
+		agentService:     cfg.AgentService,
+		contactService:   cfg.ContactService,
+		extensionService: cfg.ExtensionService,
+		caseService:      cfg.CaseService,
+		queueService:     cfg.QueueService,
+		serviceGraph:     cfg.ServiceGraph,
 	}
 }
 

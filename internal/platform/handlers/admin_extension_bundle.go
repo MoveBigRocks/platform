@@ -107,8 +107,8 @@ func parseAdminExtensionDocument(content []byte) (parsedAdminExtensionDocument, 
 		return parsedAdminExtensionDocument{}, nil
 	}
 
-	root, err := html.Parse(bytes.NewReader(trimmedContent))
-	if err != nil {
+	root, _ := html.Parse(bytes.NewReader(trimmedContent))
+	if root == nil {
 		return parsedAdminExtensionDocument{
 			BodyHTML: template.HTML(trimmedContent),
 		}, nil

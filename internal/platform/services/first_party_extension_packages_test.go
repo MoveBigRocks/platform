@@ -3,6 +3,8 @@ package platformservices_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"mime"
 	"os"
 	"path/filepath"
@@ -433,23 +435,23 @@ func loadRepoExtensionPackage(t *testing.T, slug string) (platformdomain.Extensi
 func canonicalExtensionSourceDir(t *testing.T, slug string) string {
 	t.Helper()
 
-	workspaceRoot := filepath.Clean(filepath.Join(platformRepoRoot(t), ".."))
-
-	var dir string
+	var rel string
 	switch slug {
 	case "ats", "community-feature-requests", "error-tracking", "sales-pipeline", "web-analytics":
-		dir = filepath.Join(workspaceRoot, "extensions", slug)
+		rel = filepath.Join("extensions", slug)
 	case "enterprise-access":
-		dir = filepath.Join(workspaceRoot, "packs", slug)
+		rel = filepath.Join("packs", slug)
 	case "sample-ops-pack":
-		dir = filepath.Join(workspaceRoot, "extension-sdk")
+		rel = "extension-sdk"
 	default:
 		t.Fatalf("unknown canonical extension source %q", slug)
 	}
 
-	info, err := os.Stat(dir)
+	dir, err := testutil.ResolveWorkspaceSiblingDir(platformRepoRoot(t), rel)
+	if errors.Is(err, fs.ErrNotExist) {
+		t.Skipf("reference source checkout not available for %s", slug)
+	}
 	require.NoError(t, err)
-	require.True(t, info.IsDir(), "expected extension source dir %s", dir)
 	return dir
 }
 

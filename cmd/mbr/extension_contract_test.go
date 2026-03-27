@@ -3,12 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/movebigrocks/platform/internal/testutil"
 )
 
 func TestPrepareExtensionSourceReferencePacksPassLintContract(t *testing.T) {
@@ -27,7 +30,6 @@ func TestPrepareExtensionSourceReferencePacksPassLintContract(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -221,11 +223,14 @@ func TestRunExtensionsVerifyJSON(t *testing.T) {
 func extensionSDKRoot(t *testing.T) string {
 	t.Helper()
 
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("resolve extension SDK root")
+	root, err := testutil.ResolveWorkspaceSiblingDir(platformRepoRoot(t), "extension-sdk")
+	if errors.Is(err, fs.ErrNotExist) {
+		t.Skip("extension-sdk checkout not available")
 	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", "extension-sdk"))
+	if err != nil {
+		t.Fatalf("resolve extension SDK root: %v", err)
+	}
+	return root
 }
 
 func writeTestBundleSource(t *testing.T, root, slug, name string) {

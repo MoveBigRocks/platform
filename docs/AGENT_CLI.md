@@ -156,6 +156,10 @@ mbr contacts list [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json
 mbr attachments upload PATH [--workspace WORKSPACE_ID] [--case CASE_ID] [--description TEXT] [--content-type MIME] [--url URL] [--token TOKEN] [--json]
 mbr health check [--url URL] [--token TOKEN] [--json]
 mbr extensions list ([--workspace WORKSPACE_ID] | --instance) [--url URL] [--token TOKEN] [--json]
+mbr extensions lint SOURCE_DIR [--contract PATH] [--write-contract] [--json]
+mbr extensions verify SOURCE_DIR [--workspace WORKSPACE_ID] [--license-token TOKEN] [--contract PATH] [--url URL] [--token TOKEN] [--json]
+mbr extensions nav ([--workspace WORKSPACE_ID] | --instance) [--url URL] [--token TOKEN] [--json]
+mbr extensions widgets ([--workspace WORKSPACE_ID] | --instance) [--url URL] [--token TOKEN] [--json]
 mbr extensions show --id EXTENSION_ID [--url URL] [--token TOKEN] [--json]
 mbr extensions deploy BUNDLE_SOURCE [--workspace WORKSPACE_ID] [--license-token TOKEN] [--config-file PATH | --config-json JSON] [--no-activate] [--no-monitor] [--url URL] [--token TOKEN] [--json]
 mbr extensions monitor --id EXTENSION_ID [--url URL] [--token TOKEN] [--json]
@@ -262,6 +266,10 @@ mbr extensions uninstall --id EXTENSION_ID [--deactivate] [--reason TEXT] [--exp
 | `attachments upload` | Bearer token or browser-backed session | yes | write | server_managed |
 | `health check` | Bearer token or browser-backed session | yes | read | read_only |
 | `extensions list` | Bearer token or browser-backed session | yes | read | read_only |
+| `extensions lint` | No remote auth required | yes | local | local_state |
+| `extensions verify` | Bearer token or browser-backed session | yes | write | server_managed |
+| `extensions nav` | Bearer token or browser-backed session | yes | read | read_only |
+| `extensions widgets` | Bearer token or browser-backed session | yes | read | read_only |
 | `extensions show` | Bearer token or browser-backed session | yes | read | read_only |
 | `extensions deploy` | Bearer token or browser-backed session | yes | write | server_managed |
 | `extensions monitor` | Bearer token or browser-backed session | yes | read | read_only |

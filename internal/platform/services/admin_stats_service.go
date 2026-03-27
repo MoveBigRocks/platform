@@ -22,8 +22,8 @@ type AdminStatsService struct {
 	usePrometheus    bool // If true, use pre-aggregated Prometheus metrics; if false, calculate from storage
 
 	// Trend tracking for quick stats
-	previousStats        map[string]float64
-	extensionGate        adminStatsExtensionGate
+	previousStats map[string]float64
+	extensionGate adminStatsExtensionGate
 }
 
 type adminStatsExtensionGate interface {
@@ -71,7 +71,7 @@ type DashboardStats struct {
 	WorkspaceCount    int
 	UserCount         int
 	OpenCases         int
-	AvgResolutionTime string  // human-readable duration
+	AvgResolutionTime string // human-readable duration
 }
 
 // RecentActivity represents a recent activity item

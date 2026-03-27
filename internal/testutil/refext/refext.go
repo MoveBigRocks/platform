@@ -3,7 +3,9 @@ package refext
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -17,12 +19,16 @@ import (
 	sqlstore "github.com/movebigrocks/platform/internal/infrastructure/stores/sql"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
+	"github.com/movebigrocks/platform/internal/testutil"
 )
 
 func InstallAndActivateReferenceExtension(t testing.TB, ctx context.Context, store stores.Store, workspaceID, extensionName string) *platformdomain.InstalledExtension {
 	t.Helper()
 
 	activated, err := EnsureReferenceExtensionActive(ctx, store, workspaceID, extensionName)
+	if errors.Is(err, fs.ErrNotExist) {
+		t.Skipf("reference extension checkout not available for %s", extensionName)
+	}
 	require.NoError(t, err)
 	return activated
 }
@@ -141,5 +147,6 @@ func referenceExtensionRoot() (string, error) {
 	if !ok {
 		return "", fmt.Errorf("resolve ATS extension root")
 	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "extensions")), nil
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
+	return testutil.ResolveWorkspaceSiblingDir(repoRoot, "extensions")
 }

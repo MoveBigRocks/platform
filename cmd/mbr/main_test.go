@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,6 +20,7 @@ import (
 	"github.com/movebigrocks/platform/internal/clispec"
 	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	"github.com/movebigrocks/platform/internal/testutil"
 )
 
 func TestMain(m *testing.M) {
@@ -189,11 +192,24 @@ func TestFirstPartyReferenceBundlesValidateAgainstCurrentContract(t *testing.T) 
 func firstPartyBundleRoot(t *testing.T, slug string) string {
 	t.Helper()
 
+	root, err := testutil.ResolveWorkspaceSiblingDir(platformRepoRoot(t), filepath.Join("extensions", slug))
+	if errors.Is(err, fs.ErrNotExist) {
+		t.Skipf("first-party bundle checkout not available for %s", slug)
+	}
+	if err != nil {
+		t.Fatalf("resolve first-party bundle root: %v", err)
+	}
+	return root
+}
+
+func platformRepoRoot(t *testing.T) string {
+	t.Helper()
+
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
-		t.Fatal("resolve first-party bundle root")
+		t.Fatal("resolve platform repo root")
 	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", "extensions", slug))
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
 }
 
 func bundleMigrationVersion(path string) string {
