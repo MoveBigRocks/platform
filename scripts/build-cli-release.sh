@@ -65,6 +65,10 @@ fi
 GIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD)"
 BUILD_DATE="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
+if [[ "$OUT_DIR" != /* ]]; then
+  OUT_DIR="$ROOT_DIR/$OUT_DIR"
+fi
+
 mkdir -p "$OUT_DIR"
 
 BUILD_DIR="$(mktemp -d)"
