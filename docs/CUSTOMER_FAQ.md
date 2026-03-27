@@ -255,15 +255,20 @@ Not under the public license.
 
 The public licensing posture is meant to be clear:
 
-- you can self-host Move Big Rocks for your own organisation
+- you can self-host and use Move Big Rocks inside your own organisation,
+  including for your own internal
+  commercial operations
+- you can modify it for your own needs
 - you can use the free first-party public bundles
-- you can build your own extensions
-- you may not sell or otherwise commercialize the platform itself or derivative
-  works of it
-- you may not sell access to the platform
-- you may not sell or otherwise commercialize extensions, add-ons, or
-  derivative works built for Move Big Rocks without separate written permission
-  from Move Big Rocks BV
+- you can build and use your own extensions
+- you may not sell, license, or otherwise commercialize the platform itself,
+  copies of it, or derivative works of it
+- you may not sell access to the platform or offer it as a hosted or managed
+  service
+- you may not sell, license, or otherwise commercialize extensions, add-ons,
+  or derivative works built for Move Big Rocks without separate written
+  permission from Move Big Rocks BV
+- if you fork or redistribute it, you must keep the license and notices intact
 
 If you want different commercial rights, that requires a separate agreement.
 

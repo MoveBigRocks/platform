@@ -22,31 +22,43 @@ Licensed Work, and any derivative work of such material.
 
 "Hosted Service" means any offering that gives third parties, other than your
 employees and contractors acting solely on your behalf, access to the
-functionality of the Licensed Work, a Derivative Work, or an Extension as a
-service.
+functionality of the Licensed Work, a Derivative Work, or an Extension as
+software or as a service, whether operated by you or on your behalf.
 
 "Commercialize" means to sell, license, sublicense, distribute for a fee,
 charge for access to, or otherwise directly monetize the Licensed Work, a
-Derivative Work, or an Extension as a product, service, add-on, marketplace
-item, or paid deliverable. Commercialize does not include your internal use of
-the Licensed Work in operating your own business or in providing your own
-non-platform goods or services, so long as you do not give third parties access
-to the Licensed Work, a Derivative Work, or an Extension as a Hosted Service
-and do not sell the Licensed Work, a Derivative Work, or an Extension
-themselves.
+Derivative Work, or an Extension as software, a hosted or managed service, an
+add-on, a marketplace item, or a paid deliverable. For clarity,
+Commercialize includes selling or licensing a copied, modified, or derivative
+version of the Licensed Work or of any Extension. Commercialize does not
+include: (a) using, modifying, or deploying the Licensed Work, Derivative
+Works, and Extensions inside your own company or organization for your own
+internal business operations, including commercial internal operations; or (b)
+using the Licensed Work, Derivative Works, and Extensions in the course of
+providing your own non-platform goods or services, even when you are paid for
+those goods or services, provided that in each case you do not give customers
+or other third parties access to the Licensed Work, a Derivative Work, or an
+Extension as software or as a Hosted Service and you do not sell, license, or
+sublicense the Licensed Work, a Derivative Work, or an Extension themselves.
 
 2. License Grant Before the Change Date
 
 Subject to this License, and until the Change Date for a given version of the
 Licensed Work, you may:
 
-a. use, copy, modify, create Derivative Works of, self-host, and run the
-   Licensed Work;
-b. use the Licensed Work and your Derivative Works for your own internal
-   business operations and in providing your own non-platform goods or
-   services;
-c. create and use your own Extensions and Derivative Works with the Licensed
-   Work; and
+For clarity, this License allows you to run the Licensed Work inside your own
+company or organization, modify it for your own needs, use the first-party
+Extensions, and build your own Extensions, including in support of your own
+commercial operations, so long as you do not sell the software, sell access to
+it, or offer it as a Hosted Service.
+
+a. use, copy, modify, create Derivative Works of, self-host, deploy, and run
+   the Licensed Work;
+b. use the Licensed Work, your Derivative Works, and Extensions for your own
+   internal business operations, including internal commercial operations;
+c. create, install, use, and modify your own Extensions and Derivative Works
+   with the Licensed Work, including for your own company or organization and
+   in providing your own non-platform goods or services; and
 d. redistribute the Licensed Work, Derivative Works, and Extensions, in source
    or object form, only if you do not Commercialize them, you include this
    License and all copyright, attribution, and license notices, and you do not
@@ -56,12 +68,15 @@ d. redistribute the Licensed Work, Derivative Works, and Extensions, in source
 
 Without the Licensor's prior written permission, you may not:
 
-a. Commercialize the Licensed Work, any Derivative Work, or access to either;
-b. Commercialize any Extension or access to any Extension;
+a. Commercialize the Licensed Work, any Derivative Work, any copied, modified,
+   or derivative version of either, or access to any of them;
+b. Commercialize any Extension, any copied, modified, or derivative version of
+   any Extension, or access to any of them;
 c. offer the Licensed Work, any Derivative Work, or any Extension as a Hosted
-   Service;
-d. remove, alter, or obscure any copyright, attribution, trademark, or license
-   notice included with the Licensed Work; or
+   Service or managed service;
+d. remove, alter, obscure, or replace this License or any copyright,
+   attribution, trademark, or license notice included with the Licensed Work,
+   including in any fork, redistribution, or derivative distribution; or
 e. use the Licensor's names, logos, or trademarks except for reasonable factual
    reference.
 
