@@ -126,6 +126,15 @@ Core should reject invalid combinations. Example:
 - `public-ingest` cannot use `session` as its only auth mode
 - `health` cannot be internet-facing
 
+Instance-admin rule:
+
+- if a workspace-scoped extension exposes admin pages, an instance admin without
+  an active workspace should still get a working entrypoint
+- service-backed admin pages can rely on core to inject the resolved install
+  workspace
+- static asset admin pages that call workspace-bound APIs should preserve the
+  `?workspace=...` hint on those API requests
+
 ## Security Defaults by Endpoint Class
 
 ### `public-page`
@@ -164,6 +173,8 @@ Core should reject invalid combinations. Example:
 - workspace membership and RBAC enforced by core
 - mounted under `/admin/extensions/*` in the current runtime
 - extension nav registration required
+- workspace-scoped pages should still be reachable from instance-admin
+  navigation without a live workspace session
 
 ### `admin-action`
 

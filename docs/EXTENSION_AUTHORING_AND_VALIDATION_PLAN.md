@@ -29,6 +29,10 @@ The extension development story should make this promise:
 That promise matters for both humans and agents. The lifecycle needs to be
 machine-checkable, not just socially understood.
 
+It also needs to hold for instance admins outside a workspace context. A
+workspace-scoped extension should not collapse into a 404 or dead menu entry
+just because the current admin session is instance-scoped.
+
 ## Current Architecture Baseline
 
 Today, the extension system already has a solid core runtime model:
@@ -135,6 +139,8 @@ That makes it hard for an external extension author to prove:
 - the extension really appears in the menu
 - it appears under the correct section
 - the resolved href matches the expected mount path
+- the extension still appears for an instance admin without a workspace selected
+- the instance-level href identifies the intended workspace install
 
 ### Gap 3: No standard way to assert seeded resources
 
@@ -253,6 +259,7 @@ Suggested contents:
 
 - expected admin navigation section, title, and href
 - expected dashboard widgets
+- expected instance-admin/no-workspace visibility
 - expected public paths
 - expected health endpoint
 - expected seeded queue slugs
@@ -318,8 +325,12 @@ Suggested additions:
 
 - GraphQL query for workspace-resolved extension admin navigation
 - GraphQL query for workspace-resolved extension dashboard widgets
+- GraphQL query for instance-resolved extension admin navigation
+- GraphQL query for instance-resolved extension dashboard widgets
 - CLI command such as `mbr extensions nav --workspace WORKSPACE_ID`
 - CLI command `mbr extensions widgets --workspace WORKSPACE_ID`
+- CLI command `mbr extensions nav --instance`
+- CLI command `mbr extensions widgets --instance`
 - or `mbr extensions show --resolved --workspace WORKSPACE_ID`
 
 This is mandatory if we want authors to prove menu placement without importing
@@ -385,11 +396,11 @@ Current proof run executed:
 
 | Extension | Runtime shape | Current proof | Main gaps |
 | --- | --- | --- | --- |
-| `ats` | `bundle` + `shared_primitives_only` | Domain tests for ATS vocabulary and catalog; install/activate/workflow proof in `first_party_extension_packages_test.go`; shared-primitives seeding and case-tagging behavior is verified | No machine-readable contract file; no public resolved-navigation verifier; no public/admin route HTTP smoke; no standard asset/template parse check |
-| `web-analytics` | `service_backed` + `owned_schema` | Domain, handler, resolver, and service tests in the extension repo; admin navigation resolution test via reference install; public route resolution tests; schema migrator tests | No explicit first-party package install/activate/nav test in the pack suite; no machine-readable contract file; no UI/template parse smoke; no end-to-end create-property plus ingest workflow proof |
-| `error-tracking` | `service_backed` + `owned_schema` | Domain and service tests in the extension repo; admin navigation resolution test via reference install; public ingest route resolution tests; schema migrator tests | No explicit first-party package install/activate/nav test in the pack suite; no machine-readable contract file; no runtime UI/template parse smoke; no end-to-end ingest-to-issue workflow proof |
-| `sales-pipeline` | `service_backed` + `owned_schema` | Install/activate/seed/nav proof in `first_party_extension_packages_test.go`; template embed parse test exists | No runtime domain/store/handler tests; no machine-readable contract file; no end-to-end create-deal and move-stage proof; no explicit runtime registration and health proof |
-| `community-feature-requests` | `service_backed` + `owned_schema` | Install/activate/seed/nav proof in `first_party_extension_packages_test.go`; template embed parse test exists | No runtime domain/store/handler tests; no machine-readable contract file; no end-to-end submit/vote/admin-update proof; no explicit runtime registration and health proof |
+| `ats` | `bundle` + `shared_primitives_only` | Domain tests for ATS vocabulary and catalog; install/activate/workflow proof in `first_party_extension_packages_test.go`; shared-primitives seeding and case-tagging behavior is verified; checked-in `extension.contract.json`; instance-admin navigation proof | No public/admin route HTTP smoke; no standard asset/template parse check |
+| `web-analytics` | `service_backed` + `owned_schema` | Domain, handler, resolver, and service tests in the extension repo; admin navigation resolution test via reference install; public route resolution tests; schema migrator tests; checked-in `extension.contract.json`; instance-admin navigation proof | No explicit first-party package install/activate/nav test in the pack suite; no UI/template parse smoke; no end-to-end create-property plus ingest workflow proof |
+| `error-tracking` | `service_backed` + `owned_schema` | Domain and service tests in the extension repo; admin navigation resolution test via reference install; public ingest route resolution tests; schema migrator tests; checked-in `extension.contract.json`; instance-admin navigation proof | No explicit first-party package install/activate/nav test in the pack suite; no runtime UI/template parse smoke; no end-to-end ingest-to-issue workflow proof |
+| `sales-pipeline` | `service_backed` + `owned_schema` | Install/activate/seed/nav proof in `first_party_extension_packages_test.go`; template embed parse test exists; checked-in `extension.contract.json`; instance-admin navigation proof | No runtime domain/store/handler tests; no end-to-end create-deal and move-stage proof; no explicit runtime registration and health proof |
+| `community-feature-requests` | `service_backed` + `owned_schema` | Install/activate/seed/nav proof in `first_party_extension_packages_test.go`; template embed parse test exists; checked-in `extension.contract.json`; instance-admin navigation proof | No runtime domain/store/handler tests; no end-to-end submit/vote/admin-update proof; no explicit runtime registration and health proof |
 
 ### Immediate conclusions from the audit
 
@@ -398,8 +409,8 @@ Current proof run executed:
   owned-schema coverage, but the first-party pack audit story is still indirect.
 - Sales pipeline and community feature requests now install correctly, but they
   need deeper runtime tests before they match the maturity of the older packs.
-- No first-party pack yet has a public SDK contract file because that concept
-  does not exist yet.
+- Every current first-party pack now has a checked-in `extension.contract.json`,
+  but deeper runtime and browser proof is still uneven.
 
 ## Recommended Implementation Phases
 
