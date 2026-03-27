@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
 	"github.com/movebigrocks/platform/internal/testutil"
 	"github.com/movebigrocks/platform/pkg/logger"
@@ -31,12 +30,9 @@ func TestHandleInboundEmail_WorkspaceValidation(t *testing.T) {
 	log := logger.New()
 
 	// Create a valid workspace
-	validWorkspace := &platformdomain.Workspace{
-		ID:       "valid-workspace-id",
-		Name:     "Valid Workspace",
-		Slug:     "valid-workspace",
-		IsActive: true,
-	}
+	validWorkspace := testutil.NewIsolatedWorkspace(t)
+	validWorkspace.Name = "Valid Workspace"
+	validWorkspace.Slug = "valid-workspace"
 	err := store.Workspaces().CreateWorkspace(ctx, validWorkspace)
 	require.NoError(t, err)
 
@@ -90,7 +86,7 @@ func TestHandleInboundEmail_WorkspaceValidation(t *testing.T) {
 
 		payload := map[string]interface{}{
 			"From":    "sender@example.com",
-			"To":      "valid-workspace-id@support.movebigrocks.test",
+			"To":      validWorkspace.ID + "@support.movebigrocks.test",
 			"Subject": "Test Email",
 		}
 		body, _ := json.Marshal(payload)
@@ -111,7 +107,7 @@ func TestHandleInboundEmail_WorkspaceValidation(t *testing.T) {
 
 		payload := map[string]interface{}{
 			"From":        "sender@example.com",
-			"To":          "valid-workspace-id@support.movebigrocks.test",
+			"To":          validWorkspace.ID + "@support.movebigrocks.test",
 			"Subject":     "Test Email",
 			"TextBody":    "Test body content",
 			"MessageID":   "test-message-id-valid",

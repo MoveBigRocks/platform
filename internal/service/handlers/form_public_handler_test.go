@@ -10,11 +10,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,18 +32,7 @@ func init() {
 }
 
 func setupFormTestStore(t *testing.T) (stores.Store, func()) {
-	tempDir, err := os.MkdirTemp("", "form-public-handler-test-*")
-	require.NoError(t, err)
-
-	store, err := stores.NewStore(filepath.Join(tempDir, "mbr.db"))
-	require.NoError(t, err)
-
-	cleanup := func() {
-		store.Close()
-		os.RemoveAll(tempDir)
-	}
-
-	return store, cleanup
+	return testutil.SetupTestStore(t)
 }
 
 // mockOutbox implements contracts.OutboxPublisher for testing
@@ -111,7 +99,7 @@ func performFormRequest(router *gin.Engine, method, path string, body io.Reader,
 }
 
 func createPublicForm(t *testing.T, store stores.Store, workspaceID, name, slug string) *servicedomain.FormSchema {
-	ensureWorkspaceFixture(t, store, workspaceID)
+	workspaceID = ensureWorkspaceFixture(t, store, workspaceID)
 
 	form := servicedomain.NewFormSchema(workspaceID, name, slug, "user-1")
 	form.IsPublic = true
@@ -136,22 +124,29 @@ func createPublicForm(t *testing.T, store stores.Store, workspaceID, name, slug 
 	return form
 }
 
-func ensureWorkspaceFixture(t *testing.T, store stores.Store, workspaceID string) {
+func ensureWorkspaceFixture(t *testing.T, store stores.Store, workspaceID string) string {
 	t.Helper()
 	ctx := context.Background()
-	if _, err := store.Workspaces().GetWorkspace(ctx, workspaceID); err == nil {
-		return
+	if _, err := uuid.Parse(workspaceID); err == nil {
+		if _, err := store.Workspaces().GetWorkspace(ctx, workspaceID); err == nil {
+			return workspaceID
+		} else if !errors.Is(err, shared.ErrNotFound) {
+			require.NoError(t, err)
+		}
+	}
+	if workspace, err := store.Workspaces().GetWorkspaceBySlug(ctx, workspaceID); err == nil {
+		return workspace.ID
 	} else if !errors.Is(err, shared.ErrNotFound) {
 		require.NoError(t, err)
 	}
 
 	workspace := testutil.NewIsolatedWorkspace(t)
-	workspace.ID = workspaceID
 	workspace.Name = "Workspace " + workspaceID
 	workspace.Slug = workspaceID
 
 	err := store.Workspaces().CreateWorkspace(ctx, workspace)
 	require.NoError(t, err)
+	return workspace.ID
 }
 
 func createEmbedForm(t *testing.T, store stores.Store, workspaceID, name, slug string, domains []string) *servicedomain.FormSchema {
@@ -395,12 +390,12 @@ func TestFormAPITokenMiddleware(t *testing.T) {
 		inactiveToken := testutil.UniqueID("inactive_token")
 		token := &servicedomain.FormAPIToken{
 			ID:          testutil.UniqueID("token_inactive"),
-			WorkspaceID: "ws_token",
+			WorkspaceID: form.WorkspaceID,
 			FormID:      form.ID,
 			Token:       inactiveToken,
 			IsActive:    false,
 		}
-		store.Forms().CreateFormAPIToken(context.Background(), token)
+		require.NoError(t, store.Forms().CreateFormAPIToken(context.Background(), token))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -419,13 +414,13 @@ func TestFormAPITokenMiddleware(t *testing.T) {
 		expiredToken := testutil.UniqueID("expired_token")
 		token := &servicedomain.FormAPIToken{
 			ID:          testutil.UniqueID("token_expired"),
-			WorkspaceID: "ws_token",
+			WorkspaceID: form.WorkspaceID,
 			FormID:      form.ID,
 			Token:       expiredToken,
 			IsActive:    true,
 			ExpiresAt:   &expired,
 		}
-		store.Forms().CreateFormAPIToken(context.Background(), token)
+		require.NoError(t, store.Forms().CreateFormAPIToken(context.Background(), token))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -443,13 +438,13 @@ func TestFormAPITokenMiddleware(t *testing.T) {
 		hostToken := testutil.UniqueID("host_token")
 		token := &servicedomain.FormAPIToken{
 			ID:           testutil.UniqueID("token_host"),
-			WorkspaceID:  "ws_token",
+			WorkspaceID:  form.WorkspaceID,
 			FormID:       form.ID,
 			Token:        hostToken,
 			IsActive:     true,
 			AllowedHosts: []string{"192.168.1.1"},
 		}
-		store.Forms().CreateFormAPIToken(context.Background(), token)
+		require.NoError(t, store.Forms().CreateFormAPIToken(context.Background(), token))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -468,12 +463,12 @@ func TestFormAPITokenMiddleware(t *testing.T) {
 		validToken := testutil.UniqueID("valid_token")
 		token := &servicedomain.FormAPIToken{
 			ID:          testutil.UniqueID("token_valid"),
-			WorkspaceID: "ws_token",
+			WorkspaceID: form.WorkspaceID,
 			FormID:      form.ID,
 			Token:       validToken,
 			IsActive:    true,
 		}
-		store.Forms().CreateFormAPIToken(context.Background(), token)
+		require.NoError(t, store.Forms().CreateFormAPIToken(context.Background(), token))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -491,13 +486,13 @@ func TestFormAPITokenMiddleware(t *testing.T) {
 		wildcardToken := testutil.UniqueID("wildcard_token")
 		token := &servicedomain.FormAPIToken{
 			ID:           testutil.UniqueID("token_wildcard"),
-			WorkspaceID:  "ws_token",
+			WorkspaceID:  form.WorkspaceID,
 			FormID:       form.ID,
 			Token:        wildcardToken,
 			IsActive:     true,
 			AllowedHosts: []string{"*"},
 		}
-		store.Forms().CreateFormAPIToken(context.Background(), token)
+		require.NoError(t, store.Forms().CreateFormAPIToken(context.Background(), token))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
