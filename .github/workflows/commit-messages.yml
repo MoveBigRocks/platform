@@ -1,0 +1,50 @@
+name: Commit Message Validation
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate-commit-messages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -eu
+
+          range="$CURRENT_SHA"
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "${BASE_SHA:-}" ] && [ -n "${HEAD_SHA:-}" ]; then
+            range="$BASE_SHA..$HEAD_SHA"
+          elif [ -n "${BEFORE_SHA:-}" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            range="$BEFORE_SHA..$CURRENT_SHA"
+          fi
+
+          commits="$(git rev-list --reverse "$range")"
+          if [ -z "$commits" ]; then
+            echo "No commits to validate in $range"
+            exit 0
+          fi
+
+          for sha in $commits; do
+            msg_file="$(mktemp)"
+            git log -1 --pretty=%B "$sha" > "$msg_file"
+            echo "Validating $sha: $(git log -1 --pretty=%s "$sha")"
+            /bin/sh ./.github/scripts/validate-commit-message.sh "$msg_file"
+            rm -f "$msg_file"
+          done
