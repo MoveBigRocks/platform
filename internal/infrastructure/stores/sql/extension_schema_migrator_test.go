@@ -5,6 +5,8 @@ import (
 	stdsql "database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -588,5 +590,13 @@ func referenceExtensionRoot(t *testing.T, extensionName string) string {
 
 	_, file, _, ok := runtime.Caller(0)
 	require.True(t, ok)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "..", "extensions", extensionName))
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", "..", ".."))
+	root, err := testutil.ResolveWorkspaceSiblingDir(repoRoot, filepath.Join("extensions", extensionName))
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			t.Skipf("reference extension checkout not available for %s", extensionName)
+		}
+		require.NoError(t, err)
+	}
+	return root
 }
