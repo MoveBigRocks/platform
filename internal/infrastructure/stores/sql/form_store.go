@@ -89,7 +89,7 @@ type formAccessTokenRow struct {
 	Name         string     `db:"name"`
 	IsActive     bool       `db:"is_active"`
 	ExpiresAt    *time.Time `db:"expires_at"`
-	AllowedHosts string     `db:"allowed_hosts"`
+	AllowedHosts sql.NullString `db:"allowed_hosts"`
 	LastUsedAt   *time.Time `db:"last_used_at"`
 	CreatedAt    time.Time  `db:"created_at"`
 	UpdatedAt    time.Time  `db:"updated_at"`
@@ -250,6 +250,10 @@ func (s *FormStore) GetFormAnalytics(ctx context.Context, formID string) (*servi
 
 func (s *FormStore) CreateFormAPIToken(ctx context.Context, token *servicedomain.FormAPIToken) error {
 	normalizePersistedUUID(&token.ID)
+	allowedHosts := token.AllowedHosts
+	if allowedHosts == nil {
+		allowedHosts = []string{}
+	}
 	query := `
 		INSERT INTO core_service.form_access_tokens (
 			id, workspace_id, form_spec_id, token, name, is_active, expires_at,
@@ -267,7 +271,7 @@ func (s *FormStore) CreateFormAPIToken(ctx context.Context, token *servicedomain
 		token.Name,
 		token.IsActive,
 		token.ExpiresAt,
-		pq.Array(token.AllowedHosts),
+		pq.Array(allowedHosts),
 		token.LastUsedAt,
 		token.CreatedAt,
 		token.UpdatedAt,
@@ -293,7 +297,7 @@ func (s *FormStore) GetFormAPIToken(ctx context.Context, tokenValue string) (*se
 		Name:         row.Name,
 		IsActive:     row.IsActive,
 		ExpiresAt:    row.ExpiresAt,
-		AllowedHosts: unmarshalStringArrayField(row.AllowedHosts, "form_access_tokens", "allowed_hosts"),
+		AllowedHosts: unmarshalStringArrayField(row.AllowedHosts.String, "form_access_tokens", "allowed_hosts"),
 		LastUsedAt:   row.LastUsedAt,
 		CreatedAt:    row.CreatedAt,
 		UpdatedAt:    row.UpdatedAt,
