@@ -3,24 +3,24 @@
   "bundles": [
     {
       "slug": "ats",
-      "version": "v0.8.23",
-      "publishTag": "v0.8.23",
-      "runID": "23683709259",
-      "artifactName": "public-bundle-ats-v0.8.23"
+      "version": "v0.8.24",
+      "publishTag": "v0.8.24",
+      "runID": "23688333389",
+      "artifactName": "public-bundle-ats-v0.8.24"
     },
     {
       "slug": "error-tracking",
-      "version": "v0.8.20",
-      "publishTag": "v0.8.20",
-      "runID": "23683710893",
-      "artifactName": "public-bundle-error-tracking-v0.8.20"
+      "version": "v0.8.21",
+      "publishTag": "v0.8.21",
+      "runID": "23688148347",
+      "artifactName": "public-bundle-error-tracking-v0.8.21"
     },
     {
       "slug": "web-analytics",
-      "version": "v0.8.20",
-      "publishTag": "v0.8.20",
-      "runID": "23683711231",
-      "artifactName": "public-bundle-web-analytics-v0.8.20"
+      "version": "v0.8.21",
+      "publishTag": "v0.8.21",
+      "runID": "23688148371",
+      "artifactName": "public-bundle-web-analytics-v0.8.21"
     },
     {
       "slug": "sales-pipeline",

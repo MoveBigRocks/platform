@@ -58,9 +58,9 @@ public-bundle runs.
 
 ## Live Publication Evidence
 
-- ATS `v0.8.23`: [run 23683709259](https://github.com/MoveBigRocks/extensions/actions/runs/23683709259)
-- Error Tracking `v0.8.20`: [run 23683710893](https://github.com/MoveBigRocks/extensions/actions/runs/23683710893)
-- Web Analytics `v0.8.20`: [run 23683711231](https://github.com/MoveBigRocks/extensions/actions/runs/23683711231)
+- ATS `v0.8.24`: [run 23688333389](https://github.com/MoveBigRocks/extensions/actions/runs/23688333389)
+- Error Tracking `v0.8.21`: [run 23688148347](https://github.com/MoveBigRocks/extensions/actions/runs/23688148347)
+- Web Analytics `v0.8.21`: [run 23688148371](https://github.com/MoveBigRocks/extensions/actions/runs/23688148371)
 - Sales Pipeline beta `v0.1.0`: [run 23683709265](https://github.com/MoveBigRocks/extensions/actions/runs/23683709265)
 - Community Feature Requests beta `v0.1.0`: [run 23683709269](https://github.com/MoveBigRocks/extensions/actions/runs/23683709269)
 

@@ -13,7 +13,7 @@
 
 - The core product shape is credible in this repo: multi-team operational work, forms, queues, conversations, cases, knowledge, concept specs, and installable extensions all have concrete implementation and test coverage.
 - The milestone target has been deliberately expanded to include two public beta packs, `sales-pipeline` and `community-feature-requests`, alongside the four core first-party packs.
-- Live public-bundle publication evidence exists for the full in-scope public pack set, including ATS `v0.8.23`, error tracking `v0.8.20`, web analytics `v0.8.20`, `sales-pipeline` beta `v0.1.0`, and `community-feature-requests` beta `v0.1.0`, and the milestone proof workflow now downloads and archives those emitted files automatically from [`docs/evidence/public-bundle-publication-runs.json`](./evidence/public-bundle-publication-runs.json).
+- Live public-bundle publication evidence exists for the full in-scope public pack set, including ATS `v0.8.24`, error tracking `v0.8.21`, web analytics `v0.8.21`, `sales-pipeline` beta `v0.1.0`, and `community-feature-requests` beta `v0.1.0`, and the milestone proof workflow now downloads and archives those emitted files automatically from [`docs/evidence/public-bundle-publication-runs.json`](./evidence/public-bundle-publication-runs.json).
 - Hosted sandboxes are deferred to [`docs/RFCs/RFC-0013-hosted-sandbox-control-plane.md`](./RFCs/RFC-0013-hosted-sandbox-control-plane.md) and are not part of the current Milestone 1 CLI contract or proof loop.
 - The workflow-proof standard has now been tightened in [`docs/testing-strategy.md`](./testing-strategy.md) and [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md).
 - Command-driven operational workflows now have end-to-end automated proof and machine-readable proof artifacts archived by the milestone proof loop.
@@ -47,9 +47,9 @@ The workflow closure sequence is now complete and recorded in
 
 ## Live Publication Evidence
 
-- ATS `v0.8.23`: [run 23683709259](https://github.com/MoveBigRocks/extensions/actions/runs/23683709259)
-- Error Tracking `v0.8.20`: [run 23683710893](https://github.com/MoveBigRocks/extensions/actions/runs/23683710893)
-- Web Analytics `v0.8.20`: [run 23683711231](https://github.com/MoveBigRocks/extensions/actions/runs/23683711231)
+- ATS `v0.8.24`: [run 23688333389](https://github.com/MoveBigRocks/extensions/actions/runs/23688333389)
+- Error Tracking `v0.8.21`: [run 23688148347](https://github.com/MoveBigRocks/extensions/actions/runs/23688148347)
+- Web Analytics `v0.8.21`: [run 23688148371](https://github.com/MoveBigRocks/extensions/actions/runs/23688148371)
 - Sales Pipeline beta `v0.1.0`: [run 23683709265](https://github.com/MoveBigRocks/extensions/actions/runs/23683709265)
 - Community Feature Requests beta `v0.1.0`: [run 23683709269](https://github.com/MoveBigRocks/extensions/actions/runs/23683709269)
 
