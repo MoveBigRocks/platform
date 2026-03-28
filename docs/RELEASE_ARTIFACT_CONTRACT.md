@@ -32,17 +32,11 @@ not published as a separate core artifact.
 - `mbr-server`
 - `tools/create-admin`
 - `tools/create-agent`
+- `tools/reconcile-extensions`
 
-Known gap:
-
-- the current release artifact does not yet ship a packaged extension
-  desired-state reconciler
-- private instance repos therefore cannot yet make
-  `extensions/desired-state.yaml` fully self-applying from pinned release
-  artifacts alone
-
-The planned fix is tracked in
-[Extension Desired-State Reconciliation Plan](./EXTENSION_DESIRED_STATE_RECONCILIATION_PLAN.md).
+`tools/reconcile-extensions` is the host-safe admin tool that private instance
+repos use to render runtime manifests and reconcile extension desired state
+during deploy and verify.
 
 `migrationsArtifact` should expand to:
 

@@ -308,8 +308,10 @@ Production activation should happen from the private instance repo flow.
 The operator or agent should:
 
 1. record the desired extension ref in `extensions/desired-state.yaml`
-2. install the bundle into the running Move Big Rocks instance
-3. verify signature and any required bundle-install credential
+2. let the private instance repo deploy flow generate the runtime manifest,
+   deploy required runtimes, and reconcile the installed bundle state
+3. verify signature and any required bundle-install credential through the real
+   lifecycle operations
 4. configure required settings
 5. validate the extension
 6. activate it in the target workspace or instance
@@ -317,15 +319,16 @@ The operator or agent should:
 
 The instance repo should remain the source of truth for what should be running.
 
-Current gap:
+Current model:
 
-- the private instance repo deploy flow does not yet auto-reconcile
+- the private instance repo deploy flow now auto-reconciles
   `extensions/desired-state.yaml` into `installed_extensions`
-- service-backed runtime binaries can therefore move ahead of installed bundle
-  state unless a separate reconcile step runs
+- service-backed runtime deployment now derives from generated desired-state
+  runtime manifests instead of a separate hand-maintained file
+- deploy and verify archive reconciliation artifacts and fail closed on drift
 
-The closure plan for that gap is tracked in
-[Extension Desired-State Reconciliation Plan](./EXTENSION_DESIRED_STATE_RECONCILIATION_PLAN.md).
+The control-plane record for that implementation lives in
+[Extension Desired-State Reconciliation](./EXTENSION_DESIRED_STATE_RECONCILIATION_PLAN.md).
 
 ## Stage 8: Monitor, Upgrade, Deactivate, Uninstall
 
