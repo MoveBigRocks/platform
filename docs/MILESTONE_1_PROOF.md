@@ -39,17 +39,22 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
 10. Public bundle publication planning:
    - run `MoveBigRocks/extensions/go run ./tools/publication-evidence --mode plan`
    - archive the generated publication-plan JSON from the public bundle catalog and current manifests
-   - when tagged publish runs exist, copy the workflow-generated `*.publication-evidence.json` files into the proof bundle
+   - archive the workflow-generated `*.publication-evidence.json` files inside `public-bundle-publication/release-evidence/`
 11. Cross-platform CLI packaging evidence:
    - `bash scripts/build-cli-release.sh`
 12. CLI release artifact validation:
    - `bash scripts/verify-cli-release.sh dist/milestone-proof/cli-release`
 
-## Evidence Expansion Required Before Close
+## Current Live Publication Evidence
 
-1. Public bundle publication evidence:
-   - run tagged publishes for ATS, error tracking, web analytics, `sales-pipeline` beta, and `community-feature-requests` beta so the workflow emits `*.publication-evidence.json`
-   - archive those JSON artifacts inside the milestone proof bundle so the milestone has registry-visible proof for every public pack in scope
+- ATS `v0.8.23`: [run 23683709259](https://github.com/MoveBigRocks/extensions/actions/runs/23683709259)
+- Error Tracking `v0.8.20`: [run 23683710893](https://github.com/MoveBigRocks/extensions/actions/runs/23683710893)
+- Web Analytics `v0.8.20`: [run 23683711231](https://github.com/MoveBigRocks/extensions/actions/runs/23683711231)
+- Sales Pipeline beta `v0.1.0`: [run 23683709265](https://github.com/MoveBigRocks/extensions/actions/runs/23683709265)
+- Community Feature Requests beta `v0.1.0`: [run 23683709269](https://github.com/MoveBigRocks/extensions/actions/runs/23683709269)
+
+The current closure proof bundle archives the emitted `*.publication-evidence.json`
+files from those runs inside `public-bundle-publication/release-evidence/`.
 
 ## Outputs
 
@@ -61,6 +66,7 @@ The current proof run writes:
 - `dist/milestone-proof/cli-sandbox/`
 - `dist/milestone-proof/ats-scenario/`
 - `dist/milestone-proof/public-bundle-publication/`
+- `dist/milestone-proof/public-bundle-publication/release-evidence/`
 - `dist/milestone-proof/extensions-validation/`
 - `dist/milestone-proof/cli-release/`
 - `dist/milestone-proof/cli-release/verification.json`
