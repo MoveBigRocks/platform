@@ -1,7 +1,7 @@
 # First-Party Pack Readiness
 
-This document is the launch-readiness summary for the first-party Milestone 1
-extension set.
+This document is the launch-readiness summary for the Milestone 1 first-party
+extension set, including the in-scope public beta packs.
 
 ## Quality Bar
 
@@ -13,15 +13,19 @@ A first-party pack is considered launch-ready when it has:
 - install and activation proof in automated tests
 - evidence for its public or admin runtime surface where applicable
 - a clear scope and risk profile consistent with the manifest
+- an explicit launch posture: core launch pack, controlled privileged pack, or
+  public beta pack
 
 ## Pack Matrix
 
-| Pack | Scope | Core Proof | Runtime / Surface Proof | Launch Note |
-| --- | --- | --- | --- | --- |
-| ATS | Workspace product pack with careers-site and application flow | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go) | [`internal/platform/services/extension_runtime_test.go`](../internal/platform/services/extension_runtime_test.go) | Targeted as part of the free public first-party bundle set. |
-| Enterprise Access | Instance-scoped identity and privileged admin pack | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go) | [`internal/platform/services/extension_admin_navigation_test.go`](../internal/platform/services/extension_admin_navigation_test.go) | Separately controlled first-party privileged pack, not part of the free public bundle set. |
-| Error Tracking | Workspace operational pack with Sentry-compatible ingest and admin pages | [`cmd/api/error_tracking_extraction_test.go`](../cmd/api/error_tracking_extraction_test.go) | [`cmd/api/extension_service_targets_test.go`](../cmd/api/extension_service_targets_test.go) | Targeted as part of the free public first-party bundle set. |
-| Web Analytics | Workspace operational pack with analytics script and admin page | [`cmd/api/analytics_extraction_test.go`](../cmd/api/analytics_extraction_test.go) | [`cmd/api/extension_service_targets_test.go`](../cmd/api/extension_service_targets_test.go) | Targeted as part of the free public first-party bundle set. |
+| Pack | Launch Posture | Scope | Core Proof | Runtime / Surface Proof | Remaining Gap |
+| --- | --- | --- | --- | --- | --- |
+| ATS | Core launch pack, public | Workspace product pack with careers site and application flow | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`internal/platform/services/extension_runtime_test.go`](../internal/platform/services/extension_runtime_test.go) | The milestone scope now expects owned-schema recruiting workflow state and full job and candidate lifecycle proof; the current ATS package still needs that parity. |
+| Enterprise Access | Core launch pack, controlled privileged | Instance-scoped identity and privileged admin pack | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go) | [`internal/platform/services/extension_admin_navigation_test.go`](../internal/platform/services/extension_admin_navigation_test.go) | Release evidence remains on the controlled first-party path rather than the public bundle pipeline. |
+| Error Tracking | Core launch pack, public | Workspace operational pack with Sentry-compatible ingest and admin pages | [`cmd/api/error_tracking_extraction_test.go`](../cmd/api/error_tracking_extraction_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`cmd/api/extension_service_targets_test.go`](../cmd/api/extension_service_targets_test.go) | Public publication evidence still needs to be archived as part of the milestone proof bundle. |
+| Web Analytics | Core launch pack, public | Workspace operational pack with analytics script and admin page | [`cmd/api/analytics_extraction_test.go`](../cmd/api/analytics_extraction_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`cmd/api/extension_service_targets_test.go`](../cmd/api/extension_service_targets_test.go) | Public publication evidence still needs to be archived as part of the milestone proof bundle. |
+| Sales Pipeline | Public beta pack | Workspace product pack for opportunity intake, stage movement, and dedicated sales workspace provisioning | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`internal/platform/services/extension_validation_test.go`](../internal/platform/services/extension_validation_test.go), [`cmd/api/extension_service_targets_test.go`](../cmd/api/extension_service_targets_test.go) | Needs explicit beta install guidance and milestone-level publication evidence capture. |
+| Community Feature Requests | Public beta pack | Workspace product pack for public idea capture, voting, triage, and roadmap review | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`internal/platform/services/extension_validation_test.go`](../internal/platform/services/extension_validation_test.go) | Needs explicit beta install guidance and milestone-level publication evidence capture. |
 
 ## Pack Locations
 
@@ -30,6 +34,10 @@ A first-party pack is considered launch-ready when it has:
 - Enterprise Access: controlled first-party source in `packs/enterprise-access`
 - Error Tracking: public first-party source in
   [`MoveBigRocks/extensions/error-tracking`](https://github.com/MoveBigRocks/extensions/tree/main/error-tracking)
+- Sales Pipeline: public first-party beta source in
+  [`MoveBigRocks/extensions/sales-pipeline`](https://github.com/MoveBigRocks/extensions/tree/main/sales-pipeline)
+- Community Feature Requests: public first-party beta source in
+  [`MoveBigRocks/extensions/community-feature-requests`](https://github.com/MoveBigRocks/extensions/tree/main/community-feature-requests)
 - Web Analytics: public first-party source in
   [`MoveBigRocks/extensions/web-analytics`](https://github.com/MoveBigRocks/extensions/tree/main/web-analytics)
 
@@ -40,14 +48,17 @@ These packs are part of the standard milestone readiness run:
 - [`scripts/run-milestone-1-proof.sh`](../scripts/run-milestone-1-proof.sh)
 - [`docs/MILESTONE_1_PROOF.md`](./MILESTONE_1_PROOF.md)
 
-The pack proof tests load ATS, enterprise access, and the SDK sample pack from
-their canonical sibling repos instead of from duplicated `platform` fixtures.
+The pack proof tests load ATS, the beta public packs, enterprise access, and
+the SDK sample pack from their canonical sibling repos instead of from
+duplicated `platform` fixtures. The milestone proof still needs to expand to
+pull in extensions-side catalog validation and publication artifacts.
 
 ## Distribution Note
 
 The current public distribution target is:
 
 - free public signed bundles for ATS, error tracking, and web analytics,
+  plus beta public bundles for sales-pipeline and community-feature-requests,
   published from the public first-party extensions repo at
   [`MoveBigRocks/extensions`](https://github.com/MoveBigRocks/extensions)
 - a separately controlled first-party path for enterprise access

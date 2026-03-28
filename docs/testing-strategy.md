@@ -63,30 +63,35 @@ Tests run on every push and PR. Coverage is reported but not hard-gated.
 
 ## Documentation Reconciliation Checklist
 
-Run this when behavior changes are made:
+Run this whenever behavior changes are introduced.
 
-1. **Docs updates**
-   - Keep behavioral description in `docs/ARCHITECTURE.md`.
-   - Put decision rationale updates in `docs/ADRs/` or `docs/RFCs/`.
-   - Remove stale references to deleted docs (`MIGRATIONS.md`, `DOMAIN_MODEL.md`, `EVENTS.md`, `TYPE_SAFE_EVENTS_IMPLEMENTATION.md`).
+1. **Truth source check**
+   - Keep the primary behavioral description in `docs/ARCHITECTURE.md`.
+   - Put decision rationale in `docs/ADRs/` or `docs/RFCs/`.
+   - Prefer code-level contracts and generated specs over prose when they
+     exist.
 
-2. **Code truth check**
-   - Verify all behavior claims against implementation in:
-     - `internal/`
-     - `pkg/`
-     - `cmd/`
-   - Prefer constants/types from code (`pkg/eventbus/interface.go`, store interfaces, ADR-indexed config docs) over prose.
+2. **Change impact sweep**
+   - Verify all behavior claims against the implementation in `internal/`,
+     `pkg/`, and `cmd/`.
+   - Confirm event names, stream names, auth rules, tenancy rules, and runtime
+     contracts still match code.
 
-3. **Test parity check**
-   - Confirm updated/added behavior is covered by tests in:
-     - existing unit tests
-     - relevant integration tests (`-tags=integration`)
-     - scenario/e2e coverage where applicable
+3. **Test sweep**
+   - Confirm updated or added behavior is covered by existing unit tests.
+   - Add or adjust integration coverage when store-level or cross-service
+     behavior changed.
+   - Update scenario or end-to-end coverage when the user-facing workflow
+     changed.
 
-4. **Docs link integrity**
-   - Run `make docs-check` to catch stale links to removed files.
+4. **Docs integrity sweep**
+   - Remove dead docs from canonical lists instead of leaving stale references
+     in place.
+   - Replace removed docs with updates to `docs/ARCHITECTURE.md`,
+     `docs/ADRs/`, or `docs/RFCs/` when the material is still important.
+   - Run `make docs-check` to catch broken local links before merge.
 
-5. **Command sequence before merge**
+5. **Merge gate**
    - `make docs-check`
    - `go test ./...`
    - `go test -v -tags=integration ./...`

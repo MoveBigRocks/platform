@@ -1,14 +1,15 @@
 # Milestone 1 Scope
 
-**Document version:** 2026-03-21  
+**Document version:** 2026-03-28
 **Status:** Active source of truth
 
 ## Milestone 1 In One Sentence
 
 Milestone 1 ships the full first marketable shape of Move Big Rocks: a
 self-hosted, agent-operable operations core, a shared CLI and GraphQL contract,
-an installable extension runtime, four credible first-party packs, and a
-hosted sandbox path that proves the model end to end.
+an installable extension runtime, four core first-party packs, two in-scope
+beta first-party packs, and a hosted sandbox path that proves the model end to
+end.
 
 ## Problem Space
 
@@ -67,12 +68,18 @@ Milestone 1 is complete only when all of the following are true:
   public bootstrap/docs path
 - installable extensions are a real runtime model with activation, validation,
   lifecycle operations, artifact surfaces, permissions, and event contracts
-- the first-party extension set is real: ATS, enterprise access, error
+- the core first-party extension set is real: ATS, enterprise access, error
   tracking, and web analytics all ship on that runtime model
+- the in-scope beta first-party extension set is real: sales-pipeline and
+  community-feature-requests ship on that runtime model with clear beta
+  labeling, install and activation proof, and public bundle publication
+  evidence
 - the hosted sandbox lifecycle is real from creation through extension,
-  verification, export, and expiry
+  verification, bootstrap discovery, export, and expiry
 - the release, migration, and verification story is strong enough that the
-  milestone is actually shippable rather than merely described
+  milestone is actually shippable rather than merely described, including
+  milestone-proof evidence for CLI release artifacts, first-party bundle
+  validation, and public bundle publication inputs
 
 Nothing in that definition is optional. Milestone 1 is the whole chain working
 together, not a partial platform slice.
@@ -110,6 +117,8 @@ full stack below in one coherent release:
 - an enterprise access extension for SSO
 - a Sentry-compatible error tracking extension
 - a privacy-first web analytics extension
+- a beta sales pipeline extension
+- a beta community feature requests extension
 - a signed-bundle activation flow for first-party and custom extensions
 - a hosted sandbox path that users can spin up for evaluation
 
@@ -124,12 +133,19 @@ The public distribution model is:
 
 - free self-hosted core
 - free public first-party standard-risk bundles for ATS, error tracking, and
-  web analytics
+  web analytics, plus beta public bundles for sales-pipeline and
+  community-feature-requests
 - separately controlled privileged first-party packs such as enterprise access
 - internal company use, modification, and private extensions allowed under the
   public license, but no selling or licensing of the platform, derivative
   works of it, extensions, or access to them, and no hosted-service offering,
   without separate written permission from Move Big Rocks BV
+
+The four core packs remain the launch-grade baseline. The two beta packs are
+intentionally in scope for Milestone 1 as public beta products: present,
+installable, documented, and published through the same bundle path, but
+explicitly labeled beta and allowed a narrower workflow-depth bar than the four
+core launch packs.
 
 That base is already the initial product. The free core is valuable on its own
 because it provides:
@@ -274,7 +290,10 @@ Milestone 1 also supports a hosted evaluation path:
 3. The sandbox gets an auto-generated subdomain such as `magic-dumpling-26.movebigrocks.io`.
 4. The sandbox is created and managed through the `mbr` CLI, and then exposes browser access plus the same `mbr` and GraphQL contract.
 5. The sandbox is seeded with demo data and can be used for extension trials and agent workflows.
-6. The free public first-party bundle set for ATS, error tracking, and web analytics is available in sandbox mode for evaluation. Enterprise access stays separately controlled.
+6. The free public first-party bundle set is available in sandbox mode for
+   evaluation: launch-grade ATS, error tracking, and web analytics, plus beta
+   sales-pipeline and community-feature-requests. Enterprise access stays
+   separately controlled.
 7. The default sandbox window is 5 days free. If a paid hosted-sandbox extension is offered later, that is payment for extra hosted evaluation time rather than payment for access to the free public bundles.
 8. The sandbox auto-expires or is explicitly destroyed when the trial ends, with an export path available before deletion.
 
@@ -529,7 +548,7 @@ Sandbox evaluation in Milestone 1 is explicit too:
 - a sandbox should default to 5 free days and be extendable for 30 more days for a simple fee such as $50
 - a sandbox uses the same core auth, CLI, GraphQL, and extension contract as a real instance
 - a sandbox should have an auto-generated `*.movebigrocks.io` subdomain
-- a sandbox should include first-party extension access for evaluation during the sandbox window
+- a sandbox should include launch-grade and beta first-party extension access for evaluation during the sandbox window
 - a sandbox should support easy data and configuration export before deletion
 - a sandbox should be created and controlled through `mbr` rather than requiring a separate website-only provisioning path
 - `mbr sandboxes create` should be usable by an external agent with minimal required inputs and should return machine-readable sandbox URL, expiry, status, and next-step data
@@ -566,7 +585,9 @@ Milestone 1 supports two runtime classes:
 - `bundle` extensions for bundle-first product packs such as ATS, where the
   extension owns its workflow vocabulary and published assets while still
   building on shared primitives
-- `service-backed` extensions for dynamic packs such as web analytics, error tracking, enterprise access, and connector integrations
+- `service-backed` extensions for dynamic packs such as web analytics, error
+  tracking, enterprise access, sales-pipeline,
+  community-feature-requests, and connector integrations
 
 Extensions use the same outbox and event bus pattern as core. That means
 Milestone 1 also includes:
@@ -613,7 +634,8 @@ Milestone 1 does support a fully agentic extension activation flow:
 That same runtime supports both paths that matter for Milestone 1:
 
 - a free public first-party bundle set for ATS, error tracking, and web
-  analytics
+  analytics, plus beta public bundles for sales-pipeline and
+  community-feature-requests
 - customer-built private extensions on the same primitives, including
   team-authored private extensions
 
@@ -660,7 +682,7 @@ Required workflows:
 
 ## Additional Initial Extensions
 
-Milestone 1 defines three additional first-party packs beyond ATS:
+Milestone 1 defines three additional core first-party packs beyond ATS:
 
 - `enterprise-access`
   OIDC, SAML, and directory sync. This is an identity extension. Core owns sessions, users, memberships, and authorization.
@@ -672,6 +694,26 @@ Milestone 1 defines three additional first-party packs beyond ATS:
 These packs use the same extension-aware admin navigation, route mounting,
 event consumers, and service-backed runtime model.
 
+## In-Scope Beta Packs
+
+Milestone 1 also includes two public beta first-party packs on the same
+runtime and bundle pipeline:
+
+- `sales-pipeline`
+  A workspace-scoped revenue-operations pack for opportunity intake, stage
+  movement, dedicated sales workspace provisioning, and operator review.
+- `community-feature-requests`
+  A workspace-scoped community-feedback pack for public idea capture, voting,
+  triage, and roadmap review.
+
+Beta packs are in scope for Milestone 1 when they have:
+
+- canonical checked-in source and public catalog entries
+- install, validation, activation, and health proof on the shared runtime
+- clear beta labeling in docs, bundle metadata, and publication guidance
+- public bundle publication evidence in the same release pipeline as the other
+  public first-party packs
+
 ## Modular Capability Packaging
 
 Milestone 1 treats these as optional first-party extensions rather than
@@ -681,6 +723,8 @@ mandatory core product layers:
 - enterprise access
 - error tracking
 - analytics
+- sales pipeline
+- community feature requests
 - operational health and probes
 
 ## Email and Channel Policy
