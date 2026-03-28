@@ -70,6 +70,8 @@ WORKSPACE_REFS_DIR="$OUT_DIR/workspace-refs"
 WORKSPACE_REFS_MANIFEST_ARCHIVE_PATH="$WORKSPACE_REFS_DIR/canonical-workspace-refs.json"
 WORKSPACE_REFS_VERIFICATION_PATH="$WORKSPACE_REFS_DIR/canonical-workspace-refs-verification.json"
 CASE_REPLY_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-reply-send.json"
+CASE_COMMAND_CREATE_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-command-create.json"
+CASE_COMMAND_FAILURE_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-command-failure-visible.json"
 CASE_OPERATOR_MANUAL_CREATE_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-manual-create.json"
 CASE_OPERATOR_WORK_MANAGEMENT_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-work-management.json"
 CASE_OPERATOR_HANDOFF_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-handoff.json"
@@ -243,6 +245,8 @@ run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go run ./tools/publica
 run_step go run ./tools/runtime-bootstrap-proof --out "$BOOTSTRAP_PROOF_PATH" --version "$VERSION" --git-sha "$GIT_SHA" --build-date "$GENERATED_AT"
 run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go run ./tools/ats-scenario-proof --out \"$ATS_SCENARIO_PATH\" --version \"$VERSION\" --git-sha \"$GIT_SHA\" --build-date \"$GENERATED_AT\""
 require_file "$CASE_REPLY_PROOF_PATH"
+require_file "$CASE_COMMAND_CREATE_PROOF_PATH"
+require_file "$CASE_COMMAND_FAILURE_PROOF_PATH"
 require_file "$CASE_OPERATOR_MANUAL_CREATE_PROOF_PATH"
 require_file "$CASE_OPERATOR_WORK_MANAGEMENT_PROOF_PATH"
 require_file "$CASE_OPERATOR_HANDOFF_PROOF_PATH"
@@ -320,6 +324,8 @@ cat >"$SUMMARY_PATH" <<EOF
 - workflow_proof_dir: $(artifact_rel "$WORKFLOW_PROOF_DIR")
 - go_work_path: $(artifact_rel "${GOWORK:-off}")
 - workflow_case_reply_artifact: $(artifact_rel "$CASE_REPLY_PROOF_PATH")
+- workflow_case_command_create_artifact: $(artifact_rel "$CASE_COMMAND_CREATE_PROOF_PATH")
+- workflow_case_command_failure_artifact: $(artifact_rel "$CASE_COMMAND_FAILURE_PROOF_PATH")
 - workflow_case_operator_manual_create_artifact: $(artifact_rel "$CASE_OPERATOR_MANUAL_CREATE_PROOF_PATH")
 - workflow_case_operator_work_management_artifact: $(artifact_rel "$CASE_OPERATOR_WORK_MANAGEMENT_PROOF_PATH")
 - workflow_case_operator_handoff_artifact: $(artifact_rel "$CASE_OPERATOR_HANDOFF_PROOF_PATH")

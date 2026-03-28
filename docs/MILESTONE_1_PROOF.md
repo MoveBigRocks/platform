@@ -71,7 +71,10 @@ first-party sources rather than stale mirrored fixtures.
    - for local reruns, `make milestone-proof` uses the checked-in archive automatically; you can still override it with `FIRST_PARTY_PUBLICATION_EVIDENCE_DIR` or fetch live evidence with `FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST=docs/evidence/public-bundle-publication-runs.json`
    - structurally verify the evidence bundle against both the checked-in run manifest and the generated publication plan via [`scripts/verify-publication-evidence.sh`](../scripts/verify-publication-evidence.sh)
 9. Operational workflow proof:
-   - archive machine-readable JSON artifacts for inbound-new-email case creation, case reply send, inbound reply threading, public form notification delivery, rule-driven email delivery, knowledge-review notifications, and failure-visible command artifacts for `email-commands` and `notification-commands`
+   - archive machine-readable JSON artifacts for inbound-new-email case creation, case reply send, inbound reply threading, public form notification delivery, rule-driven email delivery, knowledge-review notifications, and failure-visible command artifacts for the currently implemented production command streams
+   - archive machine-readable JSON artifacts for the sanctioned case-create
+     contract as `case-command-create.json` and
+     `case-command-failure-visible.json`
    - archive machine-readable JSON artifacts for base operator case creation and
      work-management flows as `case-operator-manual-create.json`,
      `case-operator-work-management.json`, `case-operator-reply.json`,
@@ -102,11 +105,8 @@ first-party sources rather than stale mirrored fixtures.
 
 ## What The Proof Run Does Not Yet Cover
 
-The proof bundle still does not claim anything about command streams that are
-outside the Milestone 1 workflow set. In particular, `case-commands` still has
-no production consumer and must not be treated as proven. External-provider
-reliability on the public internet also remains outside what the archived proof
-artifacts can establish.
+External-provider reliability on the public internet remains outside what the
+archived proof artifacts can establish.
 
 Under the expanded Milestone 1 bar, the proof bundle also still does not cover:
 
@@ -114,8 +114,6 @@ Under the expanded Milestone 1 bar, the proof bundle also still does not cover:
   product-complete operational proof rows
 - a supported public conversation intake surface such as the website widget or
   equivalent public conversation adapter implied by the public product promise
-- a sanctioned extension-to-core case action contract with a production
-  consumer, if `case-commands` remains the chosen mechanism
 - the remaining attachment-workflow gap outside the core case loop: ATS
   resume and portfolio uploads as milestone-proof artifacts
 
@@ -165,7 +163,7 @@ Those outputs currently provide the concrete proof bundle for:
 - archived input manifests for canonical workspace refs and publication evidence
 - canonical sibling-repo ref verification for deterministic multi-repo proof
 - milestone-scoped operational workflow evidence
-- command failure visibility for the scoped operational streams
+- command failure visibility for the scoped production command streams
 - cross-platform CLI release evidence
 
 ## Related Evidence

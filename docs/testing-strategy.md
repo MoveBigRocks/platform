@@ -189,11 +189,14 @@ Current reality:
 - the full `go test -tags=integration ./...` sweep is green and hard-gated in CI
 - milestone proof now runs that same full integration sweep and archives its log
 - milestone proof archives machine-readable workflow artifacts for scoped
-  command-driven operational flows, including failure-visible command artifacts
+  command-driven operational flows, including success and failure artifacts for
+  `email-commands`, `notification-commands`, and `case-commands`
 - worker-manager registration is covered directly in
   [`internal/workers/manager_test.go`](../internal/workers/manager_test.go)
 - full container startup wiring is covered in
   [`internal/infrastructure/container/container_integration_test.go`](../internal/infrastructure/container/container_integration_test.go)
+- the sanctioned case-create contract now travels through the same outbox,
+  worker, and container path as the other production command streams
 - milestone proof CI also downloads and archives the live public-bundle
   publication evidence listed in
   [`docs/evidence/public-bundle-publication-runs.json`](./evidence/public-bundle-publication-runs.json)

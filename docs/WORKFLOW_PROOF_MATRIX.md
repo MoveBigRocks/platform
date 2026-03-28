@@ -33,7 +33,7 @@ The implementation and proof sequence for closing the current gaps lives in
 | Manual case attachment upload is durable and linked to operational work | `Proven` | supported upload entrypoint -> scan/store -> attachment metadata persistence -> case query surface | upload accepted, durable metadata stored, attachment linked to case, resulting attachment visible from the supported case record | Covered by [`internal/service/handlers/attachment_upload_handler_integration_test.go`](../internal/service/handlers/attachment_upload_handler_integration_test.go) and archived as `workflow-proof/case-operator-attachment-upload.json` |
 | Inbound email attachments survive the real webhook path | `Proven` | Postmark webhook -> attachment decode -> scan/store -> inbound email/case linkage | attachment IDs persisted, failed attachments remain auditable, resulting case/email record exposes attachment linkage | Covered by [`internal/service/handlers/postmark_webhooks_integration_test.go`](../internal/service/handlers/postmark_webhooks_integration_test.go) and archived as `workflow-proof/inbound-email-attachments.json` |
 | Public conversation intake reaches a supervised conversation record owned by core | `Open` | public widget or equivalent public conversation surface -> conversation session -> queue item -> operator follow-up path | public intake creates a core-owned conversation record, queue visibility exists, operators can continue from the same record | Public promise exists in site/docs, but the repo does not yet prove a supported public conversation intake surface |
-| Extension or agent initiated case action executes through a sanctioned core-action contract | `Open` | extension/agent producer -> supported case-action contract -> production consumer -> durable case result | command consumed by a production worker, resulting case action recorded durably, follow-up event or response visible | `case-commands` still has no production consumer or workflow proof |
+| Extension or agent initiated case action executes through a sanctioned core-action contract | `Proven` | extension/agent producer -> supported case-action contract -> production consumer -> durable case result | command consumed by a production worker, resulting case action recorded durably, follow-up response event visible, and failure retry state remains queryable | Covered by [`internal/service/handlers/case_command_handler_test.go`](../internal/service/handlers/case_command_handler_test.go), [`internal/workers/manager_test.go`](../internal/workers/manager_test.go), and [`internal/infrastructure/container/container_integration_test.go`](../internal/infrastructure/container/container_integration_test.go), archived as `workflow-proof/case-command-create.json` plus `workflow-proof/case-command-failure-visible.json` |
 
 ## Stream Parity Checklist
 
@@ -43,7 +43,7 @@ Every production command stream used by any workflow above must have:
 | --- | --- | --- | --- | --- | --- | --- |
 | `email-commands` | Yes | Yes | Yes | Yes | Yes | `Proven` |
 | `notification-commands` | Yes | Yes | Yes | Yes | Yes | `Proven` |
-| `case-commands` | Partial | No | No | No | No | `Open` |
+| `case-commands` | Yes | Yes | Yes | Yes | Yes | `Proven` |
 
 The stream-wiring and failure-proof evidence currently lives in:
 
@@ -51,13 +51,17 @@ The stream-wiring and failure-proof evidence currently lives in:
 - [`internal/infrastructure/container/container_integration_test.go`](../internal/infrastructure/container/container_integration_test.go)
 - [`internal/service/handlers/email_command_handler_test.go`](../internal/service/handlers/email_command_handler_test.go) archived as `workflow-proof/email-command-failure-visible.json`
 - [`internal/service/handlers/notification_command_handler_test.go`](../internal/service/handlers/notification_command_handler_test.go) archived as `workflow-proof/notification-command-failure-visible.json`
+- [`internal/service/handlers/case_command_handler_test.go`](../internal/service/handlers/case_command_handler_test.go) archived as `workflow-proof/case-command-create.json` plus `workflow-proof/case-command-failure-visible.json`
 
 ## Current State
 
-- The originally scoped command-driven operational workflows now have end-to-end automated proof.
+- The production command-driven operational workflows now have end-to-end automated proof.
 - Base operator case creation, work-management actions, and attachment-bearing
   case workflows now also have real workflow proof through supported product
   surfaces.
+- The sanctioned extension-or-agent case creation contract is now real through
+  `case-commands`, with worker-manager wiring, container startup wiring,
+  success proof, and failure-visible retry proof.
 - The milestone proof bundle archives machine-readable workflow artifacts for
   those flows, including failure-visible command artifacts.
 - The full `go test -tags=integration ./...` sweep is green and hard-gated in
