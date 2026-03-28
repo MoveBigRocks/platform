@@ -58,11 +58,13 @@ PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR="$PUBLIC_BUNDLE_PUBLICATION_DIR/release-evide
 FETCHED_PUBLICATION_EVIDENCE_DIR="$PUBLIC_BUNDLE_PUBLICATION_DIR/fetched-evidence"
 WORKFLOW_PROOF_DIR="$OUT_DIR/workflow-proof"
 CASE_REPLY_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-reply-send.json"
+EMAIL_COMMAND_FAILURE_PROOF_PATH="$WORKFLOW_PROOF_DIR/email-command-failure-visible.json"
 INBOUND_NEW_EMAIL_PROOF_PATH="$WORKFLOW_PROOF_DIR/inbound-new-email-case-create.json"
 INBOUND_REPLY_THREADING_PROOF_PATH="$WORKFLOW_PROOF_DIR/inbound-reply-threading.json"
 FORM_NOTIFICATION_PROOF_PATH="$WORKFLOW_PROOF_DIR/public-form-case-notification.json"
 RULE_EMAIL_PROOF_PATH="$WORKFLOW_PROOF_DIR/rule-send-email.json"
 KNOWLEDGE_NOTIFICATION_PROOF_PATH="$WORKFLOW_PROOF_DIR/knowledge-review-notification.json"
+NOTIFICATION_COMMAND_FAILURE_PROOF_PATH="$WORKFLOW_PROOF_DIR/notification-command-failure-visible.json"
 SUMMARY_PATH="$OUT_DIR/summary.md"
 GENERATED_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 GIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD)"
@@ -128,11 +130,13 @@ run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go run ./tools/publica
 run_step go run ./tools/runtime-bootstrap-proof --out "$BOOTSTRAP_PROOF_PATH" --version "$VERSION" --git-sha "$GIT_SHA" --build-date "$GENERATED_AT"
 run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go run ./tools/ats-scenario-proof --out \"$ATS_SCENARIO_PATH\" --version \"$VERSION\" --git-sha \"$GIT_SHA\" --build-date \"$GENERATED_AT\""
 require_file "$CASE_REPLY_PROOF_PATH"
+require_file "$EMAIL_COMMAND_FAILURE_PROOF_PATH"
 require_file "$INBOUND_NEW_EMAIL_PROOF_PATH"
 require_file "$INBOUND_REPLY_THREADING_PROOF_PATH"
 require_file "$FORM_NOTIFICATION_PROOF_PATH"
 require_file "$RULE_EMAIL_PROOF_PATH"
 require_file "$KNOWLEDGE_NOTIFICATION_PROOF_PATH"
+require_file "$NOTIFICATION_COMMAND_FAILURE_PROOF_PATH"
 if [[ -z "$FIRST_PARTY_PUBLICATION_EVIDENCE_DIR" && -n "$FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST" ]]; then
   run_step bash scripts/fetch-publication-evidence.sh --manifest "$FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST" --out "$FETCHED_PUBLICATION_EVIDENCE_DIR"
   FIRST_PARTY_PUBLICATION_EVIDENCE_DIR="$FETCHED_PUBLICATION_EVIDENCE_DIR"
@@ -169,11 +173,13 @@ cat >"$SUMMARY_PATH" <<EOF
 - ats_scenario_artifact: ${ATS_SCENARIO_PATH}
 - workflow_proof_dir: ${WORKFLOW_PROOF_DIR}
 - workflow_case_reply_artifact: ${CASE_REPLY_PROOF_PATH}
+- workflow_email_command_failure_artifact: ${EMAIL_COMMAND_FAILURE_PROOF_PATH}
 - workflow_inbound_case_create_artifact: ${INBOUND_NEW_EMAIL_PROOF_PATH}
 - workflow_inbound_reply_threading_artifact: ${INBOUND_REPLY_THREADING_PROOF_PATH}
 - workflow_form_notification_artifact: ${FORM_NOTIFICATION_PROOF_PATH}
 - workflow_rule_email_artifact: ${RULE_EMAIL_PROOF_PATH}
 - workflow_knowledge_notification_artifact: ${KNOWLEDGE_NOTIFICATION_PROOF_PATH}
+- workflow_notification_command_failure_artifact: ${NOTIFICATION_COMMAND_FAILURE_PROOF_PATH}
 - extensions_validation_dir: ${EXTENSIONS_VALIDATION_DIR}
 - public_bundle_publication_plan: ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH}
 - public_bundle_release_evidence_dir: ${PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR}

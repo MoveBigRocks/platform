@@ -37,7 +37,7 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
    - in CI, download the live `*.publication-evidence.json` artifacts listed in [`docs/evidence/public-bundle-publication-runs.json`](./evidence/public-bundle-publication-runs.json) and archive them inside `public-bundle-publication/release-evidence/`
    - for local reruns, either supply `FIRST_PARTY_PUBLICATION_EVIDENCE_DIR` directly or set `FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST=docs/evidence/public-bundle-publication-runs.json`
 9. Operational workflow proof:
-   - archive machine-readable JSON artifacts for inbound-new-email case creation, case reply send, inbound reply threading, public form notification delivery, rule-driven email delivery, and knowledge-review notifications
+   - archive machine-readable JSON artifacts for inbound-new-email case creation, case reply send, inbound reply threading, public form notification delivery, rule-driven email delivery, knowledge-review notifications, and failure-visible command artifacts for `email-commands` and `notification-commands`
 10. Full integration sweep:
    - run `go test -tags=integration ./...`
    - archive the integration log inside the proof bundle
@@ -88,6 +88,7 @@ Those outputs currently provide the concrete proof bundle for:
 - first-party pack readiness
 - runtime discovery, extension lifecycle, and publication evidence
 - milestone-scoped operational workflow evidence
+- command failure visibility for the scoped operational streams
 - cross-platform CLI release evidence
 
 ## Related Evidence

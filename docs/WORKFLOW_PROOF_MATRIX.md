@@ -31,21 +31,30 @@ The implementation and proof sequence for closing the current gaps lives in
 
 Every production command stream used by any workflow above must have:
 
-| Stream | Producer Exists | Consumer Exists | Workflow Proof Exists | Status |
-| --- | --- | --- | --- | --- |
-| `email-commands` | Yes | Yes | Yes | `Proven` |
-| `notification-commands` | Yes | Yes | Yes | `Proven` |
+| Stream | Producer Exists | Worker Manager Wiring | Container Startup Wiring | Failure Proof Exists | Workflow Proof Exists | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `email-commands` | Yes | Yes | Yes | Yes | Yes | `Proven` |
+| `notification-commands` | Yes | Yes | Yes | Yes | Yes | `Proven` |
 
 `case-commands` still has no production consumer, but no Milestone 1 workflow row
 above currently depends on it.
+
+The stream-wiring and failure-proof evidence currently lives in:
+
+- [`internal/workers/manager_test.go`](../internal/workers/manager_test.go)
+- [`internal/infrastructure/container/container_integration_test.go`](../internal/infrastructure/container/container_integration_test.go)
+- [`internal/service/handlers/email_command_handler_test.go`](../internal/service/handlers/email_command_handler_test.go) archived as `workflow-proof/email-command-failure-visible.json`
+- [`internal/service/handlers/notification_command_handler_test.go`](../internal/service/handlers/notification_command_handler_test.go) archived as `workflow-proof/notification-command-failure-visible.json`
 
 ## Current State
 
 - Milestone-scoped operational workflows now have end-to-end automated proof.
 - The milestone proof bundle archives machine-readable workflow artifacts for
-  those flows.
+  those flows, including failure-visible command artifacts.
 - The full `go test -tags=integration ./...` sweep is green and hard-gated in
   CI.
+- Worker-manager registration and full container startup wiring are covered by
+  automated tests for the scoped command streams.
 - The remaining stream gap is `case-commands`, which is outside the current
   milestone workflow set and must not be claimed as proven until a real
   consumer exists.
