@@ -1,8 +1,6 @@
 package testutil
 
 import (
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/movebigrocks/platform/internal/infrastructure/config"
@@ -25,6 +23,7 @@ func NewTestConfig(t *testing.T) *config.Config {
 		"EMAIL_BACKEND":   "mock",
 		"STORAGE_TYPE":    "filesystem",
 		"DATABASE_DSN":    testDSN,
+		"INSTANCE_ID":     "instance-test",
 	})
 
 	// Load configuration
@@ -51,6 +50,7 @@ func SetupTestEnv(t *testing.T) {
 		"EMAIL_BACKEND":   "mock",
 		"STORAGE_TYPE":    "filesystem",
 		"DATABASE_DSN":    testDSN,
+		"INSTANCE_ID":     "instance-test",
 		"TRACING_ENABLED": "false",
 		"ENABLE_METRICS":  "false",
 		"CLAMAV_ADDR":     "",
@@ -59,10 +59,6 @@ func SetupTestEnv(t *testing.T) {
 
 func ensureEntrypointTestDatabase(t *testing.T) string {
 	t.Helper()
-
-	if dsn := strings.TrimSpace(os.Getenv("DATABASE_DSN")); dsn != "" {
-		return dsn
-	}
 
 	dsn, cleanup := SetupTestPostgresDatabase(t)
 	t.Cleanup(cleanup)

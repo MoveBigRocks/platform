@@ -571,6 +571,21 @@ func (cs *CaseService) SaveCase(ctx context.Context, caseObj *servicedomain.Case
 		return apierrors.Wrap(err, apierrors.ErrorTypeValidation, "case validation failed")
 	}
 
+	if strings.TrimSpace(caseObj.ID) == "" {
+		if cs.tx != nil && cs.outbox != nil {
+			if err := cs.createCaseWithEvent(ctx, caseObj); err != nil {
+				return err
+			}
+			return nil
+		}
+
+		if err := cs.caseStore.CreateCase(ctx, caseObj); err != nil {
+			return apierrors.DatabaseError("create case", err)
+		}
+		cs.publishCaseCreatedEvent(ctx, caseObj)
+		return nil
+	}
+
 	_, err := cs.caseStore.GetCase(ctx, caseObj.ID)
 	switch {
 	case err == nil:

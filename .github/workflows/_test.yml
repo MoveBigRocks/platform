@@ -7,10 +7,10 @@ on:
         description: "Whether unit, integration, and PostgreSQL verification all passed"
         value: ${{ jobs.test.outputs.passed }}
       required_gate_passed:
-        description: "Whether the currently hard-gated checks passed"
+        description: "Whether the hard-gated test workflow passed"
         value: ${{ jobs.test.outputs.required_gate_passed }}
       integration_tests_passed:
-        description: "Whether the soft-gated integration sweep passed"
+        description: "Whether the full integration sweep passed"
         value: ${{ jobs.test.outputs.integration_passed }}
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       passed: ${{ steps.unit_tests.outcome == 'success' && steps.integration_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' }}
-      required_gate_passed: ${{ steps.unit_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' }}
+      required_gate_passed: ${{ steps.unit_tests.outcome == 'success' && steps.integration_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' }}
       integration_passed: ${{ steps.integration_tests.outcome == 'success' }}
     services:
       postgres:
@@ -72,7 +72,6 @@ jobs:
 
       - name: Run integration tests
         id: integration_tests
-        continue-on-error: true
         env:
           DATABASE_DSN: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
           TEST_DATABASE_ADMIN_DSN: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
@@ -149,8 +148,8 @@ jobs:
             COVERAGE="N/A"
           fi
 
-          REQUIRED_GATE_STATUS="${{ steps.unit_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' && 'passed' || 'failed' }}"
-          INTEGRATION_STATUS="${{ steps.integration_tests.outcome == 'success' && 'passed' || 'failed (soft-gated)' }}"
+          REQUIRED_GATE_STATUS="${{ steps.unit_tests.outcome == 'success' && steps.integration_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' && 'passed' || 'failed' }}"
+          INTEGRATION_STATUS="${{ steps.integration_tests.outcome == 'success' && 'passed' || 'failed' }}"
           ALL_CHECKS_STATUS="${{ steps.unit_tests.outcome == 'success' && steps.integration_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' && 'all checks passed' || 'workflow not fully green' }}"
 
           cat << EOF >> $GITHUB_STEP_SUMMARY
@@ -165,7 +164,7 @@ jobs:
           ### Checks Performed
           - Go linting (golangci-lint)
           - Unit tests with race detection (PostgreSQL)
-          - Integration tests
+          - Integration tests (hard-gated)
           - PostgreSQL migration and store integration tests
           - Dead-code scan (production packages)
           - Optional Sentry SDK integration tests
