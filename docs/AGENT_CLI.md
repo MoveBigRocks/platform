@@ -79,11 +79,6 @@ mbr auth logout
 mbr context view [--json]
 mbr context set [--workspace WORKSPACE_ID] [--team TEAM_ID] [--clear-team | --clear] [--json]
 mbr spec export [--json]
-mbr sandboxes create --email ADDRESS [--name NAME] [--url URL] [--json]
-mbr sandboxes show SANDBOX_ID --manage-token TOKEN [--url URL] [--json]
-mbr sandboxes extend SANDBOX_ID --manage-token TOKEN [--url URL] [--json]
-mbr sandboxes export SANDBOX_ID --manage-token TOKEN [--out PATH] [--url URL] [--json]
-mbr sandboxes destroy SANDBOX_ID --manage-token TOKEN [--reason TEXT] [--url URL] [--json]
 mbr workspaces list [--url URL] [--token TOKEN] [--json]
 mbr workspaces create --name NAME --slug SLUG [--description TEXT] [--url URL] [--json]
 mbr teams list [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
@@ -194,11 +189,6 @@ mbr extensions uninstall --id EXTENSION_ID [--deactivate] [--reason TEXT] [--exp
 | `context view` | Local CLI state | yes | local | read_only |
 | `context set` | Local CLI state | yes | local | local_state |
 | `spec export` | No remote auth required | yes | local | not_applicable |
-| `sandboxes create` | No remote auth required | yes | write | server_managed |
-| `sandboxes show` | No remote auth required | yes | read | read_only |
-| `sandboxes extend` | No remote auth required | yes | write | server_managed |
-| `sandboxes export` | No remote auth required | yes | read | read_only |
-| `sandboxes destroy` | No remote auth required | yes | write | server_managed |
 | `workspaces list` | Bearer token or browser-backed session | yes | read | read_only |
 | `workspaces create` | Browser-backed session only | yes | write | server_managed |
 | `teams list` | Bearer token or browser-backed session | yes | read | read_only |

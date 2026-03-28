@@ -47,12 +47,8 @@ EXTENSIONS_VALIDATION_DIR="$OUT_DIR/extensions-validation"
 EXTENSIONS_VALIDATION_LOG="$EXTENSIONS_VALIDATION_DIR/validate-first-party.log"
 FIRST_PARTY_VALIDATION_SCRIPT="$FIRST_PARTY_EXTENSIONS_ROOT/scripts/validate-first-party.sh"
 FIRST_PARTY_CATALOG_PATH="$FIRST_PARTY_EXTENSIONS_ROOT/catalog/public-bundles.json"
-BOOTSTRAP_PROOF_DIR="$OUT_DIR/sandbox-bootstrap"
+BOOTSTRAP_PROOF_DIR="$OUT_DIR/runtime-bootstrap"
 BOOTSTRAP_PROOF_PATH="$BOOTSTRAP_PROOF_DIR/mbr-instance.json"
-SANDBOX_LIFECYCLE_DIR="$OUT_DIR/sandbox-lifecycle"
-SANDBOX_LIFECYCLE_PATH="$SANDBOX_LIFECYCLE_DIR/lifecycle.json"
-CLI_SANDBOX_DIR="$OUT_DIR/cli-sandbox"
-CLI_SANDBOX_PATH="$CLI_SANDBOX_DIR/cli-sandbox.json"
 ATS_SCENARIO_DIR="$OUT_DIR/ats-scenario"
 ATS_SCENARIO_PATH="$ATS_SCENARIO_DIR/ats-scenario.json"
 PUBLIC_BUNDLE_PUBLICATION_DIR="$OUT_DIR/public-bundle-publication"
@@ -107,7 +103,7 @@ require_file() {
 
 cd "$ROOT_DIR"
 
-mkdir -p "$PROOF_BIN_DIR" "$EXTENSIONS_VALIDATION_DIR" "$BOOTSTRAP_PROOF_DIR" "$SANDBOX_LIFECYCLE_DIR" "$CLI_SANDBOX_DIR" "$ATS_SCENARIO_DIR" "$PUBLIC_BUNDLE_PUBLICATION_DIR"
+mkdir -p "$PROOF_BIN_DIR" "$EXTENSIONS_VALIDATION_DIR" "$BOOTSTRAP_PROOF_DIR" "$ATS_SCENARIO_DIR" "$PUBLIC_BUNDLE_PUBLICATION_DIR"
 require_file "$FIRST_PARTY_VALIDATION_SCRIPT"
 require_file "$FIRST_PARTY_CATALOG_PATH"
 
@@ -117,8 +113,6 @@ run_step go build -trimpath -o "$LOCAL_MBR_BIN" ./cmd/mbr
 run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go test ./ats/runtime ./cmd/ats-runtime ./tools/ats-scenario-proof -count=1"
 run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go run ./tools/publication-evidence --mode plan --source-root \"$FIRST_PARTY_EXTENSIONS_ROOT\" --out \"$PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH\""
 run_step go run ./tools/runtime-bootstrap-proof --out "$BOOTSTRAP_PROOF_PATH" --version "$VERSION" --git-sha "$GIT_SHA" --build-date "$GENERATED_AT"
-run_step go run ./tools/sandbox-lifecycle-proof --out "$SANDBOX_LIFECYCLE_PATH" --version "$VERSION" --git-sha "$GIT_SHA" --build-date "$GENERATED_AT"
-run_step go run ./tools/cli-sandbox-proof --mbr-bin "$LOCAL_MBR_BIN" --out "$CLI_SANDBOX_PATH" --version "$VERSION" --git-sha "$GIT_SHA" --build-date "$GENERATED_AT"
 run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go run ./tools/ats-scenario-proof --out \"$ATS_SCENARIO_PATH\" --version \"$VERSION\" --git-sha \"$GIT_SHA\" --build-date \"$GENERATED_AT\""
 if [[ -n "$FIRST_PARTY_PUBLICATION_EVIDENCE_DIR" ]]; then
   mkdir -p "$PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR"
@@ -144,9 +138,7 @@ cat >"$SUMMARY_PATH" <<EOF
 - cli_release_dir: ${CLI_OUT_DIR}
 - cli_release_verification: ${CLI_OUT_DIR}/verification.json
 - local_mbr_bin: ${LOCAL_MBR_BIN}
-- sandbox_bootstrap_artifact: ${BOOTSTRAP_PROOF_PATH}
-- sandbox_lifecycle_artifact: ${SANDBOX_LIFECYCLE_PATH}
-- cli_sandbox_artifact: ${CLI_SANDBOX_PATH}
+- runtime_bootstrap_artifact: ${BOOTSTRAP_PROOF_PATH}
 - ats_scenario_artifact: ${ATS_SCENARIO_PATH}
 - extensions_validation_dir: ${EXTENSIONS_VALIDATION_DIR}
 - public_bundle_publication_plan: ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH}
@@ -160,12 +152,10 @@ cat >"$SUMMARY_PATH" <<EOF
 4. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go test ./ats/runtime ./cmd/ats-runtime ./tools/ats-scenario-proof -count=1)\`
 5. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go run ./tools/publication-evidence --mode plan --source-root ${FIRST_PARTY_EXTENSIONS_ROOT} --out ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH})\`
 6. \`go run ./tools/runtime-bootstrap-proof --out ${BOOTSTRAP_PROOF_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT}\`
-7. \`go run ./tools/sandbox-lifecycle-proof --out ${SANDBOX_LIFECYCLE_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT}\`
-8. \`go run ./tools/cli-sandbox-proof --mbr-bin ${LOCAL_MBR_BIN} --out ${CLI_SANDBOX_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT}\`
-9. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go run ./tools/ats-scenario-proof --out ${ATS_SCENARIO_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT})\`
-10. \`MBR_BIN=${LOCAL_MBR_BIN} bash ${FIRST_PARTY_VALIDATION_SCRIPT}\`
-11. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
-12. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
+7. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go run ./tools/ats-scenario-proof --out ${ATS_SCENARIO_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT})\`
+8. \`MBR_BIN=${LOCAL_MBR_BIN} bash ${FIRST_PARTY_VALIDATION_SCRIPT}\`
+9. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
+10. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
 
 ## Evidence Docs
 

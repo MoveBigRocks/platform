@@ -306,6 +306,9 @@ func TestRunSpecExportJSON(t *testing.T) {
 	var foundConversationsHandoff bool
 	var foundConversationsEscalate bool
 	for _, command := range spec.Commands {
+		if len(command.Path) > 0 && command.Path[0] == "sandboxes" {
+			t.Fatalf("expected sandbox commands to be hidden from the CLI contract, got %q", strings.Join(command.Path, " "))
+		}
 		switch strings.Join(command.Path, " ") {
 		case "context view":
 			foundContextView = true
@@ -504,6 +507,23 @@ func TestHelpIncludesSpecExportAndSessionNotes(t *testing.T) {
 	}
 	if !strings.Contains(output, "mbr context set stores the current workspace and team") {
 		t.Fatalf("expected context note in help, got %q", output)
+	}
+	if strings.Contains(output, "mbr sandboxes ") {
+		t.Fatalf("expected sandbox commands to be hidden from help, got %q", output)
+	}
+}
+
+func TestRunHidesSandboxCommandsFromRoot(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{"sandboxes"}, stdout, stderr)
+	if exitCode != 2 {
+		t.Fatalf("expected exit code 2, got %d stderr=%s", exitCode, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), `unknown command "sandboxes"`) {
+		t.Fatalf("expected unknown command error, got %q", stderr.String())
 	}
 }
 

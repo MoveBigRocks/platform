@@ -24,25 +24,20 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
    - `bash scripts/check-cli-contract-docs.sh`
 5. Runtime bootstrap artifact capture:
    - render `/.well-known/mbr-instance.json` into the proof bundle
-6. Sandbox lifecycle artifact capture:
-   - render create, export, expiry reaping, post-expiry export, and destroy evidence into the proof bundle
-7. CLI sandbox lifecycle artifact capture:
-   - execute `mbr sandboxes create`, `show`, `extend`, `export`, and `destroy` against a proof server
-   - archive the command outputs, request log, and exported bundle
-8. Public first-party catalog validation:
+6. Public first-party catalog validation:
    - build a host `mbr`
    - run `MoveBigRocks/extensions/scripts/validate-first-party.sh`
    - archive the validator log and `public-bundles.json` snapshot
-9. ATS scenario proof:
+7. ATS scenario proof:
    - run `MoveBigRocks/extensions/go test ./ats/runtime ./cmd/ats-runtime ./tools/ats-scenario-proof`
    - archive the ATS scenario JSON proving create job, publish, submit, review, move stage, close, and reopen
-10. Public bundle publication planning:
+8. Public bundle publication planning:
    - run `MoveBigRocks/extensions/go run ./tools/publication-evidence --mode plan`
    - archive the generated publication-plan JSON from the public bundle catalog and current manifests
    - archive the workflow-generated `*.publication-evidence.json` files inside `public-bundle-publication/release-evidence/`
-11. Cross-platform CLI packaging evidence:
+9. Cross-platform CLI packaging evidence:
    - `bash scripts/build-cli-release.sh`
-12. CLI release artifact validation:
+10. CLI release artifact validation:
    - `bash scripts/verify-cli-release.sh dist/milestone-proof/cli-release`
 
 ## Current Live Publication Evidence
@@ -61,9 +56,7 @@ files from those runs inside `public-bundle-publication/release-evidence/`.
 The current proof run writes:
 
 - `dist/milestone-proof/summary.md`
-- `dist/milestone-proof/sandbox-bootstrap/`
-- `dist/milestone-proof/sandbox-lifecycle/`
-- `dist/milestone-proof/cli-sandbox/`
+- `dist/milestone-proof/runtime-bootstrap/`
 - `dist/milestone-proof/ats-scenario/`
 - `dist/milestone-proof/public-bundle-publication/`
 - `dist/milestone-proof/public-bundle-publication/release-evidence/`
@@ -75,7 +68,7 @@ Those outputs together are the concrete proof bundle tying together:
 
 - milestone readiness status
 - first-party pack readiness
-- sandbox and extension lifecycle evidence
+- runtime discovery, extension lifecycle, and publication evidence
 - cross-platform CLI release evidence
 
 ## Related Evidence

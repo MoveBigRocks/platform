@@ -8,8 +8,9 @@
 Milestone 1 ships the full first marketable shape of Move Big Rocks: a
 self-hosted, agent-operable operations core, a shared CLI and GraphQL contract,
 an installable extension runtime, four core first-party packs, two in-scope
-beta first-party packs, and a hosted sandbox path that proves the model end to
-end.
+beta first-party packs, and a self-hosted evaluation path that proves the model
+end to end. Hosted sandboxes are deferred to
+[`docs/RFCs/RFC-0013-hosted-sandbox-control-plane.md`](docs/RFCs/RFC-0013-hosted-sandbox-control-plane.md).
 
 ## Problem Space
 
@@ -55,8 +56,7 @@ the product thesis works as one coherent system:
   commercial layer
 - first-party packs must prove that the extension model is credible in real
   product categories
-- the hosted sandbox must make evaluation fast without weakening the
-  self-hosted production thesis
+- evaluation must stay fast without weakening the self-hosted production thesis
 
 ## Definition Of Done
 
@@ -74,8 +74,6 @@ Milestone 1 is complete only when all of the following are true:
   community-feature-requests ship on that runtime model with clear beta
   labeling, install and activation proof, and public bundle publication
   evidence
-- the hosted sandbox lifecycle is real from creation through extension,
-  verification, bootstrap discovery, export, and expiry
 - the release, migration, and verification story is strong enough that the
   milestone is actually shippable rather than merely described, including
   milestone-proof evidence for CLI release artifacts, first-party bundle
@@ -120,7 +118,6 @@ full stack below in one coherent release:
 - a beta sales pipeline extension
 - a beta community feature requests extension
 - a signed-bundle activation flow for first-party and custom extensions
-- a hosted sandbox path that users can spin up for evaluation
 
 The goal is not to ship every product category inside core. The goal is to ship
 a strong base that makes focused extensions easy to install, operate, and
@@ -175,7 +172,6 @@ because it provides:
 - identity and agent access
 - outbox and event-bus integration
 - hosting and deployment conventions
-- a fast sandbox trial path for evaluation and agent-led setup
 
 ## Core Scope
 
@@ -266,7 +262,6 @@ Milestone 1 standardizes on this delivery shape:
 - one private first-party extension monorepo at the start
 - private customer instance repos created from the template
 - private customer extension repos by default
-- a vendor-operated sandbox control plane for disposable trial environments
 - a public docs and bootstrap surface for humans and agents
 
 The private customer instance repo is the deployment control plane for one
@@ -283,25 +278,14 @@ The default production path is:
 
 Customer-facing install docs make this path obvious and agent-friendly.
 
-Milestone 1 also supports a hosted evaluation path:
-
-1. A user spins up a sandbox.
-2. Move Big Rocks provisions a disposable hosted environment with a time limit.
-3. The sandbox gets an auto-generated subdomain such as `magic-dumpling-26.movebigrocks.io`.
-4. The sandbox is created and managed through the `mbr` CLI, and then exposes browser access plus the same `mbr` and GraphQL contract.
-5. The sandbox is seeded with demo data and can be used for extension trials and agent workflows.
-6. The free public first-party bundle set is available in sandbox mode for
-   evaluation: launch-grade ATS, error tracking, and web analytics, plus beta
-   sales-pipeline and community-feature-requests. Enterprise access stays
-   separately controlled.
-7. The default sandbox window is 5 days free. If a paid hosted-sandbox extension is offered later, that is payment for extra hosted evaluation time rather than payment for access to the free public bundles.
-8. The sandbox auto-expires or is explicitly destroyed when the trial ends, with an export path available before deletion.
+Hosted sandbox evaluation is preserved in
+[`docs/RFCs/RFC-0013-hosted-sandbox-control-plane.md`](docs/RFCs/RFC-0013-hosted-sandbox-control-plane.md)
+for possible future resurrection. It is not part of Milestone 1.
 
 Milestone 1 should also expose:
 
-- a runtime bootstrap endpoint on each sandbox or instance such as `/.well-known/mbr-instance.json`
+- a runtime bootstrap endpoint on each runtime such as `/.well-known/mbr-instance.json`
 - a stable CLI and GraphQL contract that agents can use once a runtime is known
-- sandbox creation and management flows that do not rely on scraping marketing pages
 
 Milestone 1 should make it clear that Move Big Rocks can replace meaningful
 slices of Confluence and Jira for operations-heavy teams. The intended scope is
@@ -331,8 +315,6 @@ Minimum requirements:
 - strict exit codes
 - `--json` support on every command
 - GraphQL-backed reads and writes
-- sandbox bootstrap flows that let an operator or agent create, inspect, extend, export, and destroy a trial environment from the CLI
-- sandbox creation ergonomics that let a user hand one short instruction to an agent and have the agent complete the workflow with minimal follow-up
 - machine-readable bootstrap discovery so an agent can install the CLI and discover the right next steps before any runtime is selected
 - file upload support for attachments and resumes
 - Markdown knowledge sync and publish workflows
@@ -347,11 +329,6 @@ Minimum command surface:
 
 - `mbr auth login`
 - `mbr auth whoami`
-- `mbr sandboxes create`
-- `mbr sandboxes show`
-- `mbr sandboxes extend`
-- `mbr sandboxes export`
-- `mbr sandboxes destroy`
 - `mbr context view`
 - `mbr context set`
 - `mbr teams list`
@@ -411,11 +388,6 @@ The supported baseline includes:
 - `mbr auth login` with browser login for humans, token bootstrap for agents, and persisted local CLI config
 - `mbr auth logout`
 - `mbr auth whoami`
-- `mbr sandboxes create`
-- `mbr sandboxes show`
-- `mbr sandboxes extend`
-- `mbr sandboxes export`
-- `mbr sandboxes destroy`
 - `mbr context view`
 - `mbr context set`
 - `mbr workspaces list`
@@ -542,19 +514,9 @@ Local sync in Milestone 1 is also explicit:
 - local checkout must be filtered by the actor's current access rights
 - local edits must flow back through validation, ACL checks, and audit before they become accepted revisions
 
-Sandbox evaluation in Milestone 1 is explicit too:
-
-- a sandbox is disposable and not intended as the production deployment model
-- a sandbox should default to 5 free days and be extendable for 30 more days for a simple fee such as $50
-- a sandbox uses the same core auth, CLI, GraphQL, and extension contract as a real instance
-- a sandbox should have an auto-generated `*.movebigrocks.io` subdomain
-- a sandbox should include launch-grade and beta first-party extension access for evaluation during the sandbox window
-- a sandbox should support easy data and configuration export before deletion
-- a sandbox should be created and controlled through `mbr` rather than requiring a separate website-only provisioning path
-- `mbr sandboxes create` should be usable by an external agent with minimal required inputs and should return machine-readable sandbox URL, expiry, status, and next-step data
-- the public bootstrap endpoint should return machine-readable docs URLs, CLI install metadata, and sandbox policy data
-- the homepage, sandbox page, install page, and agent page source should expose the bootstrap endpoint explicitly so agents can discover it from raw HTML source when needed
-- the hosted trial path should minimize first-use friction while preserving the self-hosted production thesis
+Hosted sandbox evaluation is preserved in
+[`docs/RFCs/RFC-0013-hosted-sandbox-control-plane.md`](docs/RFCs/RFC-0013-hosted-sandbox-control-plane.md)
+for future consideration. It is not part of Milestone 1.
 
 That means an extension can:
 

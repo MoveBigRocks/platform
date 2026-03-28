@@ -66,8 +66,8 @@ func TestRunSandboxesCreateJSON(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	exitCode := run(t.Context(), []string{
-		"sandboxes", "create",
+	exitCode := runSandboxes(t.Context(), []string{
+		"create",
 		"--url", "https://api.app.mbr.test",
 		"--email", "ops@example.com",
 		"--name", "Sandbox Trial",
@@ -152,8 +152,8 @@ func TestRunSandboxesLifecycleAndExportFile(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	exitCode := run(t.Context(), []string{
-		"sandboxes", "show", "sbx_123",
+	exitCode := runSandboxes(t.Context(), []string{
+		"show", "sbx_123",
 		"--manage-token", "sbm_123",
 	}, stdout, stderr)
 	if exitCode != 0 {
@@ -165,8 +165,8 @@ func TestRunSandboxesLifecycleAndExportFile(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	exitCode = run(t.Context(), []string{
-		"sandboxes", "extend", "sbx_123",
+	exitCode = runSandboxes(t.Context(), []string{
+		"extend", "sbx_123",
 		"--manage-token", "sbm_123",
 	}, stdout, stderr)
 	if exitCode != 0 {
@@ -179,8 +179,8 @@ func TestRunSandboxesLifecycleAndExportFile(t *testing.T) {
 	exportPath := filepath.Join(t.TempDir(), "sandbox-export.json")
 	stdout.Reset()
 	stderr.Reset()
-	exitCode = run(t.Context(), []string{
-		"sandboxes", "export", "sbx_123",
+	exitCode = runSandboxes(t.Context(), []string{
+		"export", "sbx_123",
 		"--manage-token", "sbm_123",
 		"--out", exportPath,
 	}, stdout, stderr)
@@ -200,8 +200,8 @@ func TestRunSandboxesLifecycleAndExportFile(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	exitCode = run(t.Context(), []string{
-		"sandboxes", "destroy", "sbx_123",
+	exitCode = runSandboxes(t.Context(), []string{
+		"destroy", "sbx_123",
 		"--manage-token", "sbm_123",
 		"--reason", "proof complete",
 	}, stdout, stderr)
@@ -216,8 +216,8 @@ func TestRunSandboxesLifecycleAndExportFile(t *testing.T) {
 func TestRunSandboxesRequireManageToken(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	exitCode := run(t.Context(), []string{
-		"sandboxes", "show", "sbx_123",
+	exitCode := runSandboxes(t.Context(), []string{
+		"show", "sbx_123",
 		"--url", "https://app.mbr.test",
 	}, stdout, stderr)
 	if exitCode != 2 {
