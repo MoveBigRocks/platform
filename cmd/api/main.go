@@ -111,6 +111,7 @@ func main() {
 		c.Platform.Workspace,
 		c.Service.Email,
 		c.Service.Attachment,
+		c.Store.Cases(),
 		cfg.Email.PostmarkWebhookSecret,
 		c.EventBus,
 		c.Logger,

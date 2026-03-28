@@ -472,6 +472,11 @@ func (cs *CaseService) AddInboundEmailToCase(ctx context.Context, caseID string,
 		if err := cs.caseStore.CreateCommunication(txCtx, comm); err != nil {
 			return apierrors.DatabaseError("create communication", err)
 		}
+		if len(email.AttachmentIDs) > 0 {
+			if err := cs.caseStore.LinkInboundEmailAttachments(txCtx, caseObj.WorkspaceID, email.ID, caseObj.ID, comm.ID); err != nil {
+				return apierrors.DatabaseError("link inbound email attachments", err)
+			}
+		}
 		if err := cs.caseStore.UpdateCase(txCtx, caseObj); err != nil {
 			return apierrors.DatabaseError("update case", err)
 		}
@@ -1315,6 +1320,28 @@ func (cs *CaseService) CreateCommunication(ctx context.Context, comm *servicedom
 // Alias for GetCaseCommunications for API consistency
 func (cs *CaseService) ListCaseCommunications(ctx context.Context, caseID string) ([]*servicedomain.Communication, error) {
 	return cs.GetCaseCommunications(ctx, caseID)
+}
+
+// ListCaseAttachments lists all durable attachments linked to a case.
+func (cs *CaseService) ListCaseAttachments(ctx context.Context, workspaceID, caseID string) ([]*servicedomain.Attachment, error) {
+	if strings.TrimSpace(workspaceID) == "" {
+		return nil, apierrors.NewValidationErrors(apierrors.NewValidationError("workspace_id", "required"))
+	}
+	if strings.TrimSpace(caseID) == "" {
+		return nil, apierrors.NewValidationErrors(apierrors.NewValidationError("case_id", "required"))
+	}
+	return cs.caseStore.ListCaseAttachments(ctx, workspaceID, caseID)
+}
+
+// GetAttachment retrieves a durable attachment by ID within a workspace.
+func (cs *CaseService) GetAttachment(ctx context.Context, workspaceID, attachmentID string) (*servicedomain.Attachment, error) {
+	if strings.TrimSpace(workspaceID) == "" {
+		return nil, apierrors.NewValidationErrors(apierrors.NewValidationError("workspace_id", "required"))
+	}
+	if strings.TrimSpace(attachmentID) == "" {
+		return nil, apierrors.NewValidationErrors(apierrors.NewValidationError("attachment_id", "required"))
+	}
+	return cs.caseStore.GetAttachment(ctx, workspaceID, attachmentID)
 }
 
 func newInboundEmailCommunication(caseObj *servicedomain.Case, email *servicedomain.InboundEmail) *servicedomain.Communication {

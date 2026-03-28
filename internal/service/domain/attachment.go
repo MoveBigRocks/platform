@@ -71,6 +71,7 @@ type Attachment struct {
 // NewAttachment creates a new attachment record
 func NewAttachment(workspaceID, filename, contentType string, size int64, source AttachmentSource) *Attachment {
 	return &Attachment{
+		ID:          id.New(),
 		WorkspaceID: workspaceID,
 		Filename:    sanitizeFilename(filename),
 		ContentType: contentType,
@@ -128,10 +129,12 @@ func AttachmentStatusFromScan(isScanned bool, scanResult string) AttachmentStatu
 		return AttachmentStatusPending
 	}
 
-	switch scanResult {
-	case "clean":
+	normalized := strings.ToLower(strings.TrimSpace(scanResult))
+
+	switch {
+	case normalized == "clean", strings.Contains(normalized, "no threats detected"):
 		return AttachmentStatusClean
-	case "infected":
+	case normalized == "infected", strings.Contains(normalized, "threat detected"), strings.Contains(normalized, "malware"), strings.Contains(normalized, "virus"):
 		return AttachmentStatusInfected
 	default:
 		return AttachmentStatusError

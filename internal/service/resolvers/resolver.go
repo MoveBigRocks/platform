@@ -3201,6 +3201,11 @@ type CaseResolver struct {
 	r     *Resolver
 }
 
+// AttachmentResolver resolves Attachment fields.
+type AttachmentResolver struct {
+	attachment *servicedomain.Attachment
+}
+
 // ID returns the case ID
 func (c *CaseResolver) ID() model.ID {
 	return model.ID(c.case_.ID)
@@ -3369,6 +3374,27 @@ func (c *CaseResolver) Assignee(ctx context.Context) (*model.User, error) {
 	}
 
 	return userToModel(user), nil
+}
+
+// Attachments resolves durable attachments linked to the case.
+func (c *CaseResolver) Attachments(ctx context.Context) ([]*AttachmentResolver, error) {
+	if c.r.caseService == nil {
+		return []*AttachmentResolver{}, nil
+	}
+
+	attachments, err := c.r.caseService.ListCaseAttachments(ctx, c.case_.WorkspaceID, c.case_.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list attachments: %w", err)
+	}
+
+	result := make([]*AttachmentResolver, 0, len(attachments))
+	for _, attachment := range attachments {
+		if attachment == nil {
+			continue
+		}
+		result = append(result, &AttachmentResolver{attachment: attachment})
+	}
+	return result, nil
 }
 
 // OriginatingConversation resolves the source conversation for an escalated case.
@@ -3655,6 +3681,41 @@ func (c *CommunicationResolver) FromAgentID() *model.ID {
 	return &id
 }
 
+// AttachmentIDs returns the durable attachment IDs linked to the communication.
+func (c *CommunicationResolver) AttachmentIDs() []model.ID {
+	if len(c.comm.AttachmentIDs) == 0 {
+		return []model.ID{}
+	}
+	result := make([]model.ID, 0, len(c.comm.AttachmentIDs))
+	for _, attachmentID := range c.comm.AttachmentIDs {
+		if strings.TrimSpace(attachmentID) == "" {
+			continue
+		}
+		result = append(result, model.ID(attachmentID))
+	}
+	return result
+}
+
+// Attachments resolves the durable attachments referenced by the communication.
+func (c *CommunicationResolver) Attachments(ctx context.Context) ([]*AttachmentResolver, error) {
+	if c.r.caseService == nil || len(c.comm.AttachmentIDs) == 0 {
+		return []*AttachmentResolver{}, nil
+	}
+
+	result := make([]*AttachmentResolver, 0, len(c.comm.AttachmentIDs))
+	for _, attachmentID := range c.comm.AttachmentIDs {
+		if strings.TrimSpace(attachmentID) == "" {
+			continue
+		}
+		attachment, err := c.r.caseService.GetAttachment(ctx, c.comm.WorkspaceID, attachmentID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get attachment: %w", err)
+		}
+		result = append(result, &AttachmentResolver{attachment: attachment})
+	}
+	return result, nil
+}
+
 // IsInternal returns whether this is an internal note
 func (c *CommunicationResolver) IsInternal() bool {
 	return c.comm.IsInternal
@@ -3697,6 +3758,58 @@ func (c *CommunicationResolver) FromAgent(ctx context.Context) (*ServiceAgentRes
 	}
 
 	return &ServiceAgentResolver{agent: agent, r: c.r}, nil
+}
+
+func (a *AttachmentResolver) ID() model.ID {
+	return model.ID(a.attachment.ID)
+}
+
+func (a *AttachmentResolver) WorkspaceID() model.ID {
+	return model.ID(a.attachment.WorkspaceID)
+}
+
+func (a *AttachmentResolver) CaseID() *model.ID {
+	if a.attachment.CaseID == "" {
+		return nil
+	}
+	id := model.ID(a.attachment.CaseID)
+	return &id
+}
+
+func (a *AttachmentResolver) EmailID() *model.ID {
+	if a.attachment.EmailID == "" {
+		return nil
+	}
+	id := model.ID(a.attachment.EmailID)
+	return &id
+}
+
+func (a *AttachmentResolver) Filename() string {
+	return a.attachment.Filename
+}
+
+func (a *AttachmentResolver) ContentType() string {
+	return a.attachment.ContentType
+}
+
+func (a *AttachmentResolver) Size() int32 {
+	return int32(a.attachment.Size)
+}
+
+func (a *AttachmentResolver) Status() string {
+	return string(a.attachment.Status)
+}
+
+func (a *AttachmentResolver) Description() *string {
+	return optionalStringValue(a.attachment.Description)
+}
+
+func (a *AttachmentResolver) Source() string {
+	return string(a.attachment.Source)
+}
+
+func (a *AttachmentResolver) CreatedAt() graphshared.DateTime {
+	return graphshared.DateTime{Time: a.attachment.CreatedAt}
 }
 
 // =============================================================================

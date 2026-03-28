@@ -63,7 +63,22 @@ body
 fromName
 fromUserID
 fromAgentID
+attachmentIDs
 isInternal
+createdAt
+`
+
+const caseAttachmentSelection = `
+id
+workspaceID
+caseID
+emailID
+filename
+contentType
+size
+status
+description
+source
 createdAt
 `
 
@@ -83,6 +98,9 @@ createdAt
 `
 
 const caseShowSelection = caseSelection + `
+attachments {
+  ` + caseAttachmentSelection + `
+}
 originatingConversation {
   ` + caseConversationSelection + `
 }
@@ -103,15 +121,30 @@ type caseConversationOutput struct {
 }
 
 type caseCommunicationOutput struct {
+	ID            string   `json:"id"`
+	Direction     string   `json:"direction"`
+	Channel       string   `json:"channel"`
+	Subject       *string  `json:"subject,omitempty"`
+	Body          string   `json:"body"`
+	FromName      *string  `json:"fromName,omitempty"`
+	FromUserID    *string  `json:"fromUserID,omitempty"`
+	FromAgentID   *string  `json:"fromAgentID,omitempty"`
+	AttachmentIDs []string `json:"attachmentIDs,omitempty"`
+	IsInternal    bool     `json:"isInternal"`
+	CreatedAt     string   `json:"createdAt"`
+}
+
+type caseAttachmentOutput struct {
 	ID          string  `json:"id"`
-	Direction   string  `json:"direction"`
-	Channel     string  `json:"channel"`
-	Subject     *string `json:"subject,omitempty"`
-	Body        string  `json:"body"`
-	FromName    *string `json:"fromName,omitempty"`
-	FromUserID  *string `json:"fromUserID,omitempty"`
-	FromAgentID *string `json:"fromAgentID,omitempty"`
-	IsInternal  bool    `json:"isInternal"`
+	WorkspaceID string  `json:"workspaceID"`
+	CaseID      *string `json:"caseID,omitempty"`
+	EmailID     *string `json:"emailID,omitempty"`
+	Filename    string  `json:"filename"`
+	ContentType string  `json:"contentType"`
+	Size        int64   `json:"size"`
+	Status      string  `json:"status"`
+	Description *string `json:"description,omitempty"`
+	Source      string  `json:"source"`
 	CreatedAt   string  `json:"createdAt"`
 }
 
@@ -151,6 +184,7 @@ type caseOutput struct {
 	Assignee                  *userOutput                 `json:"assignee,omitempty"`
 	OriginatingConversationID *string                     `json:"originatingConversationID,omitempty"`
 	OriginatingConversation   *caseConversationOutput     `json:"originatingConversation,omitempty"`
+	Attachments               []caseAttachmentOutput      `json:"attachments,omitempty"`
 	Communications            []caseCommunicationOutput   `json:"communications,omitempty"`
 	WorkThread                []caseWorkThreadEntryOutput `json:"workThread,omitempty"`
 	CreatedAt                 string                      `json:"createdAt"`

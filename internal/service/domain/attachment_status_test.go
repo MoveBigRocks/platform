@@ -11,6 +11,7 @@ func TestAttachmentStatusFromScan(t *testing.T) {
 	}{
 		{name: "pending when not scanned", want: AttachmentStatusPending},
 		{name: "clean result", isScanned: true, result: "clean", want: AttachmentStatusClean},
+		{name: "mock clean result", isScanned: true, result: "No threats detected (mock)", want: AttachmentStatusClean},
 		{name: "infected result", isScanned: true, result: "infected", want: AttachmentStatusInfected},
 		{name: "error fallback", isScanned: true, result: "failed", want: AttachmentStatusError},
 	}

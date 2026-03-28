@@ -242,9 +242,9 @@ type Attachment struct {
 	ScanDetails string     `db:"scan_details"`
 
 	// Access control
-	IsPublic      bool   `db:"is_public"`
-	AllowDownload bool   `db:"allow_download"`
-	AccessToken   string `db:"access_token"`
+	IsPublic      bool    `db:"is_public"`
+	AllowDownload bool    `db:"allow_download"`
+	AccessToken   *string `db:"access_token"`
 
 	// Metadata
 	Description string `db:"description"`

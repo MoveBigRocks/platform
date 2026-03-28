@@ -99,13 +99,19 @@ func NewAttachmentService(cfg AttachmentServiceConfig) (*AttachmentService, erro
 
 // Upload uploads a file with virus scanning
 func (s *AttachmentService) Upload(ctx context.Context, attachment *servicedomain.Attachment, reader io.Reader) error {
+	if attachment == nil {
+		return fmt.Errorf("attachment is required")
+	}
+
 	// Validate attachment
 	if err := attachment.Validate(); err != nil {
+		attachment.MarkError(err.Error())
 		return fmt.Errorf("invalid attachment: %w", err)
 	}
 
 	// Check for blocked extensions
 	if servicedomain.IsBlockedExtension(attachment.Filename) {
+		attachment.MarkError("file extension is blocked for security reasons")
 		return fmt.Errorf("file extension is blocked for security reasons")
 	}
 
@@ -155,6 +161,9 @@ func (s *AttachmentService) Upload(ctx context.Context, attachment *servicedomai
 		},
 	})
 	if err != nil {
+		attachment.S3Bucket = ""
+		attachment.S3Key = ""
+		attachment.MarkError(err.Error())
 		s.logError("Failed to upload to S3", err, attachment)
 		return fmt.Errorf("failed to upload to S3: %w", err)
 	}

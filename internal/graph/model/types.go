@@ -212,6 +212,21 @@ type Case struct {
 	ResolvedAt  *time.Time
 }
 
+// Attachment represents a durable file linked to operational work.
+type Attachment struct {
+	ID          ID
+	WorkspaceID ID
+	CaseID      *ID
+	EmailID     *ID
+	Filename    string
+	ContentType string
+	Size        int32
+	Status      string
+	Description *string
+	Source      string
+	CreatedAt   time.Time
+}
+
 // Contact represents a customer contact
 type Contact struct {
 	ID    ID
@@ -221,19 +236,20 @@ type Contact struct {
 
 // Communication represents a message in a case
 type Communication struct {
-	ID          ID
-	CaseID      ID
-	Direction   string
-	Channel     string
-	Subject     *string
-	Body        string
-	BodyHTML    *string
-	FromEmail   *string
-	FromName    *string
-	FromUserID  *ID
-	FromAgentID *ID
-	IsInternal  bool
-	CreatedAt   time.Time
+	ID            ID
+	CaseID        ID
+	Direction     string
+	Channel       string
+	Subject       *string
+	Body          string
+	BodyHTML      *string
+	FromEmail     *string
+	FromName      *string
+	FromUserID    *ID
+	FromAgentID   *ID
+	AttachmentIDs []ID
+	IsInternal    bool
+	CreatedAt     time.Time
 }
 
 // =============================================================================

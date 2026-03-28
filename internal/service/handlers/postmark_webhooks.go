@@ -32,6 +32,7 @@ type PostmarkWebhookHandlers struct {
 	workspaceService  *platformservices.WorkspaceManagementService
 	emailService      *serviceapp.EmailService
 	attachmentService *serviceapp.AttachmentService
+	attachmentStore   attachmentCaseStore
 	webhookSecret     string
 	eventBus          eventbus.Bus
 	logger            *logger.Logger
@@ -42,6 +43,7 @@ func NewPostmarkWebhookHandlers(
 	workspaceService *platformservices.WorkspaceManagementService,
 	emailService *serviceapp.EmailService,
 	attachmentService *serviceapp.AttachmentService,
+	attachmentStore attachmentCaseStore,
 	webhookSecret string,
 	eventBus eventbus.Bus,
 	logger *logger.Logger,
@@ -50,6 +52,7 @@ func NewPostmarkWebhookHandlers(
 		workspaceService:  workspaceService,
 		emailService:      emailService,
 		attachmentService: attachmentService,
+		attachmentStore:   attachmentStore,
 		webhookSecret:     webhookSecret,
 		eventBus:          eventBus,
 		logger:            logger,
@@ -153,7 +156,7 @@ func (h *PostmarkWebhookHandlers) HandleInboundEmail(c *gin.Context) {
 	inboundEmail.ProcessingStatus = "pending"
 
 	// Process attachments if present and AttachmentService is configured
-	if h.attachmentService != nil {
+	if h.attachmentService != nil && h.attachmentStore != nil {
 		attachmentIDs, err := h.processInboundAttachments(c.Request.Context(), webhook, workspaceID, inboundEmail.ID)
 		if err != nil {
 			h.logger.WithError(err).Warn("Some attachments failed to process", "email_id", inboundEmail.ID)
@@ -450,13 +453,26 @@ func (h *PostmarkWebhookHandlers) processInboundAttachments(
 				"attachment_id", attachment.ID)
 			lastErr = err
 
-			// Store failed attachment record for audit trail
-			// (The attachment service already marked it with the appropriate status)
+			if persistErr := h.attachmentStore.SaveAttachment(ctx, attachment, nil); persistErr != nil {
+				h.logger.WithError(persistErr).Warn("Failed to persist failed attachment metadata",
+					"filename", filename,
+					"email_id", emailID,
+					"attachment_id", attachment.ID)
+				continue
+			}
+			attachmentIDs = append(attachmentIDs, attachment.ID)
 			continue
 		}
 
-		// Attachment metadata is stored within the attachment itself via AttachmentService
-		// The attachment record contains the email association
+		if err := h.attachmentStore.SaveAttachment(ctx, attachment, nil); err != nil {
+			h.logger.WithError(err).Warn("Failed to persist attachment metadata",
+				"filename", filename,
+				"email_id", emailID,
+				"attachment_id", attachment.ID)
+			lastErr = err
+			continue
+		}
+
 		attachmentIDs = append(attachmentIDs, attachment.ID)
 
 		h.logger.Info("Processed inbound attachment",

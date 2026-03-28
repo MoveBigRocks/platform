@@ -10,7 +10,7 @@ import (
 func TestNewAttachment(t *testing.T) {
 	att := NewAttachment("ws-123", "document.pdf", "application/pdf", 1024, AttachmentSourceUpload)
 
-	assert.Empty(t, att.ID)
+	assert.NotEmpty(t, att.ID)
 	assert.Equal(t, "ws-123", att.WorkspaceID)
 	assert.Equal(t, "document.pdf", att.Filename)
 	assert.Equal(t, "application/pdf", att.ContentType)

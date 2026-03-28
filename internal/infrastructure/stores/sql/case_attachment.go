@@ -13,11 +13,13 @@ import (
 )
 
 func (s *CaseStore) SaveAttachment(ctx context.Context, att *servicedomain.Attachment, data io.Reader) error {
-	storageType := "s3"
-	storageBucket := att.S3Bucket
-
-	if att.S3Key == "" {
-		return fmt.Errorf("attachment must have S3 key (upload required)")
+	storageType := ""
+	storageBucket := ""
+	storageKey := att.StorageKey
+	if att.S3Key != "" {
+		storageType = "s3"
+		storageBucket = att.S3Bucket
+		storageKey = att.S3Key
 	}
 
 	metadataJSON, err := marshalJSONString(att.Metadata, "metadata")
@@ -38,7 +40,7 @@ func (s *CaseStore) SaveAttachment(ctx context.Context, att *servicedomain.Attac
 
 	err = s.db.Get(ctx).QueryRowxContext(ctx, query,
 		att.ID, att.WorkspaceID, att.Filename, att.Filename, att.ContentType, att.Size, att.SHA256Hash,
-		att.StorageKey, storageType, storageBucket, nullableUUIDValue(att.CaseID), nullableUUIDValue(att.EmailID),
+		storageKey, storageType, storageBucket, nullableUUIDValue(att.CaseID), nullableUUIDValue(att.EmailID),
 		att.Status != servicedomain.AttachmentStatusPending, att.ScanResult, att.ScannedAt,
 		att.Description, metadataJSON, nullableLegacyUUIDValue(att.UploadedBy), string(att.Source), att.CreatedAt, att.UpdatedAt,
 	).Scan(&att.ID)
@@ -53,6 +55,40 @@ func (s *CaseStore) GetAttachment(ctx context.Context, workspaceID, attID string
 		return nil, TranslateSqlxError(err, "attachments")
 	}
 	return s.mapAttachmentToDomain(&dbAtt), nil
+}
+
+func (s *CaseStore) ListCaseAttachments(ctx context.Context, workspaceID, caseID string) ([]*servicedomain.Attachment, error) {
+	var dbAttachments []models.Attachment
+	query := `SELECT * FROM core_service.attachments
+		WHERE workspace_id = ? AND case_id = ? AND deleted_at IS NULL
+		ORDER BY created_at ASC, id ASC`
+	if err := s.db.Get(ctx).SelectContext(ctx, &dbAttachments, query, workspaceID, caseID); err != nil {
+		return nil, TranslateSqlxError(err, "attachments")
+	}
+
+	attachments := make([]*servicedomain.Attachment, 0, len(dbAttachments))
+	for i := range dbAttachments {
+		attachments = append(attachments, s.mapAttachmentToDomain(&dbAttachments[i]))
+	}
+	return attachments, nil
+}
+
+func (s *CaseStore) LinkInboundEmailAttachments(ctx context.Context, workspaceID, emailID, caseID, communicationID string) error {
+	query := `UPDATE core_service.attachments
+		SET case_id = ?,
+		    communication_id = ?,
+		    updated_at = ?
+		WHERE workspace_id = ? AND email_id = ? AND deleted_at IS NULL`
+	_, err := s.db.Get(ctx).ExecContext(
+		ctx,
+		query,
+		nullableUUIDValue(caseID),
+		nullableUUIDValue(communicationID),
+		time.Now().UTC(),
+		workspaceID,
+		nullableUUIDValue(emailID),
+	)
+	return TranslateSqlxError(err, "attachments")
 }
 
 func (s *CaseStore) DeleteAttachment(ctx context.Context, workspaceID, attID string) error {

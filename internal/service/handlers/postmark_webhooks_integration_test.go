@@ -5,6 +5,7 @@ package servicehandlers
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -15,8 +16,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	graphshared "github.com/movebigrocks/platform/internal/graph/shared"
+	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
+	serviceresolvers "github.com/movebigrocks/platform/internal/service/resolvers"
 	serviceapp "github.com/movebigrocks/platform/internal/service/services"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	"github.com/movebigrocks/platform/internal/testutil"
@@ -113,6 +117,7 @@ func TestHandleInboundEmail_WorkspaceValidation(t *testing.T) {
 		workspaceService,
 		nil, // emailService - not needed for this test
 		nil, // attachmentService
+		nil, // attachment metadata store
 		webhookSecret,
 		nil, // eventBus
 		log,
@@ -251,6 +256,7 @@ func TestHandleInboundEmail_StoresEmailAndPublishesEvent(t *testing.T) {
 		workspaceService,
 		emailService,
 		nil,
+		nil,
 		"test-secret-123",
 		eventBus,
 		log,
@@ -357,6 +363,7 @@ func TestHandleInboundEmail_CreatesCaseThroughWorker(t *testing.T) {
 	webhookHandler := NewPostmarkWebhookHandlers(
 		workspaceService,
 		emailService,
+		nil,
 		nil,
 		"test-secret-123",
 		runtime.EventBus,
@@ -479,6 +486,7 @@ func TestHandleInboundEmail_ThreadsReplyToExistingCase(t *testing.T) {
 	webhookHandler := NewPostmarkWebhookHandlers(
 		workspaceService,
 		emailService,
+		nil,
 		nil,
 		"test-secret-123",
 		runtime.EventBus,
@@ -611,5 +619,169 @@ func TestHandleInboundEmail_ThreadsReplyToExistingCase(t *testing.T) {
 		"reply_message_id":         replyMessageID,
 		"case_status":              updatedCase.Status,
 		"message_count":            len(comms),
+	})
+}
+
+func TestHandleInboundEmail_PersistsAndLinksAttachments(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := t.Context()
+	log := logger.NewNop()
+	runtime := workflowruntime.NewHarness(t, store)
+
+	workspace := testutil.NewIsolatedWorkspace(t)
+	workspace.Name = "Attachment Workflow Workspace"
+	workspace.Slug = "attachment-workflow-workspace"
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	operator := testutil.NewIsolatedUser(t, workspace.ID)
+	require.NoError(t, store.Users().CreateUser(ctx, operator))
+
+	workspaceService := platformservices.NewWorkspaceManagementService(
+		store.Workspaces(),
+		store.Cases(),
+		store.Users(),
+		store.Rules(),
+	)
+	caseService := serviceapp.NewCaseService(
+		store.Queues(),
+		store.Cases(),
+		store.Workspaces(),
+		runtime.Outbox,
+		serviceapp.WithTransactionRunner(store),
+	)
+	emailService, err := serviceapp.NewEmailService(store, serviceapp.EmailConfig{Provider: "mock"}, caseService)
+	require.NoError(t, err)
+	eventHandler := NewEmailEventHandler(emailService, log)
+	require.NoError(t, eventHandler.RegisterHandlers(runtime.EventBus.Subscribe))
+	runtime.Start(t)
+
+	attachmentService, s3Server := newTestAttachmentService(t)
+	webhookHandler := NewPostmarkWebhookHandlers(
+		workspaceService,
+		emailService,
+		attachmentService,
+		store.Cases(),
+		"test-secret-123",
+		runtime.EventBus,
+		log,
+	)
+
+	router := gin.New()
+	router.POST("/webhooks/postmark/:secret/inbound", webhookHandler.HandleInboundEmail)
+
+	payload := map[string]interface{}{
+		"From":      "\"Casey Customer\" <customer@example.com>",
+		"FromName":  "Casey Customer",
+		"FromFull":  map[string]interface{}{"Email": "customer@example.com", "Name": "Casey Customer", "MailboxHash": ""},
+		"To":        workspace.ID + "@support.movebigrocks.test",
+		"ToFull":    []map[string]interface{}{{"Email": workspace.ID + "@support.movebigrocks.test", "Name": "Support", "MailboxHash": ""}},
+		"Subject":   "Need help with attachment review",
+		"TextBody":  "Please review the attached invoice and note the executable should be rejected.",
+		"HtmlBody":  "<p>Please review the attached invoice and note the executable should be rejected.</p>",
+		"MessageID": "<attachment-thread@example.com>",
+		"Headers": []map[string]interface{}{
+			{"Name": "Message-ID", "Value": "<attachment-thread@example.com>"},
+		},
+		"Attachments": []map[string]interface{}{
+			{
+				"Name":          "invoice.pdf",
+				"ContentType":   "application/pdf",
+				"ContentLength": len([]byte("%PDF-1.4 attachment body")),
+				"Content":       base64.StdEncoding.EncodeToString([]byte("%PDF-1.4 attachment body")),
+			},
+			{
+				"Name":          "payload.exe",
+				"ContentType":   "application/octet-stream",
+				"ContentLength": len([]byte("malware-ish bytes")),
+				"Content":       base64.StdEncoding.EncodeToString([]byte("malware-ish bytes")),
+			},
+		},
+	}
+	body, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/postmark/test-secret-123/inbound", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	require.Equal(t, http.StatusOK, resp.Code)
+
+	var webhookResp map[string]string
+	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &webhookResp))
+	emailID := webhookResp["email_id"]
+	require.NotEmpty(t, emailID)
+
+	var inbound *servicedomain.InboundEmail
+	var caseObj *servicedomain.Case
+	var comms []*servicedomain.Communication
+	var attachments []*servicedomain.Attachment
+	require.Eventually(t, func() bool {
+		inbound, err = store.InboundEmails().GetInboundEmail(ctx, emailID)
+		require.NoError(t, err)
+		if inbound.ProcessingStatus != servicedomain.EmailProcessingStatusProcessed || inbound.CaseID == "" || inbound.CommunicationID == "" {
+			return false
+		}
+
+		caseObj, err = store.Cases().GetCase(ctx, inbound.CaseID)
+		require.NoError(t, err)
+		comms, err = store.Cases().ListCaseCommunications(ctx, caseObj.ID)
+		require.NoError(t, err)
+		attachments, err = store.Cases().ListCaseAttachments(ctx, workspace.ID, caseObj.ID)
+		require.NoError(t, err)
+		return len(inbound.AttachmentIDs) == 2 && len(comms) == 1 && len(attachments) == 2
+	}, 3*time.Second, 25*time.Millisecond)
+
+	require.Len(t, s3Server.PutRequests(), 1)
+	assert.ElementsMatch(t, []string{attachments[0].ID, attachments[1].ID}, inbound.AttachmentIDs)
+	assert.ElementsMatch(t, inbound.AttachmentIDs, comms[0].AttachmentIDs)
+
+	attachmentsByFilename := map[string]*servicedomain.Attachment{}
+	for _, attachment := range attachments {
+		attachmentsByFilename[attachment.Filename] = attachment
+	}
+	require.Contains(t, attachmentsByFilename, "invoice.pdf")
+	require.Contains(t, attachmentsByFilename, "payload.exe")
+
+	cleanAttachment := attachmentsByFilename["invoice.pdf"]
+	assert.Equal(t, servicedomain.AttachmentStatusClean, cleanAttachment.Status)
+	assert.Equal(t, inbound.ID, cleanAttachment.EmailID)
+	assert.Equal(t, caseObj.ID, cleanAttachment.CaseID)
+	assert.NotEmpty(t, cleanAttachment.S3Key)
+
+	rejectedAttachment := attachmentsByFilename["payload.exe"]
+	assert.Equal(t, servicedomain.AttachmentStatusError, rejectedAttachment.Status)
+	assert.Equal(t, inbound.ID, rejectedAttachment.EmailID)
+	assert.Equal(t, caseObj.ID, rejectedAttachment.CaseID)
+	assert.Empty(t, rejectedAttachment.S3Key)
+
+	resolver := serviceresolvers.NewResolver(serviceresolvers.Config{CaseService: caseService})
+	authCtx := graphshared.SetAuthContext(ctx, &platformdomain.AuthContext{
+		Principal:     operator,
+		PrincipalType: platformdomain.PrincipalTypeUser,
+		WorkspaceID:   workspace.ID,
+		WorkspaceIDs:  []string{workspace.ID},
+		Permissions:   []string{platformdomain.PermissionCaseRead},
+	})
+	caseResolver, err := resolver.Case(authCtx, caseObj.ID)
+	require.NoError(t, err)
+	visibleAttachments, err := caseResolver.Attachments(authCtx)
+	require.NoError(t, err)
+	require.Len(t, visibleAttachments, 2)
+
+	workflowproof.WriteJSON(t, "inbound-email-attachments", map[string]interface{}{
+		"workspace_id":               workspace.ID,
+		"case_id":                    caseObj.ID,
+		"inbound_email_id":           inbound.ID,
+		"communication_id":           comms[0].ID,
+		"attachment_ids":             inbound.AttachmentIDs,
+		"clean_attachment_id":        cleanAttachment.ID,
+		"clean_attachment_status":    cleanAttachment.Status,
+		"rejected_attachment_id":     rejectedAttachment.ID,
+		"rejected_attachment_status": rejectedAttachment.Status,
+		"visible_attachment_count":   len(visibleAttachments),
+		"stored_upload_count":        len(s3Server.PutRequests()),
 	})
 }

@@ -2,6 +2,8 @@ package servicedomain
 
 import (
 	"time"
+
+	"github.com/movebigrocks/platform/pkg/id"
 )
 
 // InboundEmail represents an incoming email
@@ -81,6 +83,7 @@ type InboundEmail struct {
 // NewInboundEmail creates a new inbound email
 func NewInboundEmail(workspaceID, messageID, fromEmail, subject, content string) *InboundEmail {
 	return &InboundEmail{
+		ID:               id.New(),
 		WorkspaceID:      workspaceID,
 		MessageID:        messageID,
 		FromEmail:        fromEmail,
