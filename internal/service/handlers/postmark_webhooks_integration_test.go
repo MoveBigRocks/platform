@@ -16,7 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
+	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	serviceapp "github.com/movebigrocks/platform/internal/service/services"
+	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/internal/testutil"
 	"github.com/movebigrocks/platform/pkg/eventbus"
 	"github.com/movebigrocks/platform/pkg/logger"
@@ -316,4 +319,184 @@ func TestHandleInboundEmail_StoresEmailAndPublishesEvent(t *testing.T) {
 			assert.Equal(t, workspace.ID, eventPayload["workspace_id"])
 		})
 	}
+}
+
+func TestHandleInboundEmail_ThreadsReplyToExistingCase(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := t.Context()
+	log := logger.NewNop()
+
+	workspace := testutil.NewIsolatedWorkspace(t)
+	workspace.Name = "Threading Workspace"
+	workspace.Slug = "threading-workspace"
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	workspaceService := platformservices.NewWorkspaceManagementService(
+		store.Workspaces(),
+		store.Cases(),
+		store.Users(),
+		store.Rules(),
+	)
+
+	caseService := serviceapp.NewCaseService(
+		store.Queues(),
+		store.Cases(),
+		store.Workspaces(),
+		nil,
+		serviceapp.WithTransactionRunner(store),
+		serviceapp.WithOutboundEmailStore(store.OutboundEmails()),
+	)
+
+	mockProvider := serviceapp.NewMockProvider()
+	registry := serviceapp.NewEmailProviderRegistry()
+	registry.Register("mock", func(config serviceapp.EmailConfig) (serviceapp.EmailProvider, error) {
+		return mockProvider, nil
+	})
+
+	emailService, err := serviceapp.NewEmailServiceWithRegistry(store, serviceapp.EmailConfig{
+		Provider:         "mock",
+		DefaultFromEmail: "support@movebigrocks.test",
+		DefaultFromName:  "Support",
+	}, caseService, registry)
+	require.NoError(t, err)
+
+	commandHandler := NewEmailCommandHandler(emailService, log)
+	eventHandler := NewEmailEventHandler(emailService, log)
+	eventBus := &capturedWebhookBus{}
+
+	webhookHandler := NewPostmarkWebhookHandlers(
+		workspaceService,
+		emailService,
+		nil,
+		"test-secret-123",
+		eventBus,
+		log,
+	)
+
+	caseObj, err := caseService.CreateCase(ctx, serviceapp.CreateCaseParams{
+		WorkspaceID:  workspace.ID,
+		Subject:      "Billing follow-up",
+		ContactEmail: "customer@example.com",
+		ContactName:  "Casey Customer",
+		Channel:      servicedomain.CaseChannelEmail,
+	})
+	require.NoError(t, err)
+	require.NoError(t, caseService.SetCaseStatus(ctx, caseObj.ID, servicedomain.CaseStatusPending))
+
+	user := testutil.NewIsolatedUser(t, workspace.ID)
+	require.NoError(t, store.Users().CreateUser(ctx, user))
+
+	comm := servicedomain.NewCommunication(caseObj.ID, workspace.ID, shareddomain.CommTypeEmail, "Prior agent response")
+	comm.Direction = shareddomain.DirectionOutbound
+	comm.IsInternal = false
+	comm.FromUserID = user.ID
+	comm.FromEmail = "agent@example.com"
+	comm.FromName = "Test Agent"
+	comm.ToEmails = []string{"customer@example.com"}
+	comm.Subject = "Re: Billing follow-up"
+	require.NoError(t, caseService.AddCommunication(ctx, comm))
+
+	outbound := servicedomain.NewOutboundEmail(workspace.ID, "agent@example.com", comm.Subject, comm.Body)
+	outbound.FromName = "Test Agent"
+	outbound.ToEmails = []string{"customer@example.com"}
+	outbound.ReplyToEmail = "agent@example.com"
+	outbound.Category = "case-reply"
+	outbound.CaseID = caseObj.ID
+	outbound.CommunicationID = comm.ID
+	outbound.CreatedByID = user.ID
+	require.NoError(t, store.OutboundEmails().CreateOutboundEmail(ctx, outbound))
+
+	command := sharedevents.NewSendEmailRequestedEvent(
+		workspace.ID,
+		"case_service",
+		[]string{"customer@example.com"},
+		comm.Subject,
+		comm.Body,
+	)
+	command.OutboundEmailID = outbound.ID
+	command.CaseID = caseObj.ID
+	command.Category = "case-reply"
+	command.ReplyTo = "agent@example.com"
+
+	commandPayload, err := json.Marshal(command)
+	require.NoError(t, err)
+	require.NoError(t, commandHandler.HandleSendEmailRequested(ctx, commandPayload))
+
+	storedOutbound, err := store.OutboundEmails().GetOutboundEmail(ctx, outbound.ID)
+	require.NoError(t, err)
+	threadMessageID, ok := storedOutbound.ProviderSettings["header_message_id"].(string)
+	require.True(t, ok)
+	require.NotEmpty(t, threadMessageID)
+
+	updatedComm, err := store.Cases().GetCommunication(ctx, workspace.ID, comm.ID)
+	require.NoError(t, err)
+	assert.Equal(t, threadMessageID, updatedComm.MessageID)
+
+	router := gin.New()
+	router.POST("/webhooks/postmark/:secret/inbound", webhookHandler.HandleInboundEmail)
+
+	replyMessageID := "<customer-reply@example.com>"
+	webhookPayload := map[string]interface{}{
+		"From":              "\"Casey Customer\" <customer@example.com>",
+		"FromName":          "Casey Customer",
+		"FromFull":          map[string]interface{}{"Email": "customer@example.com", "Name": "Casey Customer", "MailboxHash": ""},
+		"To":                workspace.ID + "@support.movebigrocks.test",
+		"ToFull":            []map[string]interface{}{{"Email": workspace.ID + "@support.movebigrocks.test", "Name": "Support", "MailboxHash": ""}},
+		"Subject":           "Re: Billing follow-up",
+		"TextBody":          "Casey Customer wrote:\n> prior reply",
+		"StrippedTextReply": "I still need help with this invoice.",
+		"HtmlBody":          "<p>I still need help with this invoice.</p>",
+		"MessageID":         replyMessageID,
+		"Headers": []map[string]interface{}{
+			{"Name": "Message-ID", "Value": replyMessageID},
+			{"Name": "In-Reply-To", "Value": threadMessageID},
+			{"Name": "References", "Value": threadMessageID},
+		},
+	}
+	body, err := json.Marshal(webhookPayload)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/postmark/test-secret-123/inbound", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Len(t, eventBus.published, 1)
+	assert.Equal(t, eventbus.StreamEmailEvents, eventBus.published[0].stream)
+
+	eventPayload, err := json.Marshal(eventBus.published[0].data)
+	require.NoError(t, err)
+	require.NoError(t, eventHandler.HandleEmailReceived(ctx, eventPayload))
+
+	var resp map[string]string
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	emailID := resp["email_id"]
+	require.NotEmpty(t, emailID)
+
+	inbound, err := store.InboundEmails().GetInboundEmail(ctx, emailID)
+	require.NoError(t, err)
+	assert.Equal(t, caseObj.ID, inbound.CaseID)
+	assert.Equal(t, servicedomain.EmailProcessingStatusProcessed, inbound.ProcessingStatus)
+	assert.Equal(t, threadMessageID, inbound.InReplyTo)
+	assert.Equal(t, []string{threadMessageID}, inbound.References)
+	assert.Equal(t, "Casey Customer", inbound.FromName)
+	assert.Equal(t, "I still need help with this invoice.", inbound.TextContent)
+
+	updatedCase, err := store.Cases().GetCase(ctx, caseObj.ID)
+	require.NoError(t, err)
+	assert.Equal(t, servicedomain.CaseStatusOpen, updatedCase.Status)
+
+	comms, err := store.Cases().ListCaseCommunications(ctx, caseObj.ID)
+	require.NoError(t, err)
+	require.Len(t, comms, 2)
+	reply := comms[1]
+	assert.Equal(t, shareddomain.DirectionInbound, reply.Direction)
+	assert.Equal(t, replyMessageID, reply.MessageID)
+	assert.Equal(t, threadMessageID, reply.InReplyTo)
+	assert.Equal(t, []string{threadMessageID}, reply.References)
+	assert.Equal(t, "Casey Customer", reply.FromName)
+	assert.Equal(t, "I still need help with this invoice.", reply.Body)
 }

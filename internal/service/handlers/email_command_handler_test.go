@@ -148,8 +148,12 @@ func TestEmailCommandHandler_HandleSendEmailRequestedUsesExistingOutboundEmailAn
 	require.NoError(t, err)
 	assert.Equal(t, servicedomain.EmailStatusSent, stored.Status)
 	assert.NotEmpty(t, stored.ProviderMessageID)
+	threadMessageID := stored.ProviderSettings["header_message_id"]
+	threadMessageIDValue, ok := threadMessageID.(string)
+	require.True(t, ok)
+	require.NotEmpty(t, threadMessageIDValue)
 
 	updatedComm, err := store.Cases().GetCommunication(ctx, workspace.ID, comm.ID)
 	require.NoError(t, err)
-	assert.Equal(t, stored.ProviderMessageID, updatedComm.MessageID)
+	assert.Equal(t, threadMessageIDValue, updatedComm.MessageID)
 }

@@ -237,6 +237,14 @@ func (pm *PostmarkProvider) SendEmail(ctx context.Context, email *emaildom.Outbo
 	if email.ReplyToEmail != "" {
 		payload["ReplyTo"] = email.ReplyToEmail
 	}
+	if messageID := outboundHeaderMessageID(email); messageID != "" {
+		payload["Headers"] = []map[string]string{
+			{
+				"Name":  "Message-ID",
+				"Value": messageID,
+			},
+		}
+	}
 
 	// Marshal to JSON
 	jsonData, err := json.Marshal(payload)
@@ -296,39 +304,33 @@ func (pm *PostmarkProvider) ParseInboundEmail(ctx context.Context, rawEmail []by
 
 	// Extract basic fields
 	messageID := util.GetString(webhook, "MessageID")
-	from := util.GetString(webhook, "From")
+	fromEmail, fromName := postmarkPrimaryAddress(webhook, "FromFull", "From")
 	subject := util.GetString(webhook, "Subject")
-	textBody := util.GetString(webhook, "TextBody")
+	rawTextBody := util.GetString(webhook, "TextBody")
+	textBody := strings.TrimSpace(util.GetString(webhook, "StrippedTextReply"))
+	if textBody == "" {
+		textBody = rawTextBody
+	}
 	htmlBody := util.GetString(webhook, "HtmlBody")
 
 	// Create inbound email
 	inboundEmail := emaildom.NewInboundEmail("",
 		messageID,
-		from,
+		fromEmail,
 		subject,
 		textBody)
 
+	inboundEmail.FromName = fromName
 	inboundEmail.HTMLContent = htmlBody
-	inboundEmail.ToEmails = []string{util.GetString(webhook, "To")}
-
-	// Parse CC and BCC
-	if cc := util.GetString(webhook, "Cc"); cc != "" {
-		inboundEmail.CCEmails = strings.Split(cc, ",")
-	}
+	inboundEmail.RawContent = rawTextBody
+	inboundEmail.ToEmails = postmarkAddressEmails(webhook, "ToFull", "To")
+	inboundEmail.CCEmails = postmarkAddressEmails(webhook, "CcFull", "Cc")
+	inboundEmail.BCCEmails = postmarkAddressEmails(webhook, "BccFull", "Bcc")
 
 	// Extract headers
-	if headers, ok := webhook["Headers"].([]interface{}); ok {
-		inboundEmail.Headers = make(map[string]string)
-		for _, header := range headers {
-			if h, ok := header.(map[string]interface{}); ok {
-				name := util.GetString(h, "Name")
-				value := util.GetString(h, "Value")
-				if name != "" {
-					inboundEmail.Headers[name] = value
-				}
-			}
-		}
-	}
+	inboundEmail.Headers = postmarkHeaders(webhook["Headers"])
+	inboundEmail.InReplyTo = postmarkHeaderValue(inboundEmail.Headers, "In-Reply-To")
+	inboundEmail.References = parseMessageIDHeaderList(postmarkHeaderValue(inboundEmail.Headers, "References"))
 
 	// Extract attachments if present
 	// Note: Actual attachment processing (virus scanning, S3 upload) happens
@@ -347,6 +349,138 @@ func (pm *PostmarkProvider) ParseInboundEmail(ctx context.Context, rawEmail []by
 	}
 
 	return inboundEmail, nil
+}
+
+func postmarkPrimaryAddress(webhook map[string]interface{}, fullKey, rawKey string) (string, string) {
+	addresses := postmarkAddressList(webhook, fullKey, rawKey)
+	if len(addresses) == 0 {
+		return "", ""
+	}
+	return addresses[0].Address, addresses[0].Name
+}
+
+func postmarkAddressEmails(webhook map[string]interface{}, fullKey, rawKey string) []string {
+	addresses := postmarkAddressList(webhook, fullKey, rawKey)
+	emails := make([]string, 0, len(addresses))
+	for _, address := range addresses {
+		if strings.TrimSpace(address.Address) == "" {
+			continue
+		}
+		emails = append(emails, address.Address)
+	}
+	return emails
+}
+
+func postmarkAddressList(webhook map[string]interface{}, fullKey, rawKey string) []*mail.Address {
+	if webhook == nil {
+		return nil
+	}
+	if fullAddresses := parsePostmarkAddressObjects(webhook[fullKey]); len(fullAddresses) > 0 {
+		return fullAddresses
+	}
+	return parseAddressListString(util.GetString(webhook, rawKey))
+}
+
+func parsePostmarkAddressObjects(raw interface{}) []*mail.Address {
+	items, ok := raw.([]interface{})
+	if !ok {
+		return nil
+	}
+	addresses := make([]*mail.Address, 0, len(items))
+	for _, item := range items {
+		entry, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		email := strings.TrimSpace(util.GetString(entry, "Email"))
+		if email == "" {
+			continue
+		}
+		addresses = append(addresses, &mail.Address{
+			Name:    strings.TrimSpace(util.GetString(entry, "Name")),
+			Address: email,
+		})
+	}
+	return addresses
+}
+
+func parseAddressListString(value string) []*mail.Address {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	if parsed, err := mail.ParseAddressList(value); err == nil {
+		return parsed
+	}
+
+	parts := strings.Split(value, ",")
+	addresses := make([]*mail.Address, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if parsed, err := mail.ParseAddress(part); err == nil {
+			addresses = append(addresses, parsed)
+			continue
+		}
+		addresses = append(addresses, &mail.Address{Address: part})
+	}
+	return addresses
+}
+
+func postmarkHeaders(raw interface{}) map[string]string {
+	headers := make(map[string]string)
+	items, ok := raw.([]interface{})
+	if !ok {
+		return headers
+	}
+	for _, item := range items {
+		entry, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		name := strings.TrimSpace(util.GetString(entry, "Name"))
+		value := util.GetString(entry, "Value")
+		if name == "" {
+			continue
+		}
+		headers[name] = value
+	}
+	return headers
+}
+
+func postmarkHeaderValue(headers map[string]string, target string) string {
+	target = strings.TrimSpace(strings.ToLower(target))
+	for name, value := range headers {
+		if strings.ToLower(strings.TrimSpace(name)) == target {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func parseMessageIDHeaderList(value string) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return []string{}
+	}
+	replacer := strings.NewReplacer(",", " ", "\n", " ", "\r", " ", "\t", " ")
+	parts := strings.Fields(replacer.Replace(value))
+	seen := make(map[string]struct{}, len(parts))
+	values := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if _, exists := seen[part]; exists {
+			continue
+		}
+		seen[part] = struct{}{}
+		values = append(values, part)
+	}
+	return values
 }
 
 // ValidateConfig validates Postmark configuration
@@ -450,8 +584,11 @@ func (smtp *SMTPProvider) SendEmail(ctx context.Context, email *emaildom.Outboun
 		return fmt.Errorf("at least one recipient is required")
 	}
 
-	messageID := fmt.Sprintf("<%d@%s>", time.Now().UnixNano(), smtp.Host)
-	message, err := smtp.buildMessage(email, messageID)
+	messageID := outboundHeaderMessageID(email)
+	if messageID == "" {
+		messageID = fmt.Sprintf("<%d@%s>", time.Now().UnixNano(), smtp.Host)
+	}
+	message, err := smtp.buildMessage(email, messageID, shouldKeepSMTPMessageID(smtp.Host, messageID))
 	if err != nil {
 		return fmt.Errorf("build smtp message: %w", err)
 	}
@@ -502,7 +639,7 @@ func (smtp *SMTPProvider) allRecipients(email *emaildom.OutboundEmail) []string 
 	return recipients
 }
 
-func (smtp *SMTPProvider) buildMessage(email *emaildom.OutboundEmail, messageID string) ([]byte, error) {
+func (smtp *SMTPProvider) buildMessage(email *emaildom.OutboundEmail, messageID string, keepMessageID bool) ([]byte, error) {
 	var body bytes.Buffer
 
 	writeHeader := func(name, value string) {
@@ -524,6 +661,9 @@ func (smtp *SMTPProvider) buildMessage(email *emaildom.OutboundEmail, messageID 
 	writeHeader("Subject", email.Subject)
 	writeHeader("Date", time.Now().UTC().Format(time.RFC1123Z))
 	writeHeader("Message-ID", messageID)
+	if keepMessageID {
+		writeHeader("X-PM-KeepID", "true")
+	}
 	writeHeader("MIME-Version", "1.0")
 
 	switch {
@@ -556,6 +696,13 @@ func formatEmailAddress(name, address string) string {
 		return address
 	}
 	return (&mail.Address{Name: name, Address: address}).String()
+}
+
+func shouldKeepSMTPMessageID(host, messageID string) bool {
+	if strings.TrimSpace(messageID) == "" {
+		return false
+	}
+	return strings.Contains(strings.ToLower(strings.TrimSpace(host)), "postmark")
 }
 
 // NewMockProvider creates a mock email provider for testing

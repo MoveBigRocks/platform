@@ -1,7 +1,11 @@
 package serviceapp
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
+	"net/http"
 	netsmtp "net/smtp"
 	"testing"
 
@@ -117,6 +121,112 @@ func TestPostmarkProvider_ValidateConfig(t *testing.T) {
 		err := provider.ValidateConfig()
 		assert.NoError(t, err)
 	})
+}
+
+func TestPostmarkProvider_SendEmailIncludesCustomMessageIDHeader(t *testing.T) {
+	provider := &PostmarkProvider{
+		ServerToken: "test-token",
+		client: &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				body, err := io.ReadAll(req.Body)
+				require.NoError(t, err)
+
+				var payload map[string]interface{}
+				require.NoError(t, json.Unmarshal(body, &payload))
+
+				headers, ok := payload["Headers"].([]interface{})
+				require.True(t, ok)
+				require.Len(t, headers, 1)
+
+				header, ok := headers[0].(map[string]interface{})
+				require.True(t, ok)
+				assert.Equal(t, "Message-ID", header["Name"])
+				assert.Equal(t, "<thread-123@example.com>", header["Value"])
+				assert.Equal(t, "test-token", req.Header.Get("X-Postmark-Server-Token"))
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBufferString(`{"MessageID":"postmark-api-id"}`)),
+					Header:     make(http.Header),
+				}, nil
+			}),
+		},
+	}
+
+	email := emaildom.NewOutboundEmail("ws_123", "sender@example.com", "Test Subject", "Test body")
+	email.ToEmails = []string{"recipient@example.com"}
+	email.ProviderSettings["header_message_id"] = "<thread-123@example.com>"
+
+	err := provider.SendEmail(context.Background(), email)
+	require.NoError(t, err)
+	assert.Equal(t, "postmark-api-id", email.ProviderMessageID)
+}
+
+func TestPostmarkProvider_ParseInboundEmailExtractsThreadHeadersAndAddresses(t *testing.T) {
+	provider := &PostmarkProvider{}
+
+	rawEmail := []byte(`{
+		"From": "\"Casey Customer\" <customer@example.com>",
+		"FromName": "Casey Customer",
+		"FromFull": {
+			"Email": "customer@example.com",
+			"Name": "Casey Customer",
+			"MailboxHash": ""
+		},
+		"To": "workspace-123@support.movebigrocks.test",
+		"ToFull": [
+			{
+				"Email": "workspace-123@support.movebigrocks.test",
+				"Name": "Support",
+				"MailboxHash": ""
+			}
+		],
+		"Cc": "\"Second Person\" <other@example.com>",
+		"CcFull": [
+			{
+				"Email": "other@example.com",
+				"Name": "Second Person",
+				"MailboxHash": ""
+			}
+		],
+		"Bcc": "audit@example.com",
+		"BccFull": [
+			{
+				"Email": "audit@example.com",
+				"Name": "",
+				"MailboxHash": ""
+			}
+		],
+		"Subject": "Re: Billing follow-up",
+		"TextBody": "Quoted full email body",
+		"StrippedTextReply": "Customer reply only",
+		"HtmlBody": "<p>Quoted full email body</p>",
+		"MessageID": "<reply@example.com>",
+		"Headers": [
+			{"Name": "Message-ID", "Value": "<reply@example.com>"},
+			{"Name": "In-Reply-To", "Value": "<thread-123@example.com>"},
+			{"Name": "References", "Value": "<thread-123@example.com> <older@example.com>"}
+		]
+	}`)
+
+	inbound, err := provider.ParseInboundEmail(context.Background(), rawEmail)
+	require.NoError(t, err)
+	require.NotNil(t, inbound)
+	assert.Equal(t, "customer@example.com", inbound.FromEmail)
+	assert.Equal(t, "Casey Customer", inbound.FromName)
+	assert.Equal(t, []string{"workspace-123@support.movebigrocks.test"}, inbound.ToEmails)
+	assert.Equal(t, []string{"other@example.com"}, inbound.CCEmails)
+	assert.Equal(t, []string{"audit@example.com"}, inbound.BCCEmails)
+	assert.Equal(t, "<thread-123@example.com>", inbound.InReplyTo)
+	assert.Equal(t, []string{"<thread-123@example.com>", "<older@example.com>"}, inbound.References)
+	assert.Equal(t, "Customer reply only", inbound.TextContent)
+	assert.Equal(t, "Quoted full email body", inbound.RawContent)
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (fn roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return fn(req)
 }
 
 func TestNewSESProvider(t *testing.T) {

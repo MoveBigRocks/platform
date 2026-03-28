@@ -3,6 +3,7 @@ package serviceapp
 import (
 	"context"
 	"fmt"
+	"net/mail"
 	"strings"
 	"time"
 
@@ -34,6 +35,8 @@ type EmailProviderFactory func(config EmailConfig) (EmailProvider, error)
 type EmailProviderRegistry struct {
 	factories map[string]EmailProviderFactory
 }
+
+const outboundHeaderMessageIDKey = "header_message_id"
 
 func NewEmailProviderRegistry() *EmailProviderRegistry {
 	registry := &EmailProviderRegistry{factories: make(map[string]EmailProviderFactory)}
@@ -217,6 +220,8 @@ func (es *EmailService) sendOutboundEmail(ctx context.Context, outboundEmail *em
 		return nil
 	}
 
+	ensureOutboundHeaderMessageID(outboundEmail)
+
 	now := time.Now().UTC()
 	outboundEmail.Status = emaildom.EmailStatusSending
 	outboundEmail.UpdatedAt = now
@@ -253,7 +258,14 @@ func (es *EmailService) syncCommunicationMessageID(ctx context.Context, outbound
 	if outboundEmail == nil {
 		return nil
 	}
-	if strings.TrimSpace(outboundEmail.CommunicationID) == "" || strings.TrimSpace(outboundEmail.ProviderMessageID) == "" {
+	if strings.TrimSpace(outboundEmail.CommunicationID) == "" {
+		return nil
+	}
+	messageID := outboundHeaderMessageID(outboundEmail)
+	if messageID == "" {
+		messageID = strings.TrimSpace(outboundEmail.ProviderMessageID)
+	}
+	if messageID == "" {
 		return nil
 	}
 
@@ -261,10 +273,10 @@ func (es *EmailService) syncCommunicationMessageID(ctx context.Context, outbound
 	if err != nil {
 		return fmt.Errorf("get communication: %w", err)
 	}
-	if comm.MessageID == outboundEmail.ProviderMessageID {
+	if comm.MessageID == messageID {
 		return nil
 	}
-	comm.MessageID = outboundEmail.ProviderMessageID
+	comm.MessageID = messageID
 	comm.UpdatedAt = time.Now().UTC()
 	if err := es.store.Cases().UpdateCommunication(ctx, comm); err != nil {
 		return fmt.Errorf("update communication: %w", err)
@@ -281,6 +293,49 @@ func cloneTemplateData(data map[string]interface{}) map[string]interface{} {
 		cloned[key] = value
 	}
 	return cloned
+}
+
+func ensureOutboundHeaderMessageID(outboundEmail *emaildom.OutboundEmail) string {
+	if outboundEmail == nil {
+		return ""
+	}
+	if messageID := outboundHeaderMessageID(outboundEmail); messageID != "" {
+		return messageID
+	}
+	if outboundEmail.ProviderSettings == nil {
+		outboundEmail.ProviderSettings = make(map[string]interface{})
+	}
+
+	domain := "movebigrocks.local"
+	if parsed, err := mail.ParseAddress(strings.TrimSpace(outboundEmail.FromEmail)); err == nil {
+		if at := strings.LastIndex(parsed.Address, "@"); at >= 0 && at+1 < len(parsed.Address) {
+			domain = strings.ToLower(strings.TrimSpace(parsed.Address[at+1:]))
+		}
+	}
+
+	identifier := strings.TrimSpace(outboundEmail.ID)
+	if identifier == "" {
+		identifier = fmt.Sprintf("%d", time.Now().UnixNano())
+	}
+
+	messageID := fmt.Sprintf("<outbound-%s@%s>", identifier, domain)
+	outboundEmail.ProviderSettings[outboundHeaderMessageIDKey] = messageID
+	return messageID
+}
+
+func outboundHeaderMessageID(outboundEmail *emaildom.OutboundEmail) string {
+	if outboundEmail == nil || len(outboundEmail.ProviderSettings) == 0 {
+		return ""
+	}
+	raw, ok := outboundEmail.ProviderSettings[outboundHeaderMessageIDKey]
+	if !ok {
+		return ""
+	}
+	value, ok := raw.(string)
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(value)
 }
 
 // =============================================================================
