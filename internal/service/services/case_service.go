@@ -14,6 +14,7 @@ import (
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	"github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	"github.com/movebigrocks/platform/pkg/id"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 
@@ -114,54 +115,14 @@ type CaseHandoffParams struct {
 // are written atomically (proper outbox pattern). Otherwise, event publishing
 // is best-effort after the case is created.
 func (cs *CaseService) CreateCase(ctx context.Context, params CreateCaseParams) (*servicedomain.Case, error) {
-	// Validate required params upfront
-	if params.WorkspaceID == "" {
-		return nil, apierrors.NewValidationErrors(apierrors.NewValidationError("workspace_id", "required"))
-	}
-	if params.Subject == "" {
-		return nil, apierrors.NewValidationErrors(apierrors.NewValidationError("subject", "required"))
-	}
-	if params.QueueID != "" && cs.queueStore != nil {
-		queue, err := cs.queueStore.GetQueue(ctx, params.QueueID)
-		if err != nil {
-			return nil, apierrors.NotFoundError("queue", params.QueueID)
-		}
-		if queue.WorkspaceID != params.WorkspaceID {
-			return nil, apierrors.NotFoundError("queue", params.QueueID)
-		}
-	}
-
-	// Create case using domain constructor with business rule defaults
-	caseObj := servicedomain.NewCaseWithDefaults(servicedomain.NewCaseParams{
-		WorkspaceID:               params.WorkspaceID,
-		Subject:                   params.Subject,
-		Description:               params.Description,
-		Priority:                  params.Priority,
-		Channel:                   params.Channel,
-		Category:                  params.Category,
-		QueueID:                   params.QueueID,
-		OriginatingConversationID: params.OriginatingConversationID,
-		ContactID:                 params.ContactID,
-		ContactName:               params.ContactName,
-		ContactEmail:              params.ContactEmail,
-		TeamID:                    params.TeamID,
-		AssignedToID:              params.AssignedToID,
-		Tags:                      params.Tags,
-		CustomFields:              params.CustomFields,
-	})
-
-	// Generate HumanID using workspace prefix
-	prefix := cs.getCasePrefix(ctx, params.WorkspaceID)
-	caseObj.GenerateHumanID(prefix)
-
-	// Validate using domain method
-	if err := caseObj.Validate(); err != nil {
-		return nil, apierrors.Wrap(err, apierrors.ErrorTypeValidation, "case validation failed")
+	caseObj, err := cs.prepareCaseForCreate(ctx, params)
+	if err != nil {
+		return nil, err
 	}
 
 	// Use transactional write if available (atomic case + event)
 	if cs.tx != nil && cs.outbox != nil {
-		if err := cs.createCaseWithEvent(ctx, caseObj); err != nil {
+		if err := cs.createCaseWithEvents(ctx, caseObj); err != nil {
 			return nil, err
 		}
 		return caseObj, nil
@@ -181,9 +142,106 @@ func (cs *CaseService) CreateCase(ctx context.Context, params CreateCaseParams) 
 	return caseObj, nil
 }
 
-// createCaseWithEvent writes the case and its creation event atomically.
-// Both succeed or both fail - no orphaned cases without events.
-func (cs *CaseService) createCaseWithEvent(ctx context.Context, caseObj *servicedomain.Case) error {
+// ProcessCreateCaseRequested executes the sanctioned cross-domain case-create
+// contract through the same durable case and outbox path used by supported core
+// surfaces.
+func (cs *CaseService) ProcessCreateCaseRequested(ctx context.Context, event events.CreateCaseRequestedEvent) (*servicedomain.Case, error) {
+	if err := event.Validate(); err != nil {
+		return nil, apierrors.Wrap(err, apierrors.ErrorTypeValidation, "create case command validation failed")
+	}
+
+	params, err := createCaseParamsFromCommandEvent(event)
+	if err != nil {
+		return nil, err
+	}
+
+	caseObj, err := cs.prepareCaseForCreate(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	responseEvent := events.NewCaseCreatedFromCommandEvent(
+		event.EventID,
+		strings.TrimSpace(event.RequestedBy),
+		caseObj.ID,
+		caseObj.WorkspaceID,
+		caseObj.HumanID,
+	)
+	responseEvent.SourceType = strings.TrimSpace(event.SourceType)
+	responseEvent.SourceID = strings.TrimSpace(event.SourceID)
+	responseEvent.SourceSubmissionID = strings.TrimSpace(event.SourceSubmissionID)
+
+	if cs.tx != nil && cs.outbox != nil {
+		if err := cs.createCaseWithEvents(ctx, caseObj, responseEvent); err != nil {
+			return nil, err
+		}
+		return caseObj, nil
+	}
+
+	if err := cs.caseStore.CreateCase(ctx, caseObj); err != nil {
+		return nil, apierrors.DatabaseError("create case", err)
+	}
+	if err := cs.syncCaseQueueItem(ctx, caseObj); err != nil {
+		return nil, err
+	}
+	cs.publishCaseCreatedEvent(ctx, caseObj)
+	cs.publishCaseCreatedFromCommandEvent(ctx, responseEvent, caseObj.ID)
+	return caseObj, nil
+}
+
+func (cs *CaseService) prepareCaseForCreate(ctx context.Context, params CreateCaseParams) (*servicedomain.Case, error) {
+	// Validate required params upfront
+	if params.WorkspaceID == "" {
+		return nil, apierrors.NewValidationErrors(apierrors.NewValidationError("workspace_id", "required"))
+	}
+	if params.Subject == "" {
+		return nil, apierrors.NewValidationErrors(apierrors.NewValidationError("subject", "required"))
+	}
+	if params.QueueID != "" && cs.queueStore != nil {
+		queue, err := cs.queueStore.GetQueue(ctx, params.QueueID)
+		if err != nil {
+			return nil, apierrors.NotFoundError("queue", params.QueueID)
+		}
+		if queue.WorkspaceID != params.WorkspaceID {
+			return nil, apierrors.NotFoundError("queue", params.QueueID)
+		}
+	}
+
+	caseObj := servicedomain.NewCaseWithDefaults(servicedomain.NewCaseParams{
+		WorkspaceID:               params.WorkspaceID,
+		Subject:                   params.Subject,
+		Description:               params.Description,
+		Priority:                  params.Priority,
+		Channel:                   params.Channel,
+		Category:                  params.Category,
+		QueueID:                   params.QueueID,
+		OriginatingConversationID: params.OriginatingConversationID,
+		ContactID:                 params.ContactID,
+		ContactName:               params.ContactName,
+		ContactEmail:              params.ContactEmail,
+		TeamID:                    params.TeamID,
+		AssignedToID:              params.AssignedToID,
+		Tags:                      params.Tags,
+		CustomFields:              params.CustomFields,
+	})
+
+	prefix := cs.getCasePrefix(ctx, params.WorkspaceID)
+	caseObj.GenerateHumanID(prefix)
+	if strings.TrimSpace(caseObj.ID) == "" {
+		caseObj.ID = id.New()
+	}
+
+	if err := caseObj.Validate(); err != nil {
+		return nil, apierrors.Wrap(err, apierrors.ErrorTypeValidation, "case validation failed")
+	}
+
+	return caseObj, nil
+}
+
+// createCaseWithEvents writes the case and its creation events atomically.
+// All writes succeed or fail together - no orphaned cases without emitted
+// workflow events.
+func (cs *CaseService) createCaseWithEvents(ctx context.Context, caseObj *servicedomain.Case, extraEvents ...eventbus.Event) error {
 	return cs.tx.WithTransaction(ctx, func(txCtx context.Context) error {
 		// Create case within transaction
 		if err := cs.caseStore.CreateCase(txCtx, caseObj); err != nil {
@@ -210,6 +268,11 @@ func (cs *CaseService) createCaseWithEvent(ctx context.Context, caseObj *service
 		// Publish event within same transaction (outbox save uses txCtx)
 		if err := cs.outbox.PublishEvent(txCtx, eventbus.StreamCaseEvents, event); err != nil {
 			return apierrors.DatabaseError("publish case event", err)
+		}
+		for _, extraEvent := range extraEvents {
+			if err := cs.outbox.PublishEvent(txCtx, eventbus.StreamCaseEvents, extraEvent); err != nil {
+				return apierrors.DatabaseError("publish case follow-up event", err)
+			}
 		}
 
 		return nil
@@ -242,6 +305,130 @@ func (cs *CaseService) publishCaseCreatedEvent(ctx context.Context, caseObj *ser
 		// The outbox pattern ensures eventual delivery
 		cs.logger.WithError(err).Warn("Failed to publish case created event", "case_id", caseObj.ID)
 	}
+}
+
+func (cs *CaseService) publishCaseCreatedFromCommandEvent(ctx context.Context, event events.CaseCreatedFromCommandEvent, caseID string) {
+	if cs.outbox == nil {
+		cs.logger.Debug("Skipping case created-from-command event - outbox not configured", "case_id", caseID)
+		return
+	}
+	if err := cs.outbox.PublishEvent(ctx, eventbus.StreamCaseEvents, event); err != nil {
+		cs.logger.WithError(err).Warn("Failed to publish case created-from-command event", "case_id", caseID, "request_id", event.RequestID)
+	}
+}
+
+func createCaseParamsFromCommandEvent(event events.CreateCaseRequestedEvent) (CreateCaseParams, error) {
+	priority, err := parseCreateCaseCommandPriority(event.Priority)
+	if err != nil {
+		return CreateCaseParams{}, err
+	}
+	channel, err := parseCreateCaseCommandChannel(event.Channel, event.SourceType)
+	if err != nil {
+		return CreateCaseParams{}, err
+	}
+
+	return CreateCaseParams{
+		WorkspaceID:  strings.TrimSpace(event.WorkspaceID),
+		Subject:      strings.TrimSpace(event.Subject),
+		Description:  strings.TrimSpace(event.Description),
+		Priority:     priority,
+		Channel:      channel,
+		Category:     strings.TrimSpace(event.Category),
+		QueueID:      strings.TrimSpace(event.QueueID),
+		ContactEmail: strings.TrimSpace(event.ContactEmail),
+		ContactName:  strings.TrimSpace(event.ContactName),
+		TeamID:       strings.TrimSpace(event.TeamID),
+		AssignedToID: strings.TrimSpace(event.AssignedToID),
+		Tags:         append([]string(nil), event.Tags...),
+		CustomFields: buildCommandCaseCustomFields(event),
+	}, nil
+}
+
+func parseCreateCaseCommandPriority(value string) (servicedomain.CasePriority, error) {
+	switch priority := servicedomain.CasePriority(strings.TrimSpace(value)); priority {
+	case "":
+		return servicedomain.CasePriorityMedium, nil
+	case servicedomain.CasePriorityLow,
+		servicedomain.CasePriorityMedium,
+		servicedomain.CasePriorityHigh,
+		servicedomain.CasePriorityUrgent:
+		return priority, nil
+	default:
+		return "", apierrors.Newf(apierrors.ErrorTypeValidation, "priority must be low, medium, high, or urgent").WithDetails(map[string]interface{}{
+			"field": "priority",
+			"value": strings.TrimSpace(value),
+		})
+	}
+}
+
+func parseCreateCaseCommandChannel(value, sourceType string) (servicedomain.CaseChannel, error) {
+	switch channel := servicedomain.CaseChannel(strings.TrimSpace(value)); channel {
+	case "":
+		switch strings.TrimSpace(sourceType) {
+		case "email":
+			return servicedomain.CaseChannelEmail, nil
+		case "form":
+			return servicedomain.CaseChannelWeb, nil
+		case "chat", "conversation":
+			return servicedomain.CaseChannelChat, nil
+		default:
+			return servicedomain.CaseChannelAPI, nil
+		}
+	case servicedomain.CaseChannelEmail,
+		servicedomain.CaseChannelWeb,
+		servicedomain.CaseChannelAPI,
+		servicedomain.CaseChannelPhone,
+		servicedomain.CaseChannelChat,
+		servicedomain.CaseChannelInternal:
+		return channel, nil
+	default:
+		return "", apierrors.Newf(apierrors.ErrorTypeValidation, "channel must be email, web, api, phone, chat, or internal").WithDetails(map[string]interface{}{
+			"field": "channel",
+			"value": strings.TrimSpace(value),
+		})
+	}
+}
+
+func buildCommandCaseCustomFields(event events.CreateCaseRequestedEvent) shareddomain.TypedCustomFields {
+	customFields := shareddomain.NewTypedCustomFields()
+	for key, value := range event.CustomFields {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			continue
+		}
+		customFields.SetAny(key, value)
+	}
+	for key, value := range event.Metadata {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			continue
+		}
+		customFields.SetAny("metadata_"+key, value)
+	}
+
+	sourceLabel := "case_command"
+	if sourceType := strings.TrimSpace(event.SourceType); sourceType != "" {
+		sourceLabel = sourceType + "_command"
+		customFields.SetString("source_type", sourceType)
+	}
+	customFields.SetString("source", sourceLabel)
+	customFields.SetString("command_request_id", event.EventID)
+	if requestedBy := strings.TrimSpace(event.RequestedBy); requestedBy != "" {
+		customFields.SetString("command_requested_by", requestedBy)
+	}
+	if queueID := strings.TrimSpace(event.QueueID); queueID != "" {
+		customFields.SetString("command_queue_id", queueID)
+	}
+	if sourceID := strings.TrimSpace(event.SourceID); sourceID != "" {
+		customFields.SetString("source_id", sourceID)
+	}
+	if submissionID := strings.TrimSpace(event.SourceSubmissionID); submissionID != "" {
+		customFields.SetString("source_submission_id", submissionID)
+	}
+	if contactPhone := strings.TrimSpace(event.ContactPhone); contactPhone != "" {
+		customFields.SetString("contact_phone", contactPhone)
+	}
+	return customFields
 }
 
 // CreateCaseFromEmail creates a case from an inbound email
@@ -585,7 +772,7 @@ func (cs *CaseService) SaveCase(ctx context.Context, caseObj *servicedomain.Case
 
 	if strings.TrimSpace(caseObj.ID) == "" {
 		if cs.tx != nil && cs.outbox != nil {
-			if err := cs.createCaseWithEvent(ctx, caseObj); err != nil {
+			if err := cs.createCaseWithEvents(ctx, caseObj); err != nil {
 				return err
 			}
 			return nil
@@ -610,7 +797,7 @@ func (cs *CaseService) SaveCase(ctx context.Context, caseObj *servicedomain.Case
 	}
 
 	if cs.tx != nil && cs.outbox != nil {
-		if err := cs.createCaseWithEvent(ctx, caseObj); err != nil {
+		if err := cs.createCaseWithEvents(ctx, caseObj); err != nil {
 			return err
 		}
 		return nil

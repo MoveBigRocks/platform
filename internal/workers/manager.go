@@ -29,6 +29,7 @@ type Manager struct {
 	jobHandler                 *automationhandlers.JobEventHandler
 	formHandler                *servicehandlers.FormEventHandler
 	emailHandler               *servicehandlers.EmailEventHandler
+	caseCommandHandler         *servicehandlers.CaseCommandHandler
 	emailCommandHandler        *servicehandlers.EmailCommandHandler
 	notificationCommandHandler *servicehandlers.NotificationCommandHandler
 	// Lifecycle
@@ -102,6 +103,12 @@ func NewManager(deps ManagerDeps) *Manager {
 		)
 		m.emailCommandHandler = servicehandlers.NewEmailCommandHandler(
 			deps.EmailService,
+			deps.Logger,
+		)
+	}
+	if deps.CaseService != nil {
+		m.caseCommandHandler = servicehandlers.NewCaseCommandHandler(
+			deps.CaseService,
 			deps.Logger,
 		)
 	}
@@ -211,6 +218,13 @@ func (m *Manager) registerHandlers() error {
 			return fmt.Errorf("register email command handlers: %w", err)
 		}
 		m.logger.Info("Email command handlers registered")
+	}
+
+	if m.caseCommandHandler != nil {
+		if err := m.caseCommandHandler.RegisterHandlers(subscribe); err != nil {
+			return fmt.Errorf("register case command handlers: %w", err)
+		}
+		m.logger.Info("Case command handlers registered")
 	}
 
 	if m.notificationCommandHandler != nil {

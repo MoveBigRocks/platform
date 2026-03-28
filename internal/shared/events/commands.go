@@ -14,8 +14,8 @@ import (
 const (
 	// StreamEmailCommands contains requests to send emails
 	StreamEmailCommands = "email-commands"
-	// StreamCaseCommands is reserved for future async case commands. It has no
-	// production consumer in Milestone 1 and must not be treated as proven.
+	// StreamCaseCommands contains requests to perform sanctioned case actions
+	// through the core worker path.
 	StreamCaseCommands = "case-commands"
 	// StreamNotificationCommands contains requests to send notifications
 	StreamNotificationCommands = "notification-commands"
@@ -117,6 +117,7 @@ type CreateCaseRequestedEvent struct {
 
 	// Categorization
 	Category string
+	QueueID  string
 	Tags     []string
 
 	// Source context

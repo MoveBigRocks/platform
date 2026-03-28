@@ -74,5 +74,5 @@ func TestManager_StartRegistersMilestoneWorkflowStreams(t *testing.T) {
 
 	_, caseCommandGroups, err := bus.GetStreamInfo(eventbus.StreamCaseCommands)
 	require.NoError(t, err)
-	assert.Zero(t, caseCommandGroups)
+	assert.Equal(t, int64(1), caseCommandGroups)
 }
