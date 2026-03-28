@@ -47,6 +47,8 @@ EXTENSIONS_VALIDATION_DIR="$OUT_DIR/extensions-validation"
 EXTENSIONS_VALIDATION_LOG="$EXTENSIONS_VALIDATION_DIR/validate-first-party.log"
 FIRST_PARTY_VALIDATION_SCRIPT="$FIRST_PARTY_EXTENSIONS_ROOT/scripts/validate-first-party.sh"
 FIRST_PARTY_CATALOG_PATH="$FIRST_PARTY_EXTENSIONS_ROOT/catalog/public-bundles.json"
+BOOTSTRAP_PROOF_DIR="$OUT_DIR/sandbox-bootstrap"
+BOOTSTRAP_PROOF_PATH="$BOOTSTRAP_PROOF_DIR/mbr-instance.json"
 SUMMARY_PATH="$OUT_DIR/summary.md"
 GENERATED_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 GIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD)"
@@ -95,13 +97,14 @@ require_file() {
 
 cd "$ROOT_DIR"
 
-mkdir -p "$PROOF_BIN_DIR" "$EXTENSIONS_VALIDATION_DIR"
+mkdir -p "$PROOF_BIN_DIR" "$EXTENSIONS_VALIDATION_DIR" "$BOOTSTRAP_PROOF_DIR"
 require_file "$FIRST_PARTY_VALIDATION_SCRIPT"
 require_file "$FIRST_PARTY_CATALOG_PATH"
 
 run_step go test -count=1 ./internal/service/services ./internal/knowledge/services ./internal/platform/services ./cmd/api ./cmd/mbr
 run_step bash scripts/check-cli-contract-docs.sh
 run_step go build -trimpath -o "$LOCAL_MBR_BIN" ./cmd/mbr
+run_step go run ./tools/runtime-bootstrap-proof --out "$BOOTSTRAP_PROOF_PATH" --version "$VERSION" --git-sha "$GIT_SHA" --build-date "$GENERATED_AT"
 cp "$FIRST_PARTY_CATALOG_PATH" "$EXTENSIONS_VALIDATION_DIR/public-bundles.json"
 run_step_capture "$EXTENSIONS_VALIDATION_LOG" env MBR_BIN="$LOCAL_MBR_BIN" bash "$FIRST_PARTY_VALIDATION_SCRIPT"
 run_step bash scripts/build-cli-release.sh --version "$VERSION" --out "$CLI_OUT_DIR"
@@ -115,6 +118,7 @@ cat >"$SUMMARY_PATH" <<EOF
 - cli_release_dir: ${CLI_OUT_DIR}
 - cli_release_verification: ${CLI_OUT_DIR}/verification.json
 - local_mbr_bin: ${LOCAL_MBR_BIN}
+- sandbox_bootstrap_artifact: ${BOOTSTRAP_PROOF_PATH}
 - extensions_validation_dir: ${EXTENSIONS_VALIDATION_DIR}
 
 ## Commands Run
@@ -122,9 +126,10 @@ cat >"$SUMMARY_PATH" <<EOF
 1. \`go test -count=1 ./internal/service/services ./internal/knowledge/services ./internal/platform/services ./cmd/api ./cmd/mbr\`
 2. \`bash scripts/check-cli-contract-docs.sh\`
 3. \`go build -trimpath -o ${LOCAL_MBR_BIN} ./cmd/mbr\`
-4. \`MBR_BIN=${LOCAL_MBR_BIN} bash ${FIRST_PARTY_VALIDATION_SCRIPT}\`
-5. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
-6. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
+4. \`go run ./tools/runtime-bootstrap-proof --out ${BOOTSTRAP_PROOF_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT}\`
+5. \`MBR_BIN=${LOCAL_MBR_BIN} bash ${FIRST_PARTY_VALIDATION_SCRIPT}\`
+6. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
+7. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
 
 ## Evidence Docs
 

@@ -512,7 +512,21 @@ func createPublicRouter(
 		WithEnvironment(cfg.Server.Environment).
 		WithCookieDomain(cfg.Auth.CookieDomain)
 	sandboxHandler := platformhandlers.NewSandboxPublicHandler(sandboxService)
+	sandboxPolicy := platformservices.SandboxBootstrapPolicy{}
+	if sandboxService != nil {
+		sandboxPolicy = sandboxService.BootstrapPolicy()
+	}
+	bootstrapHandler := platformhandlers.NewRuntimeBootstrapHandler(platformhandlers.RuntimeBootstrapConfig{
+		PublicBaseURL: cfg.Server.BaseURL,
+		AdminBaseURL:  cfg.Server.AdminBaseURL,
+		APIBaseURL:    cfg.Server.APIBaseURL,
+		Version:       version,
+		GitCommit:     gitCommit,
+		BuildDate:     buildDate,
+		SandboxPolicy: sandboxPolicy,
+	})
 
+	router.GET("/.well-known/mbr-instance.json", bootstrapHandler.GetBootstrapDocument)
 	router.POST("/api/public/sandboxes", sandboxHandler.CreateSandbox)
 	router.GET("/api/public/sandboxes/:id", sandboxHandler.GetSandbox)
 	router.GET("/api/public/sandboxes/:id/export", sandboxHandler.ExportSandbox)

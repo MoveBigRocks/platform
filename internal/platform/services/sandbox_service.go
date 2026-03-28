@@ -68,6 +68,14 @@ type SandboxService struct {
 	provisioner SandboxProvisioner
 }
 
+type SandboxBootstrapPolicy struct {
+	Available             bool
+	ActivationWindowHours int
+	DefaultTrialDays      int
+	ExtensionDays         int
+	VerificationPath      string
+}
+
 type URLSandboxProvisioner struct {
 	RuntimeDomain string
 }
@@ -153,6 +161,19 @@ func NewSandboxService(store shared.SandboxStore, cfg SandboxServiceConfig, opts
 		opt(svc)
 	}
 	return svc
+}
+
+func (s *SandboxService) BootstrapPolicy() SandboxBootstrapPolicy {
+	if s == nil {
+		return SandboxBootstrapPolicy{}
+	}
+	return SandboxBootstrapPolicy{
+		Available:             s.provisioner != nil,
+		ActivationWindowHours: int(s.config.ActivationTTL / time.Hour),
+		DefaultTrialDays:      int(s.config.TrialTTL / (24 * time.Hour)),
+		ExtensionDays:         int(s.config.ExtensionTTL / (24 * time.Hour)),
+		VerificationPath:      s.config.VerificationPath,
+	}
 }
 
 func (s *SandboxService) CreateSandbox(ctx context.Context, params SandboxCreateParams) (*SandboxCreateResult, error) {

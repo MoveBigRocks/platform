@@ -22,26 +22,25 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
    - `./cmd/mbr`
 4. CLI contract and doc reconciliation:
    - `bash scripts/check-cli-contract-docs.sh`
-5. Public first-party catalog validation:
+5. Runtime bootstrap artifact capture:
+   - render `/.well-known/mbr-instance.json` into the proof bundle
+6. Public first-party catalog validation:
    - build a host `mbr`
    - run `MoveBigRocks/extensions/scripts/validate-first-party.sh`
    - archive the validator log and `public-bundles.json` snapshot
-6. Cross-platform CLI packaging evidence:
+7. Cross-platform CLI packaging evidence:
    - `bash scripts/build-cli-release.sh`
-7. CLI release artifact validation:
+8. CLI release artifact validation:
    - `bash scripts/verify-cli-release.sh dist/milestone-proof/cli-release`
 
 ## Evidence Expansion Required Before Close
 
-1. Runtime bootstrap discovery:
-   - exercise `/.well-known/mbr-instance.json`
-   - archive the returned runtime-discovery payload as proof that agents can bootstrap from a live instance or sandbox
-2. Sandbox lifecycle closure:
+1. Sandbox lifecycle closure:
    - prove auto-expiry or reaper behavior, not only manual destroy
    - archive richer export evidence rather than only a handoff-style export manifest
-3. Public bundle publication evidence:
+2. Public bundle publication evidence:
    - capture OCI ref, digest, and release-workflow metadata for ATS, error tracking, web analytics, `sales-pipeline` beta, and `community-feature-requests` beta
-4. ATS scenario proof:
+3. ATS scenario proof:
    - add one automated scenario that proves create job, publish, submit, review, move stage, close, and reopen
 
 ## Outputs
@@ -49,13 +48,13 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
 The current proof run writes:
 
 - `dist/milestone-proof/summary.md`
+- `dist/milestone-proof/sandbox-bootstrap/`
 - `dist/milestone-proof/extensions-validation/`
 - `dist/milestone-proof/cli-release/`
 - `dist/milestone-proof/cli-release/verification.json`
 
 Milestone closure should expand that output set to also include:
 
-- `dist/milestone-proof/sandbox-bootstrap/`
 - `dist/milestone-proof/sandbox-lifecycle/`
 - `dist/milestone-proof/public-bundles/`
 - `dist/milestone-proof/ats-scenario/`

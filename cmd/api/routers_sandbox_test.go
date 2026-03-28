@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -80,10 +81,13 @@ func TestCreatePublicRouter_SandboxLifecycle(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	cfg := testutil.NewTestConfig(t)
+	cfg.Server.BaseURL = "https://app.example.com"
+	cfg.Server.AdminBaseURL = "https://admin.example.com"
+	cfg.Server.APIBaseURL = "https://api.example.com"
 	sandboxService := platformservices.NewSandboxService(
 		newSandboxMemoryStore(),
 		platformservices.SandboxServiceConfig{
-			PublicBaseURL: "https://movebigrocks.com",
+			PublicBaseURL: "https://app.example.com",
 			RuntimeDomain: "movebigrocks.io",
 		},
 		platformservices.WithSandboxProvisioner(platformservices.URLSandboxProvisioner{RuntimeDomain: "movebigrocks.io"}),
@@ -126,6 +130,64 @@ func TestCreatePublicRouter_SandboxLifecycle(t *testing.T) {
 	require.Equal(t, http.StatusOK, exportW.Code)
 	assert.Contains(t, exportW.Body.String(), `"export_version":"mbr-sandbox-export-v1"`)
 	assert.Contains(t, exportW.Body.String(), `"bundle"`)
+}
+
+func TestCreatePublicRouter_ServesRuntimeBootstrapDocument(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cfg := testutil.NewTestConfig(t)
+	cfg.Server.BaseURL = "https://app.example.com"
+	cfg.Server.AdminBaseURL = "https://admin.example.com"
+	cfg.Server.APIBaseURL = "https://api.example.com"
+
+	sandboxService := platformservices.NewSandboxService(
+		newSandboxMemoryStore(),
+		platformservices.SandboxServiceConfig{
+			PublicBaseURL: "https://app.example.com",
+			RuntimeDomain: "movebigrocks.io",
+			ActivationTTL: 24 * time.Hour,
+			TrialTTL:      5 * 24 * time.Hour,
+			ExtensionTTL:  30 * 24 * time.Hour,
+		},
+		platformservices.WithSandboxProvisioner(platformservices.URLSandboxProvisioner{RuntimeDomain: "movebigrocks.io"}),
+	)
+
+	router := createPublicRouter(cfg, nil, nil, nil, sandboxService, nil, "v0.test", "abc123", "2026-03-28")
+
+	req := httptest.NewRequest(http.MethodGet, "/.well-known/mbr-instance.json", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &payload))
+	assert.Equal(t, "Move Big Rocks", payload["product"])
+	assert.Equal(t, "v0.test", payload["version"])
+	assert.Equal(t, "abc123", payload["git_commit"])
+
+	runtimePayload, ok := payload["runtime"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "https://app.example.com", runtimePayload["base_url"])
+	assert.Equal(t, "https://api.example.com/graphql", runtimePayload["graphql_url"])
+	assert.Equal(t, "https://app.example.com/auth/cli/start", runtimePayload["cli_login_start_url"])
+
+	cliPayload, ok := payload["cli"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "/.well-known/mbr-instance.json", cliPayload["runtime_bootstrap_path"])
+	assert.Equal(t, "https://movebigrocks.com/install.sh", cliPayload["install_sh_url"])
+
+	docsPayload, ok := payload["docs"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "https://movebigrocks.com/docs/cli", docsPayload["cli_guide_url"])
+
+	sandboxPayload, ok := payload["sandbox_policy"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, true, sandboxPayload["available"])
+	assert.Equal(t, float64(24), sandboxPayload["activation_window_hours"])
+	assert.Equal(t, float64(5), sandboxPayload["default_trial_days"])
+	assert.Equal(t, float64(30), sandboxPayload["extension_days"])
+	assert.Equal(t, "https://app.example.com/api/public/sandboxes", sandboxPayload["create_url"])
 }
 
 func cloneSandbox(sandbox *platformdomain.Sandbox) *platformdomain.Sandbox {
