@@ -19,13 +19,14 @@ import (
 
 // CaseService handles all case-related business logic
 type CaseService struct {
-	queueStore     shared.QueueStore
-	queueItemStore shared.QueueItemStore
-	caseStore      shared.CaseStore
-	workspaceStore shared.WorkspaceStore
-	outbox         contracts.OutboxPublisher
-	tx             contracts.TransactionRunner // Optional: enables atomic case+event writes
-	logger         *logger.Logger
+	queueStore         shared.QueueStore
+	queueItemStore     shared.QueueItemStore
+	caseStore          shared.CaseStore
+	workspaceStore     shared.WorkspaceStore
+	outboundEmailStore shared.OutboundEmailStore
+	outbox             contracts.OutboxPublisher
+	tx                 contracts.TransactionRunner // Optional: enables atomic case+event writes
+	logger             *logger.Logger
 }
 
 // CaseServiceOption is a functional option for configuring CaseService
@@ -43,6 +44,12 @@ func WithTransactionRunner(tx contracts.TransactionRunner) CaseServiceOption {
 func WithQueueItemStore(queueItemStore shared.QueueItemStore) CaseServiceOption {
 	return func(cs *CaseService) {
 		cs.queueItemStore = queueItemStore
+	}
+}
+
+func WithOutboundEmailStore(outboundEmailStore shared.OutboundEmailStore) CaseServiceOption {
+	return func(cs *CaseService) {
+		cs.outboundEmailStore = outboundEmailStore
 	}
 }
 
@@ -979,7 +986,8 @@ type ReplyToCaseParams struct {
 	Subject     string
 }
 
-// ReplyToCase adds an agent reply to a case and sends the email via event bus
+// ReplyToCase adds an agent reply to a case and queues outbound email delivery
+// through the outbox when email infrastructure is configured.
 func (cs *CaseService) ReplyToCase(ctx context.Context, params ReplyToCaseParams) (*servicedomain.Communication, error) {
 	// Get case to record first response if needed
 	caseObj, err := cs.GetCase(ctx, params.CaseID)
@@ -1013,8 +1021,11 @@ func (cs *CaseService) ReplyToCase(ctx context.Context, params ReplyToCaseParams
 		return nil, apierrors.Wrap(err, apierrors.ErrorTypeValidation, "case validation failed")
 	}
 
-	// Wrap communication creation and case state update in a single transaction
-	// so both succeed or both fail atomically.
+	var outboundEmail *servicedomain.OutboundEmail
+
+	// Wrap communication creation, case state update, outbound email creation,
+	// and command publication in a single transaction so they succeed or fail
+	// atomically when a transaction runner is configured.
 	if cs.tx != nil {
 		if err := cs.tx.WithTransaction(ctx, func(txCtx context.Context) error {
 			if err := cs.caseStore.CreateCommunication(txCtx, comm); err != nil {
@@ -1022,6 +1033,14 @@ func (cs *CaseService) ReplyToCase(ctx context.Context, params ReplyToCaseParams
 			}
 			if err := cs.caseStore.UpdateCase(txCtx, caseObj); err != nil {
 				return apierrors.DatabaseError("update case", err)
+			}
+			var createErr error
+			outboundEmail, createErr = cs.createReplyOutboundEmail(txCtx, params, comm)
+			if createErr != nil {
+				return createErr
+			}
+			if err := cs.publishReplyEmailEvent(txCtx, params, outboundEmail); err != nil {
+				return err
 			}
 			return nil
 		}); err != nil {
@@ -1035,19 +1054,51 @@ func (cs *CaseService) ReplyToCase(ctx context.Context, params ReplyToCaseParams
 		if err := cs.caseStore.UpdateCase(ctx, caseObj); err != nil {
 			return nil, apierrors.DatabaseError("update case", err)
 		}
+		outboundEmail, err = cs.createReplyOutboundEmail(ctx, params, comm)
+		if err != nil {
+			return nil, err
+		}
+		if err := cs.publishReplyEmailEvent(ctx, params, outboundEmail); err != nil {
+			return nil, err
+		}
 	}
-
-	// Publish email send event via outbox for actual delivery
-	cs.publishReplyEmailEvent(ctx, params, caseObj)
 
 	return comm, nil
 }
 
-// publishReplyEmailEvent publishes a SendEmailRequestedEvent for case replies
-func (cs *CaseService) publishReplyEmailEvent(ctx context.Context, params ReplyToCaseParams, caseObj *servicedomain.Case) {
+func (cs *CaseService) createReplyOutboundEmail(ctx context.Context, params ReplyToCaseParams, comm *servicedomain.Communication) (*servicedomain.OutboundEmail, error) {
+	if cs.outbox == nil || cs.outboundEmailStore == nil {
+		return nil, nil
+	}
+
+	email := servicedomain.NewOutboundEmail(params.WorkspaceID, params.UserEmail, params.Subject, params.Body)
+	email.FromName = params.UserName
+	email.ToEmails = append([]string(nil), params.ToEmails...)
+	email.CCEmails = append([]string(nil), params.CCEmails...)
+	email.HTMLContent = params.BodyHTML
+	email.ReplyToEmail = params.UserEmail
+	email.Category = "case-reply"
+	email.CaseID = params.CaseID
+	email.CommunicationID = comm.ID
+	email.UserID = params.UserID
+	email.CreatedByID = params.UserID
+	email.CreatedAt = time.Now().UTC()
+	email.UpdatedAt = email.CreatedAt
+
+	if err := email.Validate(); err != nil {
+		return nil, apierrors.Wrap(err, apierrors.ErrorTypeValidation, "reply outbound email validation failed")
+	}
+	if err := cs.outboundEmailStore.CreateOutboundEmail(ctx, email); err != nil {
+		return nil, apierrors.DatabaseError("create outbound email", err)
+	}
+	return email, nil
+}
+
+// publishReplyEmailEvent publishes a SendEmailRequestedEvent for case replies.
+func (cs *CaseService) publishReplyEmailEvent(ctx context.Context, params ReplyToCaseParams, outboundEmail *servicedomain.OutboundEmail) error {
 	if cs.outbox == nil {
-		cs.logger.Debug("Skipping reply email event - outbox not configured", "case_id", caseObj.ID)
-		return
+		cs.logger.Debug("Skipping reply email event - outbox not configured", "case_id", params.CaseID)
+		return nil
 	}
 
 	emailEvent := events.NewSendEmailRequestedEvent(
@@ -1062,10 +1113,14 @@ func (cs *CaseService) publishReplyEmailEvent(ctx context.Context, params ReplyT
 	emailEvent.Category = "case-reply"
 	emailEvent.CaseID = params.CaseID
 	emailEvent.ReplyTo = params.UserEmail
+	if outboundEmail != nil {
+		emailEvent.OutboundEmailID = outboundEmail.ID
+	}
 
 	if err := cs.outbox.PublishEvent(ctx, eventbus.StreamEmailCommands, emailEvent); err != nil {
-		cs.logger.WithError(err).Warn("Failed to publish reply email event", "case_id", params.CaseID)
+		return apierrors.Wrap(err, apierrors.ErrorTypeInternal, "publish reply email command")
 	}
+	return nil
 }
 
 // GetCaseCommunications retrieves all communications for a case

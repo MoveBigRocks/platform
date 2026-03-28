@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/movebigrocks/platform/internal/infrastructure/stores"
+	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 
 	emaildom "github.com/movebigrocks/platform/internal/service/domain"
 	"github.com/movebigrocks/platform/pkg/logger"
@@ -129,6 +130,157 @@ func normalizeEmailBackendName(value string) string {
 		return "mock"
 	}
 	return value
+}
+
+// ProcessSendEmailRequested persists and sends an outbound email from a command
+// event. If OutboundEmailID is present, the existing outbound email record is
+// used and updated; otherwise a new record is created from the event payload.
+func (es *EmailService) ProcessSendEmailRequested(ctx context.Context, event sharedevents.SendEmailRequestedEvent) (*emaildom.OutboundEmail, error) {
+	if es.store == nil {
+		return nil, fmt.Errorf("store is required")
+	}
+	if strings.TrimSpace(event.WorkspaceID) == "" {
+		return nil, fmt.Errorf("workspace_id is required")
+	}
+
+	var outboundEmail *emaildom.OutboundEmail
+	err := es.store.WithAdminContext(ctx, func(adminCtx context.Context) error {
+		if err := es.store.SetTenantContext(adminCtx, event.WorkspaceID); err != nil {
+			return fmt.Errorf("set tenant context: %w", err)
+		}
+
+		if strings.TrimSpace(event.OutboundEmailID) != "" {
+			existing, err := es.store.OutboundEmails().GetOutboundEmail(adminCtx, event.OutboundEmailID)
+			if err != nil {
+				return fmt.Errorf("load outbound email: %w", err)
+			}
+			outboundEmail = existing
+		} else {
+			outboundEmail = es.buildOutboundEmailFromCommand(event)
+			if err := outboundEmail.Validate(); err != nil {
+				return fmt.Errorf("build outbound email: %w", err)
+			}
+			if err := es.store.OutboundEmails().CreateOutboundEmail(adminCtx, outboundEmail); err != nil {
+				return fmt.Errorf("create outbound email: %w", err)
+			}
+		}
+
+		return es.sendOutboundEmail(adminCtx, outboundEmail)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return outboundEmail, nil
+}
+
+func (es *EmailService) buildOutboundEmailFromCommand(event sharedevents.SendEmailRequestedEvent) *emaildom.OutboundEmail {
+	fromEmail := strings.TrimSpace(es.config.DefaultFromEmail)
+	if fromEmail == "" {
+		fromEmail = strings.TrimSpace(event.ReplyTo)
+	}
+	if fromEmail == "" {
+		fromEmail = "noreply@movebigrocks.test"
+	}
+
+	fromName := strings.TrimSpace(es.config.DefaultFromName)
+	if fromName == "" {
+		fromName = strings.TrimSpace(event.RequestedBy)
+	}
+	if fromName == "" {
+		fromName = "Move Big Rocks"
+	}
+
+	email := emaildom.NewOutboundEmail(event.WorkspaceID, fromEmail, event.Subject, event.TextContent)
+	email.FromName = fromName
+	email.ToEmails = append([]string(nil), event.ToEmails...)
+	email.CCEmails = append([]string(nil), event.CcEmails...)
+	email.HTMLContent = event.HTMLContent
+	email.ReplyToEmail = strings.TrimSpace(event.ReplyTo)
+	email.TemplateID = event.TemplateID
+	email.TemplateData = cloneTemplateData(event.TemplateData)
+	email.Category = event.Category
+	email.CaseID = event.CaseID
+	email.CreatedAt = time.Now().UTC()
+	email.UpdatedAt = email.CreatedAt
+	email.Provider = emaildom.EmailProvider(normalizeEmailBackendName(es.config.Provider))
+	return email
+}
+
+func (es *EmailService) sendOutboundEmail(ctx context.Context, outboundEmail *emaildom.OutboundEmail) error {
+	if outboundEmail == nil {
+		return fmt.Errorf("outbound email is required")
+	}
+	if es.provider == nil {
+		return fmt.Errorf("email provider is required")
+	}
+	if outboundEmail.Status == emaildom.EmailStatusSent || outboundEmail.Status == emaildom.EmailStatusDelivered {
+		return nil
+	}
+
+	now := time.Now().UTC()
+	outboundEmail.Status = emaildom.EmailStatusSending
+	outboundEmail.UpdatedAt = now
+	if err := es.store.OutboundEmails().UpdateOutboundEmail(ctx, outboundEmail); err != nil {
+		return fmt.Errorf("mark outbound email sending: %w", err)
+	}
+
+	if err := es.provider.SendEmail(ctx, outboundEmail); err != nil {
+		outboundEmail.Status = emaildom.EmailStatusFailed
+		outboundEmail.ErrorMessage = err.Error()
+		outboundEmail.RetryCount++
+		outboundEmail.UpdatedAt = time.Now().UTC()
+		if updateErr := es.store.OutboundEmails().UpdateOutboundEmail(ctx, outboundEmail); updateErr != nil {
+			return fmt.Errorf("send outbound email: %w (also failed to persist failure state: %v)", err, updateErr)
+		}
+		return fmt.Errorf("send outbound email: %w", err)
+	}
+
+	sentAt := time.Now().UTC()
+	outboundEmail.Status = emaildom.EmailStatusSent
+	outboundEmail.SentAt = &sentAt
+	outboundEmail.UpdatedAt = sentAt
+	if err := es.store.OutboundEmails().UpdateOutboundEmail(ctx, outboundEmail); err != nil {
+		return fmt.Errorf("mark outbound email sent: %w", err)
+	}
+
+	if err := es.syncCommunicationMessageID(ctx, outboundEmail); err != nil {
+		return fmt.Errorf("sync communication message id: %w", err)
+	}
+	return nil
+}
+
+func (es *EmailService) syncCommunicationMessageID(ctx context.Context, outboundEmail *emaildom.OutboundEmail) error {
+	if outboundEmail == nil {
+		return nil
+	}
+	if strings.TrimSpace(outboundEmail.CommunicationID) == "" || strings.TrimSpace(outboundEmail.ProviderMessageID) == "" {
+		return nil
+	}
+
+	comm, err := es.store.Cases().GetCommunication(ctx, outboundEmail.WorkspaceID, outboundEmail.CommunicationID)
+	if err != nil {
+		return fmt.Errorf("get communication: %w", err)
+	}
+	if comm.MessageID == outboundEmail.ProviderMessageID {
+		return nil
+	}
+	comm.MessageID = outboundEmail.ProviderMessageID
+	comm.UpdatedAt = time.Now().UTC()
+	if err := es.store.Cases().UpdateCommunication(ctx, comm); err != nil {
+		return fmt.Errorf("update communication: %w", err)
+	}
+	return nil
+}
+
+func cloneTemplateData(data map[string]interface{}) map[string]interface{} {
+	if len(data) == 0 {
+		return make(map[string]interface{})
+	}
+	cloned := make(map[string]interface{}, len(data))
+	for key, value := range data {
+		cloned[key] = value
+	}
+	return cloned
 }
 
 // =============================================================================

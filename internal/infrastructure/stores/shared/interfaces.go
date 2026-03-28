@@ -249,6 +249,7 @@ type CaseCRUD interface {
 // CaseCommunications handles case communication operations
 type CaseCommunications interface {
 	CreateCommunication(ctx context.Context, comm *servicedomain.Communication) error
+	UpdateCommunication(ctx context.Context, comm *servicedomain.Communication) error
 	GetCommunication(ctx context.Context, workspaceID, commID string) (*servicedomain.Communication, error)
 	ListCaseCommunications(ctx context.Context, caseID string) ([]*servicedomain.Communication, error)
 	ListCommunications(ctx context.Context, workspaceID, caseID string) ([]*servicedomain.Communication, error)

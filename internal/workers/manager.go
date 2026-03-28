@@ -25,10 +25,11 @@ type Manager struct {
 	idempotencyStore eventbus.IdempotencyStore
 
 	// Handlers
-	ruleEvalHandler *automationhandlers.RuleEvaluationHandler
-	jobHandler      *automationhandlers.JobEventHandler
-	formHandler     *servicehandlers.FormEventHandler
-	emailHandler    *servicehandlers.EmailEventHandler
+	ruleEvalHandler     *automationhandlers.RuleEvaluationHandler
+	jobHandler          *automationhandlers.JobEventHandler
+	formHandler         *servicehandlers.FormEventHandler
+	emailHandler        *servicehandlers.EmailEventHandler
+	emailCommandHandler *servicehandlers.EmailCommandHandler
 	// Lifecycle
 	startOnce sync.Once
 	stopOnce  sync.Once
@@ -94,6 +95,10 @@ func NewManager(deps ManagerDeps) *Manager {
 
 	if deps.EmailService != nil {
 		m.emailHandler = servicehandlers.NewEmailEventHandler(
+			deps.EmailService,
+			deps.Logger,
+		)
+		m.emailCommandHandler = servicehandlers.NewEmailCommandHandler(
 			deps.EmailService,
 			deps.Logger,
 		)
@@ -188,9 +193,16 @@ func (m *Manager) registerHandlers() error {
 
 	if m.emailHandler != nil {
 		if err := m.emailHandler.RegisterHandlers(subscribe); err != nil {
-			return fmt.Errorf("register email handlers: %w", err)
+			return fmt.Errorf("register email event handlers: %w", err)
 		}
 		m.logger.Info("Email event handlers registered")
+	}
+
+	if m.emailCommandHandler != nil {
+		if err := m.emailCommandHandler.RegisterHandlers(subscribe); err != nil {
+			return fmt.Errorf("register email command handlers: %w", err)
+		}
+		m.logger.Info("Email command handlers registered")
 	}
 
 	return nil

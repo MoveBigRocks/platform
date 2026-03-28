@@ -383,7 +383,7 @@ func (h *AdminManagementHandler) ReplyCaseToCustomer(c *gin.Context) {
 		return
 	}
 
-	RespondWithSuccessOrRedirect(c, "Reply sent successfully", "/cases/"+caseID)
+	RespondWithSuccessOrRedirect(c, "Reply queued successfully", "/cases/"+caseID)
 }
 
 type AddTagRequest struct {

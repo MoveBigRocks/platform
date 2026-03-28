@@ -77,6 +77,7 @@ func NewServiceContainer(deps ServiceContainerDeps) (*ServiceContainer, error) {
 		deps.Store.Workspaces(),
 		deps.Outbox,
 		serviceapp.WithQueueItemStore(deps.Store.QueueItems()),
+		serviceapp.WithOutboundEmailStore(deps.Store.OutboundEmails()),
 		serviceapp.WithTransactionRunner(deps.Store),
 	)
 

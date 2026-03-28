@@ -62,6 +62,46 @@ func (s *CaseStore) GetCommunication(ctx context.Context, workspaceID, commID st
 	return s.mapCommunicationToDomain(&dbComm), nil
 }
 
+func (s *CaseStore) UpdateCommunication(ctx context.Context, comm *servicedomain.Communication) error {
+	toEmails, err := marshalJSONString(comm.ToEmails, "to_emails")
+	if err != nil {
+		return fmt.Errorf("UpdateCommunication: %w", err)
+	}
+	ccEmails, err := marshalJSONString(comm.CCEmails, "cc_emails")
+	if err != nil {
+		return fmt.Errorf("UpdateCommunication: %w", err)
+	}
+	bccEmails, err := marshalJSONString(comm.BCCEmails, "bcc_emails")
+	if err != nil {
+		return fmt.Errorf("UpdateCommunication: %w", err)
+	}
+	emailReferences, err := marshalJSONString(comm.References, "email_references")
+	if err != nil {
+		return fmt.Errorf("UpdateCommunication: %w", err)
+	}
+	attachments, err := marshalJSONString(comm.AttachmentIDs, "attachment_ids")
+	if err != nil {
+		return fmt.Errorf("UpdateCommunication: %w", err)
+	}
+
+	query := `UPDATE core_service.communications SET
+		type = ?, direction = ?, subject = ?, body = ?, body_html = ?,
+		from_email = ?, from_name = ?, from_user_id = ?, to_emails = ?,
+		cc_emails = ?, bcc_emails = ?, message_id = ?, in_reply_to = ?,
+		email_references = ?, attachment_ids = ?, is_internal = ?, is_read = ?,
+		is_spam = ?, updated_at = ?
+		WHERE id = ? AND workspace_id = ?`
+
+	_, err = s.db.Get(ctx).ExecContext(ctx, query,
+		string(comm.Type), string(comm.Direction), comm.Subject, comm.Body, comm.BodyHTML,
+		comm.FromEmail, comm.FromName, nullableUUIDValue(comm.FromUserID), toEmails,
+		ccEmails, bccEmails, comm.MessageID, comm.InReplyTo, emailReferences,
+		attachments, comm.IsInternal, comm.IsRead, comm.IsSpam, comm.UpdatedAt,
+		comm.ID, comm.WorkspaceID,
+	)
+	return TranslateSqlxError(err, "communications")
+}
+
 func (s *CaseStore) mapCommunicationToDomain(c *models.Communication) *servicedomain.Communication {
 	var toEmails, ccEmails, bccEmails, references, attachmentIDs []string
 	unmarshalJSONField(c.ToEmails, &toEmails, "communications", "to_emails")

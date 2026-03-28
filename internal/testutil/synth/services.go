@@ -15,6 +15,6 @@ type TestServices struct {
 func NewTestServices(store stores.Store) *TestServices {
 	return &TestServices{
 		Store:       store,
-		CaseService: serviceapp.NewCaseService(store.Queues(), store.Cases(), store.Workspaces(), nil),
+		CaseService: serviceapp.NewCaseService(store.Queues(), store.Cases(), store.Workspaces(), nil, serviceapp.WithOutboundEmailStore(store.OutboundEmails())),
 	}
 }

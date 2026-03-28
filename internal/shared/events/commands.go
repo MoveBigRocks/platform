@@ -39,10 +39,11 @@ type SendEmailRequestedEvent struct {
 	HTMLContent string
 
 	// Context
-	Category     string // "rule", "form", "system", "notification"
-	CaseID       string
-	SourceRuleID string
-	SourceFormID string
+	Category        string // "rule", "form", "system", "notification"
+	CaseID          string
+	SourceRuleID    string
+	SourceFormID    string
+	OutboundEmailID string
 
 	// Options
 	Priority     string // "high", "normal", "low"
