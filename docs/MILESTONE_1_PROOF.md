@@ -33,17 +33,18 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
    - build a host `mbr`
    - run `MoveBigRocks/extensions/scripts/validate-first-party.sh`
    - archive the validator log and `public-bundles.json` snapshot
-9. Cross-platform CLI packaging evidence:
+9. ATS scenario proof:
+   - run `MoveBigRocks/extensions/go test ./ats/runtime ./cmd/ats-runtime ./tools/ats-scenario-proof`
+   - archive the ATS scenario JSON proving create job, publish, submit, review, move stage, close, and reopen
+10. Cross-platform CLI packaging evidence:
    - `bash scripts/build-cli-release.sh`
-10. CLI release artifact validation:
+11. CLI release artifact validation:
    - `bash scripts/verify-cli-release.sh dist/milestone-proof/cli-release`
 
 ## Evidence Expansion Required Before Close
 
 1. Public bundle publication evidence:
-   - capture OCI ref, digest, and release-workflow metadata for ATS, error tracking, web analytics, `sales-pipeline` beta, and `community-feature-requests` beta
-2. ATS scenario proof:
-   - add one automated scenario that proves create job, publish, submit, review, move stage, close, and reopen
+  - capture OCI ref, digest, and release-workflow metadata for ATS, error tracking, web analytics, `sales-pipeline` beta, and `community-feature-requests` beta
 
 ## Outputs
 
@@ -53,6 +54,7 @@ The current proof run writes:
 - `dist/milestone-proof/sandbox-bootstrap/`
 - `dist/milestone-proof/sandbox-lifecycle/`
 - `dist/milestone-proof/cli-sandbox/`
+- `dist/milestone-proof/ats-scenario/`
 - `dist/milestone-proof/extensions-validation/`
 - `dist/milestone-proof/cli-release/`
 - `dist/milestone-proof/cli-release/verification.json`
@@ -60,7 +62,6 @@ The current proof run writes:
 Milestone closure should expand that output set to also include:
 
 - `dist/milestone-proof/public-bundles/`
-- `dist/milestone-proof/ats-scenario/`
 
 Those outputs together are the concrete proof bundle tying together:
 

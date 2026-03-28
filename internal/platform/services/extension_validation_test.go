@@ -23,8 +23,8 @@ func TestExtensionService_InspectExtensionSeededResourcesDetectsDrift(t *testing
 	workspace := testutil.NewIsolatedWorkspace(t)
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
-	manifest, assets := loadTestExtensionBundle(t, "ats")
-	service := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+	manifest, assets, migrations := loadTestExtensionPackage(t, "ats")
+	service := newTestExtensionService(t, store)
 
 	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:   workspace.ID,
@@ -32,6 +32,7 @@ func TestExtensionService_InspectExtensionSeededResourcesDetectsDrift(t *testing
 		LicenseToken:  "lic_ats",
 		Manifest:      manifest,
 		Assets:        assets,
+		Migrations:    migrations,
 	})
 	require.NoError(t, err)
 
@@ -86,15 +87,16 @@ func TestExtensionService_FirstPartyExtensionsExposeCleanProofSurfaces(t *testin
 			expectedWidgets: 1,
 			expectedQueues:  2,
 			expectedForms:   1,
-			expectedRules:   1,
+			expectedRules:   2,
 			install: func(t *testing.T, ctx context.Context, store stores.Store, workspaceID string, service *platformservices.ExtensionService) *platformdomain.InstalledExtension {
-				manifest, assets := loadTestExtensionBundle(t, "ats")
+				manifest, assets, migrations := loadTestExtensionPackage(t, "ats")
 				installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
 					WorkspaceID:   workspaceID,
 					InstalledByID: "user_123",
 					LicenseToken:  "lic_ats",
 					Manifest:      manifest,
 					Assets:        assets,
+					Migrations:    migrations,
 				})
 				require.NoError(t, err)
 				activated, err := service.ActivateExtension(ctx, installed.ID)
@@ -181,7 +183,7 @@ func TestExtensionService_FirstPartyExtensionsExposeCleanProofSurfaces(t *testin
 			workspace := testutil.NewIsolatedWorkspace(t)
 			require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
-			service := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+			service := newTestExtensionService(t, store)
 			activated := tc.install(t, ctx, store, workspace.ID, service)
 
 			nav, err := service.ListExtensionResolvedAdminNavigation(ctx, activated.ID)

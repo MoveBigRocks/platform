@@ -176,22 +176,16 @@ func TestExtensionService_ListInstanceAdminNavigationForWorkspaceExtensionUsesWo
 	workspace := testutil.NewIsolatedWorkspace(t)
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
-	service := platformservices.NewExtensionService(
-		store.Extensions(),
-		store.Workspaces(),
-		store.Queues(),
-		store.Forms(),
-		store.Rules(),
-		store,
-	)
+	service := newTestExtensionService(t, store)
 
-	manifest, assets := loadTestExtensionBundle(t, "ats")
+	manifest, assets, migrations := loadTestExtensionPackage(t, "ats")
 	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:   workspace.ID,
 		InstalledByID: "user_123",
 		LicenseToken:  "lic_ats",
 		Manifest:      manifest,
 		Assets:        assets,
+		Migrations:    migrations,
 	})
 	require.NoError(t, err)
 	_, err = service.ActivateExtension(ctx, installed.ID)

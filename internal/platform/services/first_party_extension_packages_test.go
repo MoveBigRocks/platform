@@ -17,6 +17,8 @@ import (
 
 	automationhandlers "github.com/movebigrocks/platform/internal/automation/handlers"
 	automationservices "github.com/movebigrocks/platform/internal/automation/services"
+	"github.com/movebigrocks/platform/internal/infrastructure/stores"
+	sqlstore "github.com/movebigrocks/platform/internal/infrastructure/stores/sql"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
@@ -51,8 +53,8 @@ func TestFirstPartyATSExtensionSeedsAndProcessesApplications(t *testing.T) {
 	workspace := testutil.NewIsolatedWorkspace(t)
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
-	manifest, assets := loadTestExtensionBundle(t, "ats")
-	service := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+	manifest, assets, migrations := loadTestExtensionPackage(t, "ats")
+	service := newTestExtensionService(t, store)
 
 	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:   workspace.ID,
@@ -60,12 +62,21 @@ func TestFirstPartyATSExtensionSeedsAndProcessesApplications(t *testing.T) {
 		LicenseToken:  "lic_ats",
 		Manifest:      manifest,
 		Assets:        assets,
+		Migrations:    migrations,
 	})
 	require.NoError(t, err)
 
 	activated, err := service.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 	assert.Equal(t, platformdomain.ExtensionStatusActive, activated.Status)
+	assert.Equal(t, platformdomain.ExtensionValidationValid, activated.ValidationStatus)
+
+	if concrete, ok := store.(*sqlstore.Store); ok {
+		registration, err := concrete.ExtensionRuntime().GetExtensionPackageRegistration(ctx, manifest.PackageKey())
+		require.NoError(t, err)
+		assert.Equal(t, platformdomain.ExtensionSchemaRegistrationReady, registration.Status)
+		assert.Equal(t, "000001", registration.CurrentSchemaVersion)
+	}
 
 	form, err := store.Forms().GetFormBySlug(ctx, workspace.ID, "job-application")
 	require.NoError(t, err)
@@ -154,7 +165,7 @@ func TestFirstPartySalesPipelineExtensionInstallsAndActivates(t *testing.T) {
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
 	manifest, assets, migrations := loadTestExtensionPackage(t, "sales-pipeline")
-	service := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+	service := newTestExtensionService(t, store)
 
 	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:   workspace.ID,
@@ -195,7 +206,7 @@ func TestFirstPartyCommunityFeatureRequestsExtensionInstallsAndActivates(t *test
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
 	manifest, assets, migrations := loadTestExtensionPackage(t, "community-feature-requests")
-	service := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+	service := newTestExtensionService(t, store)
 
 	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:   workspace.ID,
@@ -316,14 +327,7 @@ func TestEnterpriseAccessPackInstallsAsInstanceScopedPrivilegedPack(t *testing.T
 
 	ctx := context.Background()
 	manifest, assets, migrations := loadTestExtensionPackage(t, "enterprise-access")
-	service := platformservices.NewExtensionService(
-		store.Extensions(),
-		store.Workspaces(),
-		store.Queues(),
-		store.Forms(),
-		store.Rules(),
-		store,
-	)
+	service := newTestExtensionService(t, store)
 
 	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		InstalledByID: "user_123",
@@ -354,6 +358,24 @@ func loadTestExtensionBundle(t *testing.T, slug string) (platformdomain.Extensio
 	t.Helper()
 
 	return loadRepoExtensionBundle(t, slug)
+}
+
+func newTestExtensionService(t testing.TB, store stores.Store) *platformservices.ExtensionService {
+	t.Helper()
+
+	options := []platformservices.ExtensionServiceOption{}
+	if concrete, ok := store.(*sqlstore.Store); ok {
+		options = append(options, platformservices.WithExtensionSchemaRuntime(concrete.ExtensionSchemaMigrator()))
+	}
+	return platformservices.NewExtensionServiceWithOptions(
+		store.Extensions(),
+		store.Workspaces(),
+		store.Queues(),
+		store.Forms(),
+		store.Rules(),
+		store,
+		options...,
+	)
 }
 
 func loadTestExtensionPackage(t *testing.T, slug string) (platformdomain.ExtensionManifest, []platformservices.ExtensionAssetInput, []platformservices.ExtensionMigrationInput) {

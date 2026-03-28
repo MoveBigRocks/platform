@@ -20,7 +20,7 @@ A first-party pack is considered launch-ready when it has:
 
 | Pack | Launch Posture | Scope | Core Proof | Runtime / Surface Proof | Remaining Gap |
 | --- | --- | --- | --- | --- | --- |
-| ATS | Core launch pack, public | Workspace product pack with careers site and application flow | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`internal/platform/services/extension_runtime_test.go`](../internal/platform/services/extension_runtime_test.go) | The milestone scope now expects owned-schema recruiting workflow state and full job and candidate lifecycle proof; the current ATS package still needs that parity. |
+| ATS | Core launch pack, public | Workspace product pack with careers site, owned-schema recruiting workflow state, and application flow | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`internal/platform/services/extension_runtime_test.go`](../internal/platform/services/extension_runtime_test.go), [`MoveBigRocks/extensions/ats/runtime/service_test.go`](https://github.com/MoveBigRocks/extensions/blob/main/ats/runtime/service_test.go), [`MoveBigRocks/extensions/tools/ats-scenario-proof/main.go`](https://github.com/MoveBigRocks/extensions/blob/main/tools/ats-scenario-proof/main.go) | Public publication evidence still needs to be archived as part of the milestone proof bundle. |
 | Enterprise Access | Core launch pack, controlled privileged | Instance-scoped identity and privileged admin pack | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go) | [`internal/platform/services/extension_admin_navigation_test.go`](../internal/platform/services/extension_admin_navigation_test.go) | Release evidence remains on the controlled first-party path rather than the public bundle pipeline. |
 | Error Tracking | Core launch pack, public | Workspace operational pack with Sentry-compatible ingest and admin pages | [`cmd/api/error_tracking_extraction_test.go`](../cmd/api/error_tracking_extraction_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`cmd/api/extension_service_targets_test.go`](../cmd/api/extension_service_targets_test.go) | Public publication evidence still needs to be archived as part of the milestone proof bundle. |
 | Web Analytics | Core launch pack, public | Workspace operational pack with analytics script and admin page | [`cmd/api/analytics_extraction_test.go`](../cmd/api/analytics_extraction_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`cmd/api/extension_service_targets_test.go`](../cmd/api/extension_service_targets_test.go) | Public publication evidence still needs to be archived as part of the milestone proof bundle. |
@@ -51,8 +51,8 @@ These packs are part of the standard milestone readiness run:
 The pack proof tests load ATS, the beta public packs, enterprise access, and
 the SDK sample pack from their canonical sibling repos instead of from
 duplicated `platform` fixtures. The milestone proof now pulls in the
-extensions-side catalog validation step, and the remaining evidence gap is
-publication artifacts and digests.
+extensions-side ATS scenario and catalog validation steps, and the remaining
+evidence gap is publication artifacts and digests.
 
 ## Distribution Note
 
