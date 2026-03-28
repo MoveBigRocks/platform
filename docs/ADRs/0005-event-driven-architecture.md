@@ -97,7 +97,7 @@ The outbox worker polls for pending events and dispatches them:
 | `analytics` | Derived analytics and aggregation events |
 | `form-events` | Form submission and form lifecycle events |
 | `email-commands` | Request to send email |
-| `case-commands` | Request to create case |
+| `case-commands` | Reserved for future async case creation/modification; not wired to a production consumer in Milestone 1 |
 | `notification-commands` | Request to send notification |
 
 ### Publishing Events
@@ -117,6 +117,10 @@ func (s *AlertService) TriggerAlert(alert *Alert) error {
 ### Event Handlers
 
 Handlers are registered at startup and invoked by the outbox worker:
+
+For Milestone 1, this is fully true for the scoped operational streams
+(`email-commands` and `notification-commands`) but not for `case-commands`,
+which remains an intentionally reserved stream without a production consumer.
 
 ```go
 func (m *Manager) handleCaseEvents(ctx context.Context, payload []byte) error {

@@ -14,7 +14,8 @@ import (
 const (
 	// StreamEmailCommands contains requests to send emails
 	StreamEmailCommands = "email-commands"
-	// StreamCaseCommands contains requests to create/modify cases
+	// StreamCaseCommands is reserved for future async case commands. It has no
+	// production consumer in Milestone 1 and must not be treated as proven.
 	StreamCaseCommands = "case-commands"
 	// StreamNotificationCommands contains requests to send notifications
 	StreamNotificationCommands = "notification-commands"
