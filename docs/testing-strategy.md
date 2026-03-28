@@ -205,6 +205,9 @@ Current reality:
 - milestone proof bootstraps a temporary `go.work` when the workspace does not
   already provide one, so multi-repo proof does not silently depend on a
   developer-specific local Go workspace
+- local reruns can materialize the pinned sibling repos with
+  [`scripts/bootstrap-canonical-workspace.sh`](../scripts/bootstrap-canonical-workspace.sh),
+  which reduces manual proof setup drift
 
 ### Milestone Proof Gate
 

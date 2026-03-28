@@ -5,6 +5,8 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
 ## Entry Points
 
 - Local:
+  - `make bootstrap-canonical-workspace WORKSPACE_ROOT=/tmp/mbr-proof-workspace`
+  - `MBR_WORKSPACE_ROOT=/tmp/mbr-proof-workspace make milestone-proof`
   - `make milestone-proof`
   - or `bash scripts/run-milestone-1-proof.sh --out dist/milestone-proof`
 - CI:
@@ -18,6 +20,9 @@ first-party sources rather than stale mirrored fixtures.
 
 - CI now checks out `platform`, `extensions`, `extension-sdk`, and `packs`
   into one workspace before it runs the proof script.
+- Local reruns can materialize the pinned sibling repos into a disposable
+  workspace root with [`scripts/bootstrap-canonical-workspace.sh`](../scripts/bootstrap-canonical-workspace.sh)
+  instead of assembling that workspace by hand.
 - Those sibling repos are pinned by
   [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
   instead of floating on whatever happens to be current on `main`.
