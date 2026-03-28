@@ -51,6 +51,7 @@ EXTENSIONS_VALIDATION_LOG="$EXTENSIONS_VALIDATION_DIR/validate-first-party.log"
 FIRST_PARTY_VALIDATION_SCRIPT="$FIRST_PARTY_EXTENSIONS_ROOT/scripts/validate-first-party.sh"
 FIRST_PARTY_CATALOG_PATH="$FIRST_PARTY_EXTENSIONS_ROOT/catalog/public-bundles.json"
 ARCHIVED_PUBLICATION_EVIDENCE_DIR="$ROOT_DIR/docs/evidence/public-bundle-publication"
+CANONICAL_WORKSPACE_REFS_MANIFEST="${CANONICAL_WORKSPACE_REFS_MANIFEST:-$ROOT_DIR/docs/evidence/canonical-workspace-refs.json}"
 BOOTSTRAP_PROOF_DIR="$OUT_DIR/runtime-bootstrap"
 BOOTSTRAP_PROOF_PATH="$BOOTSTRAP_PROOF_DIR/mbr-instance.json"
 ATS_SCENARIO_DIR="$OUT_DIR/ats-scenario"
@@ -64,6 +65,8 @@ PUBLIC_BUNDLE_EVIDENCE_VERIFICATION_PATH="$PUBLIC_BUNDLE_PUBLICATION_DIR/evidenc
 WORKFLOW_PROOF_DIR="$OUT_DIR/workflow-proof"
 PROOF_GO_WORK_DIR="$OUT_DIR/go-work"
 PROOF_GO_WORK_PATH="$PROOF_GO_WORK_DIR/go.work"
+WORKSPACE_REFS_DIR="$OUT_DIR/workspace-refs"
+WORKSPACE_REFS_VERIFICATION_PATH="$WORKSPACE_REFS_DIR/canonical-workspace-refs-verification.json"
 CASE_REPLY_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-reply-send.json"
 EMAIL_COMMAND_FAILURE_PROOF_PATH="$WORKFLOW_PROOF_DIR/email-command-failure-visible.json"
 INBOUND_NEW_EMAIL_PROOF_PATH="$WORKFLOW_PROOF_DIR/inbound-new-email-case-create.json"
@@ -169,7 +172,14 @@ require_dir "$PACKS_ROOT"
 require_file "$FIRST_PARTY_VALIDATION_SCRIPT"
 require_file "$FIRST_PARTY_CATALOG_PATH"
 require_file "$ROOT_DIR/scripts/verify-publication-evidence.sh"
+require_file "$ROOT_DIR/scripts/verify-canonical-workspace-refs.sh"
+require_file "$CANONICAL_WORKSPACE_REFS_MANIFEST"
 ensure_go_workspace
+mkdir -p "$WORKSPACE_REFS_DIR"
+run_step bash scripts/verify-canonical-workspace-refs.sh \
+  --manifest "$CANONICAL_WORKSPACE_REFS_MANIFEST" \
+  --workspace-root "$WORKSPACE_ROOT" \
+  --out "$WORKSPACE_REFS_VERIFICATION_PATH"
 
 run_step go test -count=1 ./internal/service/services ./internal/knowledge/services ./internal/platform/services ./cmd/api ./cmd/mbr
 run_step bash scripts/check-cli-contract-docs.sh
@@ -244,6 +254,8 @@ cat >"$SUMMARY_PATH" <<EOF
 - integration_log: ${INTEGRATION_LOG_PATH}
 - runtime_bootstrap_artifact: ${BOOTSTRAP_PROOF_PATH}
 - ats_scenario_artifact: ${ATS_SCENARIO_PATH}
+- canonical_workspace_refs_manifest: ${CANONICAL_WORKSPACE_REFS_MANIFEST}
+- canonical_workspace_refs_verification: ${WORKSPACE_REFS_VERIFICATION_PATH}
 - workflow_proof_dir: ${WORKFLOW_PROOF_DIR}
 - go_work_path: ${GOWORK:-off}
 - workflow_case_reply_artifact: ${CASE_REPLY_PROOF_PATH}
@@ -262,20 +274,21 @@ cat >"$SUMMARY_PATH" <<EOF
 ## Commands Run
 
 1. \`go test -count=1 ./internal/service/services ./internal/knowledge/services ./internal/platform/services ./cmd/api ./cmd/mbr\`
-2. \`bash scripts/check-cli-contract-docs.sh\`
-3. \`go build -trimpath -o ${LOCAL_MBR_BIN} ./cmd/mbr\`
-4. \`env WORKFLOW_PROOF_DIR=${WORKFLOW_PROOF_DIR} go test -count=1 ./internal/knowledge/services\`
-5. \`env WORKFLOW_PROOF_DIR=${WORKFLOW_PROOF_DIR} go test -tags=integration -count=1 ./...\`
-6. \`go work\` bootstrap for proof when no workspace-level \`go.work\` exists, exported as \`${GOWORK:-off}\`
-7. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go test ./ats/runtime ./cmd/ats-runtime ./tools/ats-scenario-proof -count=1)\`
-8. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go run ./tools/publication-evidence --mode plan --source-root ${FIRST_PARTY_EXTENSIONS_ROOT} --out ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH})\`
-9. \`go run ./tools/runtime-bootstrap-proof --out ${BOOTSTRAP_PROOF_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT}\`
-10. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go run ./tools/ats-scenario-proof --out ${ATS_SCENARIO_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT})\`
-11. \`bash scripts/fetch-publication-evidence.sh --manifest ${FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST_DISPLAY} --out ${FETCHED_PUBLICATION_EVIDENCE_DIR}\` when a manifest is supplied
-12. \`bash scripts/verify-publication-evidence.sh --manifest ${FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST:-docs/evidence/public-bundle-publication-runs.json} --plan ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH} --evidence-dir ${PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR}\`
-13. \`MBR_BIN=${LOCAL_MBR_BIN} bash ${FIRST_PARTY_VALIDATION_SCRIPT}\`
-14. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
-15. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
+2. \`bash scripts/verify-canonical-workspace-refs.sh --manifest ${CANONICAL_WORKSPACE_REFS_MANIFEST} --workspace-root ${WORKSPACE_ROOT} --out ${WORKSPACE_REFS_VERIFICATION_PATH}\`
+3. \`bash scripts/check-cli-contract-docs.sh\`
+4. \`go build -trimpath -o ${LOCAL_MBR_BIN} ./cmd/mbr\`
+5. \`env WORKFLOW_PROOF_DIR=${WORKFLOW_PROOF_DIR} go test -count=1 ./internal/knowledge/services\`
+6. \`env WORKFLOW_PROOF_DIR=${WORKFLOW_PROOF_DIR} go test -tags=integration -count=1 ./...\`
+7. \`go work\` bootstrap for proof when no workspace-level \`go.work\` exists, exported as \`${GOWORK:-off}\`
+8. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go test ./ats/runtime ./cmd/ats-runtime ./tools/ats-scenario-proof -count=1)\`
+9. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go run ./tools/publication-evidence --mode plan --source-root ${FIRST_PARTY_EXTENSIONS_ROOT} --out ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH})\`
+10. \`go run ./tools/runtime-bootstrap-proof --out ${BOOTSTRAP_PROOF_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT}\`
+11. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go run ./tools/ats-scenario-proof --out ${ATS_SCENARIO_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT})\`
+12. \`bash scripts/fetch-publication-evidence.sh --manifest ${FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST_DISPLAY} --out ${FETCHED_PUBLICATION_EVIDENCE_DIR}\` when a manifest is supplied
+13. \`bash scripts/verify-publication-evidence.sh --manifest ${FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST:-docs/evidence/public-bundle-publication-runs.json} --plan ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH} --evidence-dir ${PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR}\`
+14. \`MBR_BIN=${LOCAL_MBR_BIN} bash ${FIRST_PARTY_VALIDATION_SCRIPT}\`
+15. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
+16. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
 
 ## Evidence Docs
 

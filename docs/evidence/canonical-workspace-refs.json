@@ -1,0 +1,19 @@
+{
+  "repositories": {
+    "extensions": {
+      "repository": "MoveBigRocks/extensions",
+      "path": "extensions",
+      "ref": "e957fb2272f77d24d3bb4a907ad372fb93175e30"
+    },
+    "extension-sdk": {
+      "repository": "MoveBigRocks/extension-sdk",
+      "path": "extension-sdk",
+      "ref": "0ad9bb76cd50cf55568901e3e14a1c4472f3cd20"
+    },
+    "packs": {
+      "repository": "MoveBigRocks/packs",
+      "path": "packs",
+      "ref": "6d8d28aac67a8096bab9c757ff536d4b88955803"
+    }
+  }
+}
