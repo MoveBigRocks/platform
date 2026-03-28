@@ -34,7 +34,7 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
 8. Public bundle publication planning:
    - run `MoveBigRocks/extensions/go run ./tools/publication-evidence --mode plan`
    - archive the generated publication-plan JSON from the public bundle catalog and current manifests
-   - archive the workflow-generated `*.publication-evidence.json` files inside `public-bundle-publication/release-evidence/`
+   - archive the workflow-generated `*.publication-evidence.json` files inside `public-bundle-publication/release-evidence/` when `FIRST_PARTY_PUBLICATION_EVIDENCE_DIR` is supplied
 9. Operational workflow proof:
    - archive machine-readable JSON artifacts for inbound-new-email case creation, case reply send, inbound reply threading, public form notification delivery, rule-driven email delivery, and knowledge-review notifications
 10. Cross-platform CLI packaging evidence:
@@ -58,8 +58,9 @@ artifacts can establish.
 - Sales Pipeline beta `v0.1.0`: [run 23683709265](https://github.com/MoveBigRocks/extensions/actions/runs/23683709265)
 - Community Feature Requests beta `v0.1.0`: [run 23683709269](https://github.com/MoveBigRocks/extensions/actions/runs/23683709269)
 
-The current closure proof bundle archives the emitted `*.publication-evidence.json`
-files from those runs inside `public-bundle-publication/release-evidence/`.
+When `FIRST_PARTY_PUBLICATION_EVIDENCE_DIR` is supplied to the proof script, the
+bundle also archives the emitted `*.publication-evidence.json` files from those
+runs inside `public-bundle-publication/release-evidence/`.
 
 ## Outputs
 
@@ -70,7 +71,8 @@ The current proof run writes:
 - `dist/milestone-proof/ats-scenario/`
 - `dist/milestone-proof/workflow-proof/`
 - `dist/milestone-proof/public-bundle-publication/`
-- `dist/milestone-proof/public-bundle-publication/release-evidence/`
+- `dist/milestone-proof/public-bundle-publication/release-evidence/` when
+  publication evidence files are provided to the proof script
 - `dist/milestone-proof/extensions-validation/`
 - `dist/milestone-proof/cli-release/`
 - `dist/milestone-proof/cli-release/verification.json`
