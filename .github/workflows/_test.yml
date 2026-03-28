@@ -4,15 +4,23 @@ on:
   workflow_call:
     outputs:
       tests_passed:
-        description: "Whether all tests passed"
+        description: "Whether unit, integration, and PostgreSQL verification all passed"
         value: ${{ jobs.test.outputs.passed }}
+      required_gate_passed:
+        description: "Whether the currently hard-gated checks passed"
+        value: ${{ jobs.test.outputs.required_gate_passed }}
+      integration_tests_passed:
+        description: "Whether the soft-gated integration sweep passed"
+        value: ${{ jobs.test.outputs.integration_passed }}
 
 jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
     outputs:
-      passed: ${{ steps.unit_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' }}
+      passed: ${{ steps.unit_tests.outcome == 'success' && steps.integration_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' }}
+      required_gate_passed: ${{ steps.unit_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' }}
+      integration_passed: ${{ steps.integration_tests.outcome == 'success' }}
     services:
       postgres:
         image: postgres:18
@@ -141,10 +149,16 @@ jobs:
             COVERAGE="N/A"
           fi
 
+          REQUIRED_GATE_STATUS="${{ steps.unit_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' && 'passed' || 'failed' }}"
+          INTEGRATION_STATUS="${{ steps.integration_tests.outcome == 'success' && 'passed' || 'failed (soft-gated)' }}"
+          ALL_CHECKS_STATUS="${{ steps.unit_tests.outcome == 'success' && steps.integration_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' && 'all checks passed' || 'workflow not fully green' }}"
+
           cat << EOF >> $GITHUB_STEP_SUMMARY
           ## Test Results
 
-          **Status**: ${{ steps.unit_tests.outcome == 'success' && steps.integration_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' && 'All tests passed' || 'Tests failed' }}
+          **Overall status**: ${ALL_CHECKS_STATUS}
+          **Required gate**: ${REQUIRED_GATE_STATUS}
+          **Integration sweep**: ${INTEGRATION_STATUS}
           **Commit**: \`${{ github.sha }}\`
           **Coverage**: ${COVERAGE}%
 
