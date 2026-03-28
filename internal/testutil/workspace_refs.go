@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -9,7 +10,7 @@ import (
 )
 
 // ResolveWorkspaceSiblingDir locates a sibling repository/directory in a full Move Big Rocks workspace.
-// Standalone checkouts such as the platform CI job won't have these siblings available.
+// Callers may require these refs explicitly by setting MBR_REQUIRE_WORKSPACE_REFS=true.
 func ResolveWorkspaceSiblingDir(repoRoot, rel string) (string, error) {
 	repoRoot = filepath.Clean(repoRoot)
 	rel = filepath.Clean(rel)
@@ -33,5 +34,21 @@ func ResolveWorkspaceSiblingDir(repoRoot, rel string) (string, error) {
 		}
 	}
 
+	if RequireWorkspaceRefs() {
+		return "", fmt.Errorf("required workspace sibling checkout not available for %s", rel)
+	}
+
 	return "", fs.ErrNotExist
+}
+
+// RequireWorkspaceRefs reports whether tests should fail instead of skip when
+// canonical sibling repositories are missing from the local workspace.
+func RequireWorkspaceRefs() bool {
+	for _, key := range []string{"MBR_REQUIRE_WORKSPACE_REFS", "MOVEBIGROCKS_REQUIRE_WORKSPACE_REFS"} {
+		switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
+		case "1", "true", "yes", "on":
+			return true
+		}
+	}
+	return false
 }

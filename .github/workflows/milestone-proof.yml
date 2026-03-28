@@ -45,18 +45,44 @@ jobs:
       CLAMAV_ADDR: ""
 
     steps:
-      - name: Checkout code
+      - name: Checkout platform
         uses: actions/checkout@v4
+        with:
+          path: platform
+
+      - name: Checkout extensions
+        uses: actions/checkout@v4
+        with:
+          repository: MoveBigRocks/extensions
+          path: extensions
+
+      - name: Checkout extension-sdk
+        uses: actions/checkout@v4
+        with:
+          repository: MoveBigRocks/extension-sdk
+          path: extension-sdk
+
+      - name: Checkout packs
+        uses: actions/checkout@v4
+        with:
+          repository: MoveBigRocks/packs
+          path: packs
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.26.0'
-          cache-dependency-path: go.sum
+          cache-dependency-path: |
+            platform/go.sum
+            extensions/go.sum
 
       - name: Run milestone proof script
+        working-directory: platform
         env:
           GH_TOKEN: ${{ github.token }}
+          MBR_WORKSPACE_ROOT: ${{ github.workspace }}
+          MBR_REQUIRE_WORKSPACE_REFS: "true"
+          FIRST_PARTY_EXTENSIONS_ROOT: ${{ github.workspace }}/extensions
           FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST: docs/evidence/public-bundle-publication-runs.json
           REQUIRE_PUBLICATION_EVIDENCE: "true"
         run: |
@@ -68,7 +94,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: milestone-1-proof-${{ github.sha }}
-          path: dist/milestone-proof
+          path: platform/dist/milestone-proof
 
       - name: Publish proof summary
+        working-directory: platform
         run: cat dist/milestone-proof/summary.md >> "$GITHUB_STEP_SUMMARY"
