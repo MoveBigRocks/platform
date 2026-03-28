@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-03-28T10:56:24Z",
+  "publisher": "DemandOps",
+  "extension": {
+    "slug": "sales-pipeline",
+    "name": "Sales Pipeline",
+    "sourceDir": "sales-pipeline",
+    "version": "0.1.0",
+    "releaseChannel": "beta",
+    "releaseTag": "sales-pipeline-v0.1.0",
+    "publishTag": "v0.1.0",
+    "bundleImage": "ghcr.io/movebigrocks/mbr-ext-sales-pipeline",
+    "bundleRef": "ghcr.io/movebigrocks/mbr-ext-sales-pipeline:v0.1.0",
+    "runtimeImage": "ghcr.io/movebigrocks/mbr-ext-sales-pipeline-runtime",
+    "runtimeRef": "ghcr.io/movebigrocks/mbr-ext-sales-pipeline-runtime:v0.1.0",
+    "kind": "product",
+    "scope": "workspace",
+    "risk": "standard",
+    "runtimeClass": "service_backed",
+    "runtimeProtocol": "unix_socket_http",
+    "storageClass": "owned_schema",
+    "schemaName": "ext_demandops_sales_pipeline",
+    "schemaTargetVersion": "000001"
+  },
+  "publication": {
+    "repository": "MoveBigRocks/extensions",
+    "eventName": "push",
+    "gitSha": "09efe8738b86eb99284f89f4ca09c53a44592322",
+    "workflowRunUrl": "https://github.com/MoveBigRocks/extensions/actions/runs/23683709265",
+    "publishedAt": "2026-03-28T10:56:24Z",
+    "publishTag": "v0.1.0",
+    "publishLatest": true,
+    "bundleRef": "ghcr.io/movebigrocks/mbr-ext-sales-pipeline:v0.1.0",
+    "bundleDigest": "sha256:a0369be81544ebf51db88a78e2c40c4cbfb1f43f0fc1e7d9f49ddeaa07b710f8",
+    "runtimeRef": "ghcr.io/movebigrocks/mbr-ext-sales-pipeline-runtime:v0.1.0",
+    "runtimeDigest": "sha256:6c70ff470ef905741d6dc9a834fd38c07e9396faa534272de7418d658213edac"
+  }
+}

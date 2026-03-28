@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-03-28T15:20:39Z",
+  "publisher": "DemandOps",
+  "extension": {
+    "slug": "error-tracking",
+    "name": "Error Tracking",
+    "sourceDir": "error-tracking",
+    "version": "0.8.21",
+    "releaseChannel": "stable",
+    "releaseTag": "error-tracking-v0.8.21",
+    "publishTag": "v0.8.21",
+    "bundleImage": "ghcr.io/movebigrocks/mbr-ext-error-tracking",
+    "bundleRef": "ghcr.io/movebigrocks/mbr-ext-error-tracking:v0.8.21",
+    "runtimeImage": "ghcr.io/movebigrocks/mbr-ext-error-tracking-runtime",
+    "runtimeRef": "ghcr.io/movebigrocks/mbr-ext-error-tracking-runtime:v0.8.21",
+    "kind": "product",
+    "scope": "workspace",
+    "risk": "standard",
+    "runtimeClass": "service_backed",
+    "runtimeProtocol": "unix_socket_http",
+    "storageClass": "owned_schema",
+    "schemaName": "ext_demandops_error_tracking",
+    "schemaTargetVersion": "000002"
+  },
+  "publication": {
+    "repository": "MoveBigRocks/extensions",
+    "eventName": "push",
+    "gitSha": "5b68b04e55715e3f2900a2eacac7b566ee3c9368",
+    "workflowRunUrl": "https://github.com/MoveBigRocks/extensions/actions/runs/23688148347",
+    "publishedAt": "2026-03-28T15:20:39Z",
+    "publishTag": "v0.8.21",
+    "publishLatest": true,
+    "bundleRef": "ghcr.io/movebigrocks/mbr-ext-error-tracking:v0.8.21",
+    "bundleDigest": "sha256:870e101a8930a42ea6b1f051aef03139b0a9f37e0d0a4306640615f0faa1f2ec",
+    "runtimeRef": "ghcr.io/movebigrocks/mbr-ext-error-tracking-runtime:v0.8.21",
+    "runtimeDigest": "sha256:8272ef14e25a9bc25864db42cd55250f48040ad198ca4cc449f3a06d21cf73d6"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-03-28T15:31:01Z",
+  "publisher": "DemandOps",
+  "extension": {
+    "slug": "ats",
+    "name": "Applicant Tracking",
+    "sourceDir": "ats",
+    "version": "0.8.24",
+    "releaseChannel": "stable",
+    "releaseTag": "ats-v0.8.24",
+    "publishTag": "v0.8.24",
+    "bundleImage": "ghcr.io/movebigrocks/mbr-ext-ats",
+    "bundleRef": "ghcr.io/movebigrocks/mbr-ext-ats:v0.8.24",
+    "runtimeImage": "ghcr.io/movebigrocks/mbr-ext-ats-runtime",
+    "runtimeRef": "ghcr.io/movebigrocks/mbr-ext-ats-runtime:v0.8.24",
+    "kind": "product",
+    "scope": "workspace",
+    "risk": "standard",
+    "runtimeClass": "service_backed",
+    "runtimeProtocol": "unix_socket_http",
+    "storageClass": "owned_schema",
+    "schemaName": "ext_demandops_ats",
+    "schemaTargetVersion": "000001"
+  },
+  "publication": {
+    "repository": "MoveBigRocks/extensions",
+    "eventName": "push",
+    "gitSha": "e957fb2272f77d24d3bb4a907ad372fb93175e30",
+    "workflowRunUrl": "https://github.com/MoveBigRocks/extensions/actions/runs/23688333389",
+    "publishedAt": "2026-03-28T15:31:01Z",
+    "publishTag": "v0.8.24",
+    "publishLatest": true,
+    "bundleRef": "ghcr.io/movebigrocks/mbr-ext-ats:v0.8.24",
+    "bundleDigest": "sha256:19dc08c237a99fec7b4ff15048fdd2e3bf7e90101c34ace886e51e0d866a9f2c",
+    "runtimeRef": "ghcr.io/movebigrocks/mbr-ext-ats-runtime:v0.8.24",
+    "runtimeDigest": "sha256:b088b43818302a866f053b73141885acfe5378b49550a3af4a52e022c67dcb13"
+  }
+}

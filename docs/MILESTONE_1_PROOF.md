@@ -34,8 +34,10 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
 8. Public bundle publication planning:
    - run `MoveBigRocks/extensions/go run ./tools/publication-evidence --mode plan`
    - archive the generated publication-plan JSON from the public bundle catalog and current manifests
-   - in CI, download the live `*.publication-evidence.json` artifacts listed in [`docs/evidence/public-bundle-publication-runs.json`](./evidence/public-bundle-publication-runs.json) and archive them inside `public-bundle-publication/release-evidence/`
-   - for local reruns, either supply `FIRST_PARTY_PUBLICATION_EVIDENCE_DIR` directly or set `FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST=docs/evidence/public-bundle-publication-runs.json`
+   - keep a durable checked-in copy of the real `*.publication-evidence.json` files under [`docs/evidence/public-bundle-publication/`](./evidence/public-bundle-publication/)
+   - in CI, download the live `*.publication-evidence.json` artifacts listed in [`docs/evidence/public-bundle-publication-runs.json`](./evidence/public-bundle-publication-runs.json), compare them byte-for-byte with the checked-in archive, and archive them inside `public-bundle-publication/release-evidence/`
+   - for local reruns, `make milestone-proof` uses the checked-in archive automatically; you can still override it with `FIRST_PARTY_PUBLICATION_EVIDENCE_DIR` or fetch live evidence with `FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST=docs/evidence/public-bundle-publication-runs.json`
+   - structurally verify the evidence bundle against both the checked-in run manifest and the generated publication plan via [`scripts/verify-publication-evidence.sh`](../scripts/verify-publication-evidence.sh)
 9. Operational workflow proof:
    - archive machine-readable JSON artifacts for inbound-new-email case creation, case reply send, inbound reply threading, public form notification delivery, rule-driven email delivery, knowledge-review notifications, and failure-visible command artifacts for `email-commands` and `notification-commands`
 10. Full integration sweep:
@@ -63,9 +65,11 @@ artifacts can establish.
 - Community Feature Requests beta `v0.1.0`: [run 23683709269](https://github.com/MoveBigRocks/extensions/actions/runs/23683709269)
 
 The GitHub proof workflow now downloads and archives those evidence files by
-default. Local reruns can do the same with either
-`FIRST_PARTY_PUBLICATION_EVIDENCE_DIR` or
-`FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST`.
+default, and it now cross-checks them against the checked-in archive under
+[`docs/evidence/public-bundle-publication/`](./evidence/public-bundle-publication/).
+Local reruns work from that durable archive automatically and can still use
+either `FIRST_PARTY_PUBLICATION_EVIDENCE_DIR` or
+`FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST` when you want to override it.
 
 ## Outputs
 
@@ -78,6 +82,7 @@ The current proof run writes:
 - `dist/milestone-proof/workflow-proof/`
 - `dist/milestone-proof/public-bundle-publication/`
 - `dist/milestone-proof/public-bundle-publication/release-evidence/`
+- `dist/milestone-proof/public-bundle-publication/evidence-verification.json`
 - `dist/milestone-proof/extensions-validation/`
 - `dist/milestone-proof/cli-release/`
 - `dist/milestone-proof/cli-release/verification.json`
@@ -87,6 +92,7 @@ Those outputs currently provide the concrete proof bundle for:
 - milestone readiness status
 - first-party pack readiness
 - runtime discovery, extension lifecycle, and publication evidence
+- durable publication evidence archiving plus manifest/plan verification
 - milestone-scoped operational workflow evidence
 - command failure visibility for the scoped operational streams
 - cross-platform CLI release evidence

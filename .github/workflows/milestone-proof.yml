@@ -54,17 +54,10 @@ jobs:
           go-version: '1.26.0'
           cache-dependency-path: go.sum
 
-      - name: Fetch live publication evidence
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          bash scripts/fetch-publication-evidence.sh \
-            --manifest docs/evidence/public-bundle-publication-runs.json \
-            --out dist/publication-evidence
-
       - name: Run milestone proof script
         env:
-          FIRST_PARTY_PUBLICATION_EVIDENCE_DIR: dist/publication-evidence
+          GH_TOKEN: ${{ github.token }}
+          FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST: docs/evidence/public-bundle-publication-runs.json
           REQUIRE_PUBLICATION_EVIDENCE: "true"
         run: |
           bash scripts/run-milestone-1-proof.sh \
