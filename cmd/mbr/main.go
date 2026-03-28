@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/fs"
 	"mime"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -20,6 +19,7 @@ import (
 	"github.com/movebigrocks/platform/internal/cliapi"
 	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	"github.com/movebigrocks/platform/internal/platform/extensionbundle"
 
 	"gopkg.in/yaml.v3"
 )
@@ -1133,23 +1133,7 @@ type extensionDetailOutput struct {
 	Assets                   []extensionAssetOutput                       `json:"assets"`
 }
 
-type bundleFile struct {
-	Manifest   map[string]any         `json:"manifest"`
-	Assets     []bundleAssetInput     `json:"assets"`
-	Migrations []bundleMigrationInput `json:"migrations,omitempty"`
-}
-
-type bundleAssetInput struct {
-	Path           string `json:"path"`
-	Content        string `json:"content"`
-	ContentType    string `json:"contentType,omitempty"`
-	IsCustomizable bool   `json:"isCustomizable,omitempty"`
-}
-
-type bundleMigrationInput struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
-}
+type bundleFile = extensionbundle.File
 
 type workspaceCreateInput struct {
 	Name        string `json:"name"`
@@ -1188,16 +1172,7 @@ func resolveInstallWorkspace(ctx context.Context, cfg cliapi.Config, requestedWo
 }
 
 func decodeBundleManifest(raw map[string]any) (platformdomain.ExtensionManifest, error) {
-	data, err := json.Marshal(raw)
-	if err != nil {
-		return platformdomain.ExtensionManifest{}, err
-	}
-	var manifest platformdomain.ExtensionManifest
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		return platformdomain.ExtensionManifest{}, err
-	}
-	manifest.Normalize()
-	return manifest, nil
+	return extensionbundle.DecodeManifest(raw)
 }
 
 func runExtensionInstall(ctx context.Context, client *cliapi.Client, workspaceID, licenseToken string, source bundleSourcePayload) (extensionOutput, error) {
@@ -3107,21 +3082,7 @@ func readBundleFilePayload(path string) (bundleSourcePayload, error) {
 	if remoteURL, ok := bundleSourceURL(path); ok {
 		return readBundleURLPayloadWithHeaders(context.Background(), remoteURL, nil, bundleSourceKindHTTP)
 	}
-
-	cleanPath := filepath.Clean(path)
-	info, err := os.Stat(cleanPath)
-	if err != nil {
-		return bundleSourcePayload{}, fmt.Errorf("read bundle file: %w", err)
-	}
-	if info.IsDir() {
-		return readBundleDirectoryPayload(cleanPath)
-	}
-
-	data, err := os.ReadFile(cleanPath)
-	if err != nil {
-		return bundleSourcePayload{}, fmt.Errorf("read bundle file: %w", err)
-	}
-	return decodeBundlePayload(data, bundleSourceKindLocal)
+	return extensionbundle.ReadFilePayload(path)
 }
 
 //nolint:unused // pending extension install CLI
@@ -3130,21 +3091,7 @@ func readBundleURL(rawURL string) (bundleFile, error) {
 }
 
 func bundleSourceURL(value string) (string, bool) {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return "", false
-	}
-	u, err := url.Parse(value)
-	if err != nil {
-		return "", false
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return "", false
-	}
-	if u.Host == "" {
-		return "", false
-	}
-	return u.String(), true
+	return extensionbundle.SourceURL(value)
 }
 
 //nolint:unused // pending extension install CLI
@@ -3158,109 +3105,7 @@ func readBundleDirectory(root string) (bundleFile, error) {
 
 //nolint:unused // pending extension install CLI
 func readBundleDirectoryPayload(root string) (bundleSourcePayload, error) {
-	manifestPath := filepath.Join(root, "manifest.json")
-	manifestBytes, err := os.ReadFile(manifestPath)
-	if err != nil {
-		return bundleSourcePayload{}, fmt.Errorf("read bundle manifest: %w", err)
-	}
-	manifest, err := parseJSONObject(manifestBytes)
-	if err != nil {
-		return bundleSourcePayload{}, fmt.Errorf("decode bundle manifest: %w", err)
-	}
-
-	assetsRoot := filepath.Join(root, "assets")
-	assets := []bundleAssetInput{}
-	if info, err := os.Stat(assetsRoot); err == nil && info.IsDir() {
-		if err := filepath.WalkDir(assetsRoot, func(path string, d os.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if d.IsDir() {
-				return nil
-			}
-
-			content, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			relative, err := filepath.Rel(assetsRoot, path)
-			if err != nil {
-				return err
-			}
-			assets = append(assets, bundleAssetInput{
-				Path:        filepath.ToSlash(relative),
-				Content:     string(content),
-				ContentType: detectAssetContentType(path, content),
-			})
-			return nil
-		}); err != nil {
-			return bundleSourcePayload{}, fmt.Errorf("walk bundle assets: %w", err)
-		}
-	}
-
-	sort.Slice(assets, func(i, j int) bool {
-		return assets[i].Path < assets[j].Path
-	})
-
-	migrationsRoot := filepath.Join(root, "migrations")
-	migrations := []bundleMigrationInput{}
-	if info, err := os.Stat(migrationsRoot); err == nil && info.IsDir() {
-		if err := filepath.WalkDir(migrationsRoot, func(path string, d os.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if d.IsDir() {
-				return nil
-			}
-			if strings.ToLower(filepath.Ext(path)) != ".sql" {
-				return nil
-			}
-
-			content, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			relative, err := filepath.Rel(migrationsRoot, path)
-			if err != nil {
-				return err
-			}
-			migrations = append(migrations, bundleMigrationInput{
-				Path:    filepath.ToSlash(relative),
-				Content: string(content),
-			})
-			return nil
-		}); err != nil {
-			return bundleSourcePayload{}, fmt.Errorf("walk bundle migrations: %w", err)
-		}
-	}
-
-	sort.Slice(migrations, func(i, j int) bool {
-		return migrations[i].Path < migrations[j].Path
-	})
-
-	bundle := bundleFile{
-		Manifest:   manifest,
-		Assets:     assets,
-		Migrations: migrations,
-	}
-	encoded, err := json.Marshal(bundle)
-	if err != nil {
-		return bundleSourcePayload{}, fmt.Errorf("encode bundle directory payload: %w", err)
-	}
-	return bundleSourcePayload{
-		Kind:   bundleSourceKindLocal,
-		Bundle: bundle,
-		Bytes:  encoded,
-	}, nil
-}
-
-func detectAssetContentType(path string, content []byte) string {
-	if ext := strings.ToLower(filepath.Ext(path)); ext != "" {
-		if byExt := mime.TypeByExtension(ext); byExt != "" {
-			return byExt
-		}
-	}
-	return http.DetectContentType(content)
+	return extensionbundle.ReadDirectoryPayload(root)
 }
 
 func readConfigInput(configPath, configJSON string) (map[string]any, error) {
@@ -3450,14 +3295,7 @@ func parseJSONValue(data []byte, fieldName string) (any, error) {
 }
 
 func parseJSONObject(data []byte) (map[string]any, error) {
-	var value map[string]any
-	if err := json.Unmarshal(data, &value); err != nil {
-		return nil, fmt.Errorf("decode json object: %w", err)
-	}
-	if value == nil {
-		return nil, fmt.Errorf("config must be a JSON object")
-	}
-	return value, nil
+	return extensionbundle.ParseJSONObject(data)
 }
 
 func readKnowledgeSyncDocuments(root string) ([]knowledgeSyncDocument, error) {
