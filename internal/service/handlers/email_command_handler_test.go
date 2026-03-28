@@ -15,6 +15,7 @@ import (
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 
@@ -156,4 +157,107 @@ func TestEmailCommandHandler_HandleSendEmailRequestedUsesExistingOutboundEmailAn
 	updatedComm, err := store.Cases().GetCommunication(ctx, workspace.ID, comm.ID)
 	require.NoError(t, err)
 	assert.Equal(t, threadMessageIDValue, updatedComm.MessageID)
+}
+
+func TestCaseReplyWorkflow_QueuesAndSendsOutboundEmail(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	user := testutil.NewIsolatedUser(t, workspace.ID)
+	require.NoError(t, store.Users().CreateUser(ctx, user))
+
+	outbox := &formMockOutbox{publishedEvents: []interface{}{}}
+	caseService := serviceapp.NewCaseService(
+		store.Queues(),
+		store.Cases(),
+		store.Workspaces(),
+		outbox,
+		serviceapp.WithTransactionRunner(store),
+		serviceapp.WithOutboundEmailStore(store.OutboundEmails()),
+	)
+
+	caseObj, err := caseService.CreateCase(ctx, serviceapp.CreateCaseParams{
+		WorkspaceID:  workspace.ID,
+		Subject:      "Billing follow-up",
+		ContactEmail: "customer@example.com",
+		ContactName:  "Casey Customer",
+		Channel:      servicedomain.CaseChannelEmail,
+	})
+	require.NoError(t, err)
+
+	mockProvider := serviceapp.NewMockProvider()
+	registry := serviceapp.NewEmailProviderRegistry()
+	registry.Register("mock", func(config serviceapp.EmailConfig) (serviceapp.EmailProvider, error) {
+		return mockProvider, nil
+	})
+
+	emailService, err := serviceapp.NewEmailServiceWithRegistry(store, serviceapp.EmailConfig{
+		Provider:         "mock",
+		DefaultFromEmail: "support@movebigrocks.test",
+		DefaultFromName:  "Support",
+	}, caseService, registry)
+	require.NoError(t, err)
+
+	handler := NewEmailCommandHandler(emailService, logger.NewNop())
+
+	reply, err := caseService.ReplyToCase(ctx, serviceapp.ReplyToCaseParams{
+		WorkspaceID: workspace.ID,
+		CaseID:      caseObj.ID,
+		UserID:      user.ID,
+		UserName:    user.Name,
+		UserEmail:   user.Email,
+		ToEmails:    []string{"customer@example.com"},
+		Subject:     "Re: Billing follow-up",
+		Body:        "Here is the latest billing update.",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, reply)
+
+	var emailEvent sharedevents.SendEmailRequestedEvent
+	for _, published := range outbox.publishedEvents {
+		event, ok := published.(sharedevents.SendEmailRequestedEvent)
+		if !ok {
+			continue
+		}
+		emailEvent = event
+		break
+	}
+	require.NotEmpty(t, emailEvent.EventID)
+	require.NotEmpty(t, emailEvent.OutboundEmailID)
+
+	pendingOutbound, err := store.OutboundEmails().GetOutboundEmail(ctx, emailEvent.OutboundEmailID)
+	require.NoError(t, err)
+	assert.Equal(t, servicedomain.EmailStatusPending, pendingOutbound.Status)
+	assert.Equal(t, reply.ID, pendingOutbound.CommunicationID)
+
+	eventPayload, err := json.Marshal(emailEvent)
+	require.NoError(t, err)
+	require.NoError(t, handler.HandleSendEmailRequested(ctx, eventPayload))
+
+	storedOutbound, err := store.OutboundEmails().GetOutboundEmail(ctx, emailEvent.OutboundEmailID)
+	require.NoError(t, err)
+	assert.Equal(t, servicedomain.EmailStatusSent, storedOutbound.Status)
+	assert.NotEmpty(t, storedOutbound.ProviderMessageID)
+
+	threadMessageID, ok := storedOutbound.ProviderSettings["header_message_id"].(string)
+	require.True(t, ok)
+	require.NotEmpty(t, threadMessageID)
+
+	storedReply, err := store.Cases().GetCommunication(ctx, workspace.ID, reply.ID)
+	require.NoError(t, err)
+	assert.Equal(t, threadMessageID, storedReply.MessageID)
+
+	workflowproof.WriteJSON(t, "case-reply-send", map[string]interface{}{
+		"workspace_id":        workspace.ID,
+		"case_id":             caseObj.ID,
+		"communication_id":    reply.ID,
+		"outbound_email_id":   storedOutbound.ID,
+		"provider_message_id": storedOutbound.ProviderMessageID,
+		"thread_message_id":   threadMessageID,
+		"status":              storedOutbound.Status,
+	})
 }

@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -22,9 +22,14 @@ import (
 	"github.com/movebigrocks/platform/internal/infrastructure/stores"
 	"github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
+	serviceapp "github.com/movebigrocks/platform/internal/service/services"
+	"github.com/movebigrocks/platform/internal/shared/contracts"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	"github.com/movebigrocks/platform/pkg/logger"
 )
 
 func init() {
@@ -313,6 +318,124 @@ func TestSubmitPublicForm(t *testing.T) {
 		var resp map[string]interface{}
 		json.Unmarshal(w.Body.Bytes(), &resp)
 		assert.Equal(t, "https://example.com/thanks", resp["redirect_url"])
+	})
+}
+
+func TestSubmitPublicForm_WorkflowCreatesCaseAndSendsNotification(t *testing.T) {
+	handler, store, outbox, cleanup := setupFormHandler(t)
+	defer cleanup()
+
+	form := createPublicForm(t, store, "ws_public_workflow", "Support Request", "support-request")
+	form.AutoCreateCase = true
+	form.AutoCasePriority = string(servicedomain.CasePriorityHigh)
+	form.NotifyOnSubmission = true
+	form.NotificationEmails = []string{"support@example.com"}
+	require.NoError(t, store.Forms().UpdateFormSchema(context.Background(), form))
+
+	router := setupPublicFormRouter(handler)
+	submissionBody, err := json.Marshal(map[string]interface{}{
+		"name":    "Jane Doe",
+		"email":   "jane@example.com",
+		"message": "Need help with my account",
+	})
+	require.NoError(t, err)
+
+	response := performFormRequest(
+		router,
+		http.MethodPost,
+		"/v1/forms/"+form.CryptoID+"/submit",
+		bytes.NewReader(submissionBody),
+		map[string]string{"Content-Type": "application/json"},
+	)
+	require.Equal(t, http.StatusOK, response.Code)
+
+	var submissionResp map[string]interface{}
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &submissionResp))
+	submissionID, _ := submissionResp["submission_id"].(string)
+	require.NotEmpty(t, submissionID)
+
+	var formEvent contracts.FormSubmittedEvent
+	for _, published := range outbox.publishedEvents {
+		event, ok := published.(contracts.FormSubmittedEvent)
+		if !ok {
+			continue
+		}
+		formEvent = event
+		break
+	}
+	require.NotEmpty(t, formEvent.FormID)
+
+	formService := automationservices.NewFormServiceWithDeps(
+		store.Forms(),
+		store.Users(),
+		store,
+		store,
+		outbox,
+	)
+	caseService := serviceapp.NewCaseService(
+		store.Queues(),
+		store.Cases(),
+		store.Workspaces(),
+		outbox,
+		serviceapp.WithTransactionRunner(store),
+		serviceapp.WithOutboundEmailStore(store.OutboundEmails()),
+	)
+	formHandler := NewFormEventHandler(formService, caseService, outbox, store, logger.NewNop())
+
+	mockProvider := serviceapp.NewMockProvider()
+	registry := serviceapp.NewEmailProviderRegistry()
+	registry.Register("mock", func(config serviceapp.EmailConfig) (serviceapp.EmailProvider, error) {
+		return mockProvider, nil
+	})
+	emailService, err := serviceapp.NewEmailServiceWithRegistry(store, serviceapp.EmailConfig{
+		Provider:         "mock",
+		DefaultFromEmail: "support@movebigrocks.test",
+		DefaultFromName:  "Support",
+	}, caseService, registry)
+	require.NoError(t, err)
+	emailHandler := NewEmailCommandHandler(emailService, logger.NewNop())
+
+	formEventPayload, err := json.Marshal(formEvent)
+	require.NoError(t, err)
+	require.NoError(t, formHandler.HandleFormSubmitted(context.Background(), formEventPayload))
+
+	var emailEvent sharedevents.SendEmailRequestedEvent
+	for _, published := range outbox.publishedEvents {
+		event, ok := published.(sharedevents.SendEmailRequestedEvent)
+		if !ok {
+			continue
+		}
+		emailEvent = event
+	}
+	require.NotEmpty(t, emailEvent.EventID)
+
+	emailEventPayload, err := json.Marshal(emailEvent)
+	require.NoError(t, err)
+	require.NoError(t, emailHandler.HandleSendEmailRequested(context.Background(), emailEventPayload))
+
+	submission, err := store.Forms().GetFormSubmission(context.Background(), submissionID)
+	require.NoError(t, err)
+	require.Equal(t, servicedomain.SubmissionStatusCompleted, submission.Status)
+	require.NotEmpty(t, submission.CaseID)
+
+	caseObj, err := store.Cases().GetCase(context.Background(), submission.CaseID)
+	require.NoError(t, err)
+	assert.Equal(t, servicedomain.CasePriorityHigh, caseObj.Priority)
+
+	sent := mockProvider.GetSentEmails()
+	require.Len(t, sent, 1)
+	storedOutbound, err := store.OutboundEmails().GetOutboundEmailByProviderMessageID(context.Background(), sent[0].ProviderMessageID)
+	require.NoError(t, err)
+	assert.Equal(t, servicedomain.EmailStatusSent, storedOutbound.Status)
+	assert.Equal(t, "form", storedOutbound.Category)
+
+	workflowproof.WriteJSON(t, "public-form-case-notification", map[string]interface{}{
+		"workspace_id":      form.WorkspaceID,
+		"form_id":           form.ID,
+		"submission_id":     submission.ID,
+		"case_id":           caseObj.ID,
+		"outbound_email_id": storedOutbound.ID,
+		"outbound_status":   storedOutbound.Status,
 	})
 }
 

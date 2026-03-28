@@ -21,6 +21,7 @@ import (
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
 	"github.com/movebigrocks/platform/pkg/eventbus"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
@@ -321,6 +322,113 @@ func TestHandleInboundEmail_StoresEmailAndPublishesEvent(t *testing.T) {
 	}
 }
 
+func TestHandleInboundEmail_CreatesCaseThroughWorker(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := t.Context()
+	log := logger.NewNop()
+
+	workspace := testutil.NewIsolatedWorkspace(t)
+	workspace.Name = "Inbound Workflow Workspace"
+	workspace.Slug = "inbound-workflow-workspace"
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	workspaceService := platformservices.NewWorkspaceManagementService(
+		store.Workspaces(),
+		store.Cases(),
+		store.Users(),
+		store.Rules(),
+	)
+	caseService := serviceapp.NewCaseService(
+		store.Queues(),
+		store.Cases(),
+		store.Workspaces(),
+		nil,
+		serviceapp.WithTransactionRunner(store),
+	)
+	emailService, err := serviceapp.NewEmailService(store, serviceapp.EmailConfig{Provider: "mock"}, caseService)
+	require.NoError(t, err)
+	eventHandler := NewEmailEventHandler(emailService, log)
+	eventBus := &capturedWebhookBus{}
+
+	webhookHandler := NewPostmarkWebhookHandlers(
+		workspaceService,
+		emailService,
+		nil,
+		"test-secret-123",
+		eventBus,
+		log,
+	)
+
+	router := gin.New()
+	router.POST("/webhooks/postmark/:secret/inbound", webhookHandler.HandleInboundEmail)
+
+	messageID := "<new-thread@example.com>"
+	payload := map[string]interface{}{
+		"From":      "\"Casey Customer\" <customer@example.com>",
+		"FromName":  "Casey Customer",
+		"FromFull":  map[string]interface{}{"Email": "customer@example.com", "Name": "Casey Customer", "MailboxHash": ""},
+		"To":        workspace.ID + "@support.movebigrocks.test",
+		"ToFull":    []map[string]interface{}{{"Email": workspace.ID + "@support.movebigrocks.test", "Name": "Support", "MailboxHash": ""}},
+		"Subject":   "Need help with my order",
+		"TextBody":  "I need an update on my order.",
+		"HtmlBody":  "<p>I need an update on my order.</p>",
+		"MessageID": messageID,
+		"Headers": []map[string]interface{}{
+			{"Name": "Message-ID", "Value": messageID},
+		},
+	}
+	body, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/postmark/test-secret-123/inbound", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Len(t, eventBus.published, 1)
+
+	eventPayload, err := json.Marshal(eventBus.published[0].data)
+	require.NoError(t, err)
+	require.NoError(t, eventHandler.HandleEmailReceived(ctx, eventPayload))
+
+	var resp map[string]string
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	emailID := resp["email_id"]
+	require.NotEmpty(t, emailID)
+
+	inbound, err := store.InboundEmails().GetInboundEmail(ctx, emailID)
+	require.NoError(t, err)
+	require.Equal(t, servicedomain.EmailProcessingStatusProcessed, inbound.ProcessingStatus)
+	require.NotEmpty(t, inbound.CaseID)
+	require.NotEmpty(t, inbound.CommunicationID)
+
+	caseObj, err := store.Cases().GetCase(ctx, inbound.CaseID)
+	require.NoError(t, err)
+	assert.Equal(t, workspace.ID, caseObj.WorkspaceID)
+	assert.Equal(t, "customer@example.com", caseObj.ContactEmail)
+	assert.Equal(t, "Casey Customer", caseObj.ContactName)
+	assert.Equal(t, servicedomain.CaseChannelEmail, caseObj.Channel)
+
+	comms, err := store.Cases().ListCaseCommunications(ctx, caseObj.ID)
+	require.NoError(t, err)
+	require.Len(t, comms, 1)
+	assert.Equal(t, messageID, comms[0].MessageID)
+	assert.Equal(t, shareddomain.DirectionInbound, comms[0].Direction)
+
+	workflowproof.WriteJSON(t, "inbound-new-email-case-create", map[string]interface{}{
+		"workspace_id":      workspace.ID,
+		"inbound_email_id":  inbound.ID,
+		"case_id":           caseObj.ID,
+		"communication_id":  comms[0].ID,
+		"case_status":       caseObj.Status,
+		"message_count":     caseObj.MessageCount,
+		"processing_status": inbound.ProcessingStatus,
+	})
+}
+
 func TestHandleInboundEmail_ThreadsReplyToExistingCase(t *testing.T) {
 	store, cleanup := testutil.SetupTestStore(t)
 	defer cleanup()
@@ -499,4 +607,15 @@ func TestHandleInboundEmail_ThreadsReplyToExistingCase(t *testing.T) {
 	assert.Equal(t, []string{threadMessageID}, reply.References)
 	assert.Equal(t, "Casey Customer", reply.FromName)
 	assert.Equal(t, "I still need help with this invoice.", reply.Body)
+
+	workflowproof.WriteJSON(t, "inbound-reply-threading", map[string]interface{}{
+		"workspace_id":             workspace.ID,
+		"case_id":                  caseObj.ID,
+		"inbound_email_id":         inbound.ID,
+		"matched_communication_id": reply.ID,
+		"thread_message_id":        threadMessageID,
+		"reply_message_id":         replyMessageID,
+		"case_status":              updatedCase.Status,
+		"message_count":            len(comms),
+	})
 }

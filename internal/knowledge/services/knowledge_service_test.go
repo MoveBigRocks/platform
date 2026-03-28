@@ -2,6 +2,7 @@ package knowledgeservices
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -10,10 +11,14 @@ import (
 	"github.com/movebigrocks/platform/internal/infrastructure/stores"
 	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	servicehandlers "github.com/movebigrocks/platform/internal/service/handlers"
+	serviceapp "github.com/movebigrocks/platform/internal/service/services"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	"github.com/movebigrocks/platform/pkg/logger"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -251,6 +256,107 @@ func TestKnowledgeService_PublishesRFCReviewSignals(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, []string{reviewer.ID}, notification.Recipients)
 	assert.Equal(t, "knowledge_review", notification.SourceType)
+}
+
+func TestKnowledgeReviewWorkflow_PersistsInAppNotification(t *testing.T) {
+	t.Parallel()
+
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	workspaceID := setupTestWorkspace(t, store, "knowledge-rfc-notification")
+	teamID := setupTestTeam(t, store, workspaceID, "Marketing")
+	now := time.Now().UTC()
+
+	author, err := platformdomain.NewManagedUser("author@example.com", "Author", nil, now)
+	require.NoError(t, err)
+	require.NoError(t, store.Users().CreateUser(context.Background(), author))
+	reviewer, err := platformdomain.NewManagedUser("reviewer@example.com", "Reviewer", nil, now)
+	require.NoError(t, err)
+	require.NoError(t, store.Users().CreateUser(context.Background(), reviewer))
+	require.NoError(t, store.Workspaces().CreateUserWorkspaceRole(context.Background(), &platformdomain.UserWorkspaceRole{
+		ID:          testutil.UniqueID("uwr"),
+		UserID:      author.ID,
+		WorkspaceID: workspaceID,
+		Role:        platformdomain.WorkspaceRoleMember,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}))
+	require.NoError(t, store.Workspaces().CreateUserWorkspaceRole(context.Background(), &platformdomain.UserWorkspaceRole{
+		ID:          testutil.UniqueID("uwr"),
+		UserID:      reviewer.ID,
+		WorkspaceID: workspaceID,
+		Role:        platformdomain.WorkspaceRoleMember,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}))
+	require.NoError(t, store.Workspaces().AddTeamMember(context.Background(), &platformdomain.TeamMember{
+		TeamID:      teamID,
+		UserID:      author.ID,
+		WorkspaceID: workspaceID,
+		Role:        platformdomain.TeamMemberRoleLead,
+		IsActive:    true,
+		JoinedAt:    now,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}))
+	require.NoError(t, store.Workspaces().AddTeamMember(context.Background(), &platformdomain.TeamMember{
+		TeamID:      teamID,
+		UserID:      reviewer.ID,
+		WorkspaceID: workspaceID,
+		Role:        platformdomain.TeamMemberRoleMember,
+		IsActive:    true,
+		JoinedAt:    now,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}))
+
+	outbox := &knowledgeMockOutbox{}
+	service := NewKnowledgeService(store.KnowledgeResources(), store.Workspaces(), store.ConceptSpecs(), artifactservices.NewGitService(t.TempDir()), outbox, store)
+	notificationService := serviceapp.NewNotificationService(store, nil, logger.NewNop())
+	notificationHandler := servicehandlers.NewNotificationCommandHandler(notificationService, logger.NewNop())
+	ctx := context.Background()
+
+	resource, err := service.CreateKnowledgeResource(ctx, CreateKnowledgeResourceParams{
+		WorkspaceID:        workspaceID,
+		TeamID:             teamID,
+		Slug:               "queue-routing-rfc",
+		Title:              "Queue Routing RFC",
+		Kind:               knowledgedomain.KnowledgeResourceKindDecision,
+		BodyMarkdown:       "# Queue Routing RFC\n\nWe should split launch forms from general support.",
+		CreatedBy:          author.ID,
+		ConceptSpecKey:     "core/rfc",
+		ConceptSpecVersion: "1",
+	})
+	require.NoError(t, err)
+
+	var notificationEvent sharedevents.SendNotificationRequestedEvent
+	for _, event := range outbox.events {
+		candidate, ok := event.(sharedevents.SendNotificationRequestedEvent)
+		if !ok {
+			continue
+		}
+		notificationEvent = candidate
+	}
+	require.NotEmpty(t, notificationEvent.EventID)
+
+	payload, err := json.Marshal(notificationEvent)
+	require.NoError(t, err)
+	require.NoError(t, notificationHandler.HandleSendNotificationRequested(ctx, payload))
+
+	notifications, err := store.Notifications().ListUserNotifications(ctx, workspaceID, reviewer.ID)
+	require.NoError(t, err)
+	require.Len(t, notifications, 1)
+	assert.Equal(t, resource.ID, notifications[0].EntityID)
+	assert.Equal(t, "New RFC: Queue Routing RFC", notifications[0].Subject)
+
+	workflowproof.WriteJSON(t, "knowledge-review-notification", map[string]interface{}{
+		"workspace_id":      workspaceID,
+		"knowledge_id":      resource.ID,
+		"recipient_user_id": reviewer.ID,
+		"notification_id":   notifications[0].ID,
+		"subject":           notifications[0].Subject,
+	})
 }
 
 func TestKnowledgeService_EnforcesCustomConceptSpecStructure(t *testing.T) {
