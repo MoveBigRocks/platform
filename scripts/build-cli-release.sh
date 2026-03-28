@@ -145,7 +145,7 @@ manifest_path="$OUT_DIR/release-manifest.json"
     printf '      "file": "%s",\n' "$file_name"
     printf '      "sha256": "%s"\n' "$sha256"
     printf '    }'
-    separator=",\n"
+    separator=$',\n'
   done
 
   echo

@@ -30,12 +30,20 @@ Every tagged CLI release publishes:
   - [`.github/workflows/cli-release.yml`](../.github/workflows/cli-release.yml)
 
 The local script builds the full archive matrix, writes `checksums.txt`, and
-emits `release-manifest.json`. The GitHub workflow adds Sigstore signatures and
-publishes release attachments on tag pushes.
+emits `release-manifest.json`. The milestone proof and local verification path
+now validate the manifest and checksums and emit `verification.json`. The
+GitHub workflow adds Sigstore signatures and publishes release attachments on
+tag pushes.
 
 ## Verification
 
 Checksum verification:
+
+```bash
+bash scripts/verify-cli-release.sh dist/cli-release --version v1.2.3
+```
+
+Manual checksum verification remains available:
 
 ```bash
 cd dist/cli-release

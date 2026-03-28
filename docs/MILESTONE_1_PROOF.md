@@ -24,24 +24,23 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
    - `bash scripts/check-cli-contract-docs.sh`
 5. Cross-platform CLI packaging evidence:
    - `bash scripts/build-cli-release.sh`
+6. CLI release artifact validation:
+   - `bash scripts/verify-cli-release.sh dist/milestone-proof/cli-release`
 
 ## Evidence Expansion Required Before Close
 
 1. Public bundle catalog validation:
    - run [`MoveBigRocks/extensions/scripts/validate-first-party.sh`](https://github.com/MoveBigRocks/extensions/blob/main/scripts/validate-first-party.sh) from the milestone proof using a freshly built `mbr` binary
    - archive the validation output and the exact [`MoveBigRocks/extensions/catalog/public-bundles.json`](https://github.com/MoveBigRocks/extensions/blob/main/catalog/public-bundles.json) snapshot in the proof bundle
-2. CLI release artifact integrity:
-   - validate `cli-release/release-manifest.json` with `jq`
-   - verify `checksums.txt` against the emitted archives
-3. Runtime bootstrap discovery:
+2. Runtime bootstrap discovery:
    - exercise `/.well-known/mbr-instance.json`
    - archive the returned runtime-discovery payload as proof that agents can bootstrap from a live instance or sandbox
-4. Sandbox lifecycle closure:
+3. Sandbox lifecycle closure:
    - prove auto-expiry or reaper behavior, not only manual destroy
    - archive richer export evidence rather than only a handoff-style export manifest
-5. Public bundle publication evidence:
+4. Public bundle publication evidence:
    - capture OCI ref, digest, and release-workflow metadata for ATS, error tracking, web analytics, `sales-pipeline` beta, and `community-feature-requests` beta
-6. ATS scenario proof:
+5. ATS scenario proof:
    - add one automated scenario that proves create job, publish, submit, review, move stage, close, and reopen
 
 ## Outputs
@@ -50,6 +49,7 @@ The current proof run writes:
 
 - `dist/milestone-proof/summary.md`
 - `dist/milestone-proof/cli-release/`
+- `dist/milestone-proof/cli-release/verification.json`
 
 Milestone closure should expand that output set to also include:
 

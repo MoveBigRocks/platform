@@ -75,6 +75,7 @@ cd "$ROOT_DIR"
 run_step go test -count=1 ./internal/service/services ./internal/knowledge/services ./internal/platform/services ./cmd/api ./cmd/mbr
 run_step bash scripts/check-cli-contract-docs.sh
 run_step bash scripts/build-cli-release.sh --version "$VERSION" --out "$CLI_OUT_DIR"
+run_step bash scripts/verify-cli-release.sh "$CLI_OUT_DIR" --version "$VERSION" --git-sha "$GIT_SHA"
 
 cat >"$SUMMARY_PATH" <<EOF
 # Milestone 1 Proof Summary
@@ -82,12 +83,14 @@ cat >"$SUMMARY_PATH" <<EOF
 - generated_at: ${GENERATED_AT}
 - git_sha: ${GIT_SHA}
 - cli_release_dir: ${CLI_OUT_DIR}
+- cli_release_verification: ${CLI_OUT_DIR}/verification.json
 
 ## Commands Run
 
 1. \`go test -count=1 ./internal/service/services ./internal/knowledge/services ./internal/platform/services ./cmd/api ./cmd/mbr\`
 2. \`bash scripts/check-cli-contract-docs.sh\`
 3. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
+4. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
 
 ## Evidence Docs
 
