@@ -30,16 +30,16 @@ A first-party pack is considered launch-ready when it has:
 ## Pack Locations
 
 - ATS: public first-party source in
-  [`MoveBigRocks/extensions/ats`](https://github.com/MoveBigRocks/extensions/tree/main/ats)
+  [`MoveBigRocks/extensions/ats`](https://github.com/MoveBigRocks/extensions/tree/e957fb2272f77d24d3bb4a907ad372fb93175e30/ats)
 - Enterprise Access: controlled first-party source in `packs/enterprise-access`
 - Error Tracking: public first-party source in
-  [`MoveBigRocks/extensions/error-tracking`](https://github.com/MoveBigRocks/extensions/tree/main/error-tracking)
+  [`MoveBigRocks/extensions/error-tracking`](https://github.com/MoveBigRocks/extensions/tree/e957fb2272f77d24d3bb4a907ad372fb93175e30/error-tracking)
 - Sales Pipeline: public first-party beta source in
-  [`MoveBigRocks/extensions/sales-pipeline`](https://github.com/MoveBigRocks/extensions/tree/main/sales-pipeline)
+  [`MoveBigRocks/extensions/sales-pipeline`](https://github.com/MoveBigRocks/extensions/tree/e957fb2272f77d24d3bb4a907ad372fb93175e30/sales-pipeline)
 - Community Feature Requests: public first-party beta source in
-  [`MoveBigRocks/extensions/community-feature-requests`](https://github.com/MoveBigRocks/extensions/tree/main/community-feature-requests)
+  [`MoveBigRocks/extensions/community-feature-requests`](https://github.com/MoveBigRocks/extensions/tree/e957fb2272f77d24d3bb4a907ad372fb93175e30/community-feature-requests)
 - Web Analytics: public first-party source in
-  [`MoveBigRocks/extensions/web-analytics`](https://github.com/MoveBigRocks/extensions/tree/main/web-analytics)
+  [`MoveBigRocks/extensions/web-analytics`](https://github.com/MoveBigRocks/extensions/tree/e957fb2272f77d24d3bb4a907ad372fb93175e30/web-analytics)
 
 ## Proof Loop
 
@@ -62,6 +62,9 @@ workflow materializes `extensions`, `extension-sdk`, and `packs` before it runs
 that validation. Those sibling repos are also pinned in
 [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
 and verified inside the proof bundle before the first-party pack checks run.
+Local reruns can materialize that same pinned sibling workspace with
+[`scripts/bootstrap-canonical-workspace.sh`](../scripts/bootstrap-canonical-workspace.sh)
+instead of assembling it manually.
 The proof bundle now also archives that manifest and the publication-evidence
 manifest so the artifact stays self-contained.
 
