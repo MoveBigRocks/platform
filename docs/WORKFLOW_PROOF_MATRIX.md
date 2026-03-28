@@ -3,6 +3,9 @@
 This document defines the minimum workflow evidence required before a
 user-visible capability can be marked `Proven` in milestone or readiness docs.
 
+The implementation and proof sequence for closing the current gaps lives in
+[`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md).
+
 ## Rules
 
 - A workflow is not `Proven` if tests only show that a record was stored or a
@@ -47,6 +50,9 @@ Every production command stream used by any workflow above must have:
 6. Add milestone-proof artifacts for milestone-critical operational workflows.
 7. Make CI outputs distinguish hard-gated checks from soft-gated integration
    sweeps so readiness is not inferred from an ambiguous "passed" signal.
+
+Those priorities are expanded into phased closure work in
+[`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md).
 
 ## Update Rule
 

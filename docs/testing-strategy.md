@@ -154,6 +154,9 @@ workflow that depends on it.
 Milestone- and readiness-facing claims must be backed by the workflow inventory
 in [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md).
 
+The execution order for closing current workflow gaps is tracked separately in
+[`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md).
+
 No scoped workflow should be marked `Proven` until it has a row in that matrix
 with concrete automated evidence.
 
@@ -200,6 +203,9 @@ prove:
 4. Stabilize the full integration suite so CI can stop soft-gating it.
 5. Extend milestone proof to archive workflow artifacts for scoped operational
    flows, not just release artifacts and publication evidence.
+
+Track the concrete sequence, dependencies, and acceptance criteria in
+[`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md).
 
 ## Running Tests
 
