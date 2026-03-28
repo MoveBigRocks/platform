@@ -33,6 +33,17 @@ not published as a separate core artifact.
 - `tools/create-admin`
 - `tools/create-agent`
 
+Known gap:
+
+- the current release artifact does not yet ship a packaged extension
+  desired-state reconciler
+- private instance repos therefore cannot yet make
+  `extensions/desired-state.yaml` fully self-applying from pinned release
+  artifacts alone
+
+The planned fix is tracked in
+[Extension Desired-State Reconciliation Plan](./EXTENSION_DESIRED_STATE_RECONCILIATION_PLAN.md).
+
 `migrationsArtifact` should expand to:
 
 - the SQL migration tree needed by the release

@@ -317,6 +317,16 @@ The operator or agent should:
 
 The instance repo should remain the source of truth for what should be running.
 
+Current gap:
+
+- the private instance repo deploy flow does not yet auto-reconcile
+  `extensions/desired-state.yaml` into `installed_extensions`
+- service-backed runtime binaries can therefore move ahead of installed bundle
+  state unless a separate reconcile step runs
+
+The closure plan for that gap is tracked in
+[Extension Desired-State Reconciliation Plan](./EXTENSION_DESIRED_STATE_RECONCILIATION_PLAN.md).
+
 ## Stage 8: Monitor, Upgrade, Deactivate, Uninstall
 
 The lifecycle does not stop at activation.
