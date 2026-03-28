@@ -44,7 +44,7 @@ func TestSeedDefaultRules_CreatesAllRules(t *testing.T) {
 		assert.True(t, rule.IsSystem, "Rule should be marked as system")
 		assert.NotEmpty(t, rule.SystemRuleKey, "Rule should have system key")
 		assert.NotEmpty(t, rule.Title, "Rule should have title")
-		assert.Equal(t, "system", rule.CreatedByID, "Rule should be created by system")
+		assert.Empty(t, rule.CreatedByID, "System rules should not claim a human creator ID")
 
 		systemKeysSeen[rule.SystemRuleKey] = true
 	}

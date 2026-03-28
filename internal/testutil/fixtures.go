@@ -124,7 +124,7 @@ func NewIsolatedUser(t testing.TB, workspaceID string) *platformdomain.User {
 // NewIsolatedContact creates a test contact with unique ID for test isolation.
 func NewIsolatedContact(t testing.TB, workspaceID string) *platformdomain.Contact {
 	t.Helper()
-	contactID := UniqueID("contact")
+	contactID := id.New()
 	email := UniqueEmail(t)
 	return &platformdomain.Contact{
 		ID:          contactID,

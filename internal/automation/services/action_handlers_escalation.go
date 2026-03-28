@@ -66,7 +66,7 @@ func (h *EscalationActionHandler) Handle(ctx context.Context, action RuleAction,
 	// Add escalation note via service
 	escalationNote := automationdomain.EscalationNote(oldPriority, newPriority, escalateTo)
 
-	if _, err := h.caseService.AddInternalNote(ctx, caseID, workspaceID, "system", "Automation", escalationNote); err != nil {
+	if _, err := h.caseService.AddInternalNote(ctx, caseID, workspaceID, "", "Automation", escalationNote); err != nil {
 		h.logger.Warn("Failed to add escalation note", "error", err)
 	}
 

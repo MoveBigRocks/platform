@@ -26,7 +26,7 @@ func TestGetDefaultRules(t *testing.T) {
 		assert.True(t, rule.IsActive, "Rule should be active by default")
 		assert.True(t, rule.IsSystem, "Rule should be marked as system rule")
 		assert.NotEmpty(t, rule.SystemRuleKey, "Rule should have system key")
-		assert.Equal(t, "system", rule.CreatedByID, "Rule should be created by system")
+		assert.Empty(t, rule.CreatedByID, "System rules should not claim a human creator ID")
 	}
 
 	// Verify specific rules exist by key

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	automationdomain "github.com/movebigrocks/platform/internal/automation/domain"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	"github.com/movebigrocks/platform/internal/testutil"
@@ -136,12 +135,8 @@ func TestRulesEngine_EvaluateRulesForCase(t *testing.T) {
 		require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
 		// Create a contact
-		contact := &platformdomain.Contact{
-			ID:          testutil.UniqueID("contact"),
-			WorkspaceID: workspace.ID,
-			Email:       testutil.UniqueEmail(t),
-			Name:        "VIP Customer",
-		}
+		contact := testutil.NewIsolatedContact(t, workspace.ID)
+		contact.Name = "VIP Customer"
 		require.NoError(t, store.Contacts().CreateContact(ctx, contact))
 
 		// Create a case linked to the contact
@@ -171,7 +166,7 @@ func TestRulesEngine_EvaluateRulesForCase(t *testing.T) {
 
 		// Create a case without contact
 		caseObj := testutil.NewIsolatedCase(t, workspace.ID)
-		caseObj.ContactID = testutil.UniqueID("contact")
+		caseObj.ContactID = testutil.NewIsolatedContact(t, workspace.ID).ID
 		require.NoError(t, store.Cases().CreateCase(ctx, caseObj))
 
 		// Create a simple rule

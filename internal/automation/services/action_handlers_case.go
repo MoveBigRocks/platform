@@ -291,7 +291,7 @@ func (h *CaseActionHandler) handleAddCommunication(ctx context.Context, action R
 		ctx,
 		caseObj.ID,
 		caseObj.WorkspaceID,
-		"system",     // userID
+		"",           // no human user ID for automation-authored notes
 		"Automation", // userName
 		message,
 	)
