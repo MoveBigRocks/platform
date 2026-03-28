@@ -12,12 +12,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/movebigrocks/platform/internal/infrastructure/stores"
+	storeshared "github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	serviceapp "github.com/movebigrocks/platform/internal/service/services"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
+	"github.com/movebigrocks/platform/internal/testutil/workflowruntime"
+	"github.com/movebigrocks/platform/pkg/eventbus"
 	"github.com/movebigrocks/platform/pkg/id"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
@@ -122,6 +126,63 @@ func TestNotificationCommandHandler_HandleSendNotificationRequestedBridgesEmailN
 	assert.Equal(t, servicedomain.EmailStatusSent, stored.Status)
 	assert.Equal(t, "notification", stored.Category)
 	assert.Equal(t, "workflow-alert", stored.TemplateData["notification_template"])
+}
+
+func TestNotificationCommandWorkflow_FailureLeavesOutboxStateVisible(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	validUser := createWorkspaceMember(t, ctx, store, workspace.ID)
+	runtime := workflowruntime.NewHarness(t, store)
+
+	notificationService := serviceapp.NewNotificationService(store, nil, logger.NewNop())
+	handler := NewNotificationCommandHandler(notificationService, logger.NewNop())
+	require.NoError(t, handler.RegisterHandlers(runtime.EventBus.Subscribe))
+
+	event := sharedevents.NewSendNotificationRequestedEvent(
+		workspace.ID,
+		"knowledge_service",
+		"in_app",
+		[]string{"missing-workspace-member"},
+	)
+	event.Subject = "Review required"
+	event.Body = "A review is ready."
+	event.SourceType = "knowledge_review"
+	event.SourceID = "kr_failure"
+	require.NoError(t, runtime.Outbox.PublishEvent(ctx, eventbus.StreamNotificationCommands, event))
+
+	pendingEvents, err := store.Outbox().GetPendingOutboxEvents(ctx, 10)
+	require.NoError(t, err)
+	require.Len(t, pendingEvents, 1)
+	eventID := pendingEvents[0].ID
+
+	require.False(t, runtime.Outbox.ProcessPendingEvent(ctx, pendingEvents[0]))
+
+	var outboxEvent *storeshared.OutboxEvent
+	outboxEvent, err = store.Outbox().GetOutboxEvent(ctx, eventID)
+	require.NoError(t, err)
+	require.Equal(t, "pending", outboxEvent.Status)
+	require.Equal(t, 1, outboxEvent.Attempts)
+	require.NotNil(t, outboxEvent.NextRetry)
+
+	notifications, err := store.Notifications().ListUserNotifications(ctx, workspace.ID, validUser.ID)
+	require.NoError(t, err)
+	assert.Len(t, notifications, 0)
+	assert.Contains(t, outboxEvent.LastError, "is not a member of workspace")
+
+	workflowproof.WriteJSON(t, "notification-command-failure-visible", map[string]interface{}{
+		"workspace_id":      workspace.ID,
+		"outbox_event_id":   outboxEvent.ID,
+		"outbox_status":     outboxEvent.Status,
+		"outbox_attempts":   outboxEvent.Attempts,
+		"outbox_next_retry": outboxEvent.NextRetry,
+		"outbox_last_error": outboxEvent.LastError,
+		"recipient_id":      "missing-workspace-member",
+	})
 }
 
 func createWorkspaceMember(t *testing.T, ctx context.Context, store stores.Store, workspaceID string) *platformdomain.User {

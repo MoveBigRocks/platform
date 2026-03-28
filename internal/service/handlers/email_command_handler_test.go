@@ -5,12 +5,14 @@ package servicehandlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	storeshared "github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	serviceapp "github.com/movebigrocks/platform/internal/service/services"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
@@ -21,6 +23,22 @@ import (
 	"github.com/movebigrocks/platform/pkg/eventbus"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
+
+type failingEmailProvider struct {
+	err error
+}
+
+func (p *failingEmailProvider) SendEmail(context.Context, *servicedomain.OutboundEmail) error {
+	return p.err
+}
+
+func (p *failingEmailProvider) ParseInboundEmail(context.Context, []byte) (*servicedomain.InboundEmail, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (p *failingEmailProvider) ValidateConfig() error {
+	return nil
+}
 
 func TestEmailCommandHandler_HandleSendEmailRequestedCreatesAndSendsOutboundEmail(t *testing.T) {
 	store, cleanup := testutil.SetupTestStore(t)
@@ -265,5 +283,90 @@ func TestCaseReplyWorkflow_QueuesAndSendsOutboundEmail(t *testing.T) {
 		"provider_message_id": storedOutbound.ProviderMessageID,
 		"thread_message_id":   threadMessageID,
 		"status":              storedOutbound.Status,
+	})
+}
+
+func TestEmailCommandWorkflow_FailureLeavesOutboxAndOutboundStateVisible(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	runtime := workflowruntime.NewHarness(t, store)
+
+	outbound := servicedomain.NewOutboundEmail(workspace.ID, "support@movebigrocks.test", "Provider outage", "The provider is currently unavailable.")
+	outbound.FromName = "Support"
+	outbound.ToEmails = []string{"customer@example.com"}
+	outbound.Category = "case-reply"
+	require.NoError(t, store.OutboundEmails().CreateOutboundEmail(ctx, outbound))
+
+	providerErr := errors.New("provider unavailable")
+	registry := serviceapp.NewEmailProviderRegistry()
+	registry.Register("failing", func(config serviceapp.EmailConfig) (serviceapp.EmailProvider, error) {
+		return &failingEmailProvider{err: providerErr}, nil
+	})
+
+	emailService, err := serviceapp.NewEmailServiceWithRegistry(store, serviceapp.EmailConfig{
+		Provider:         "failing",
+		DefaultFromEmail: "support@movebigrocks.test",
+		DefaultFromName:  "Support",
+	}, nil, registry)
+	require.NoError(t, err)
+
+	handler := NewEmailCommandHandler(emailService, logger.NewNop())
+	require.NoError(t, handler.RegisterHandlers(runtime.EventBus.Subscribe))
+
+	event := sharedevents.NewSendEmailRequestedEvent(
+		workspace.ID,
+		"failure_test",
+		[]string{"customer@example.com"},
+		outbound.Subject,
+		outbound.TextContent,
+	)
+	event.OutboundEmailID = outbound.ID
+	event.Category = outbound.Category
+	require.NoError(t, runtime.Outbox.PublishEvent(ctx, eventbus.StreamEmailCommands, event))
+
+	pendingEvents, err := store.Outbox().GetPendingOutboxEvents(ctx, 10)
+	require.NoError(t, err)
+	require.Len(t, pendingEvents, 1)
+	eventID := pendingEvents[0].ID
+
+	require.False(t, runtime.Outbox.ProcessPendingEvent(ctx, pendingEvents[0]))
+
+	var outboxEvent *storeshared.OutboxEvent
+	var failedOutbound *servicedomain.OutboundEmail
+	require.NoError(t, store.WithAdminContext(ctx, func(adminCtx context.Context) error {
+		var lookupErr error
+		outboxEvent, lookupErr = store.Outbox().GetOutboxEvent(adminCtx, eventID)
+		if lookupErr != nil {
+			return lookupErr
+		}
+		failedOutbound, lookupErr = store.OutboundEmails().GetOutboundEmail(adminCtx, outbound.ID)
+		return lookupErr
+	}))
+
+	require.Equal(t, "pending", outboxEvent.Status)
+	require.Equal(t, 1, outboxEvent.Attempts)
+	require.NotNil(t, outboxEvent.NextRetry)
+	require.Equal(t, servicedomain.EmailStatusFailed, failedOutbound.Status)
+	require.Equal(t, 1, failedOutbound.RetryCount)
+
+	assert.Contains(t, outboxEvent.LastError, providerErr.Error())
+	assert.Contains(t, failedOutbound.ErrorMessage, providerErr.Error())
+
+	workflowproof.WriteJSON(t, "email-command-failure-visible", map[string]interface{}{
+		"workspace_id":      workspace.ID,
+		"outbox_event_id":   outboxEvent.ID,
+		"outbox_status":     outboxEvent.Status,
+		"outbox_attempts":   outboxEvent.Attempts,
+		"outbox_next_retry": outboxEvent.NextRetry,
+		"outbox_last_error": outboxEvent.LastError,
+		"outbound_email_id": failedOutbound.ID,
+		"outbound_status":   failedOutbound.Status,
+		"outbound_error":    failedOutbound.ErrorMessage,
+		"outbound_retries":  failedOutbound.RetryCount,
 	})
 }

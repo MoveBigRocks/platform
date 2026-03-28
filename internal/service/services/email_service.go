@@ -147,30 +147,23 @@ func (es *EmailService) ProcessSendEmailRequested(ctx context.Context, event sha
 	}
 
 	var outboundEmail *emaildom.OutboundEmail
-	err := es.store.WithAdminContext(ctx, func(adminCtx context.Context) error {
-		if err := es.store.SetTenantContext(adminCtx, event.WorkspaceID); err != nil {
-			return fmt.Errorf("set tenant context: %w", err)
+	if strings.TrimSpace(event.OutboundEmailID) != "" {
+		existing, err := es.store.OutboundEmails().GetOutboundEmail(ctx, event.OutboundEmailID)
+		if err != nil {
+			return nil, fmt.Errorf("load outbound email: %w", err)
 		}
-
-		if strings.TrimSpace(event.OutboundEmailID) != "" {
-			existing, err := es.store.OutboundEmails().GetOutboundEmail(adminCtx, event.OutboundEmailID)
-			if err != nil {
-				return fmt.Errorf("load outbound email: %w", err)
-			}
-			outboundEmail = existing
-		} else {
-			outboundEmail = es.buildOutboundEmailFromCommand(event)
-			if err := outboundEmail.Validate(); err != nil {
-				return fmt.Errorf("build outbound email: %w", err)
-			}
-			if err := es.store.OutboundEmails().CreateOutboundEmail(adminCtx, outboundEmail); err != nil {
-				return fmt.Errorf("create outbound email: %w", err)
-			}
+		outboundEmail = existing
+	} else {
+		outboundEmail = es.buildOutboundEmailFromCommand(event)
+		if err := outboundEmail.Validate(); err != nil {
+			return nil, fmt.Errorf("build outbound email: %w", err)
 		}
+		if err := es.store.OutboundEmails().CreateOutboundEmail(ctx, outboundEmail); err != nil {
+			return nil, fmt.Errorf("create outbound email: %w", err)
+		}
+	}
 
-		return es.sendOutboundEmail(adminCtx, outboundEmail)
-	})
-	if err != nil {
+	if err := es.sendOutboundEmail(ctx, outboundEmail); err != nil {
 		return nil, err
 	}
 	return outboundEmail, nil
