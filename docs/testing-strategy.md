@@ -187,6 +187,13 @@ Current reality:
   [`docs/evidence/public-bundle-publication-runs.json`](./evidence/public-bundle-publication-runs.json)
 - reusable CI outputs and summaries now report the integration sweep as part of
   the required gate instead of a soft signal
+- milestone proof CI materializes the canonical sibling repos
+  (`extensions`, `extension-sdk`, and `packs`) before running proof, and proof
+  mode sets `MBR_REQUIRE_WORKSPACE_REFS=true` so canonical-source tests fail
+  closed instead of silently skipping
+- milestone proof bootstraps a temporary `go.work` when the workspace does not
+  already provide one, so multi-repo proof does not silently depend on a
+  developer-specific local Go workspace
 
 ### Milestone Proof Gate
 
@@ -212,6 +219,9 @@ prove:
 4. Treat scenario-runner flows as smoke coverage only unless they traverse the
    real production path.
 5. Keep the full integration sweep green so CI can continue to hard-gate it.
+6. For any proof that depends on canonical sibling repositories, make the
+   committed CI workflow materialize those repos and make proof mode fail when
+   they are absent.
 
 The completed uplift sequence remains documented in
 [`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md).

@@ -10,6 +10,24 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
 - CI:
   - [`.github/workflows/milestone-proof.yml`](../.github/workflows/milestone-proof.yml)
 
+## Workspace Contract
+
+The milestone proof is intentionally a multi-repo proof, because part of the
+Milestone 1 contract is that `platform` validates and exercises the canonical
+first-party sources rather than stale mirrored fixtures.
+
+- CI now checks out `platform`, `extensions`, `extension-sdk`, and `packs`
+  into one workspace before it runs the proof script.
+- Local reruns should use the same workspace shape, or explicitly point
+  `MBR_WORKSPACE_ROOT`, `FIRST_PARTY_EXTENSIONS_ROOT`, `EXTENSION_SDK_ROOT`,
+  and `PACKS_ROOT` at equivalent checkouts.
+- The proof script exports `MBR_REQUIRE_WORKSPACE_REFS=true`, so first-party
+  tests fail closed when those canonical sibling repos are missing instead of
+  silently skipping.
+- If the workspace does not already provide a top-level `go.work`, the proof
+  script now bootstraps a temporary one inside the proof bundle so the local
+  `extensions` module resolves the checked-out `platform` module correctly.
+
 ## What The Proof Run Covers Today
 
 1. Core operational behavior:
@@ -43,6 +61,8 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
 10. Full integration sweep:
    - run `go test -tags=integration ./...`
    - archive the integration log inside the proof bundle
+    - run in the same canonical multi-repo workspace shape that CI uses for
+      first-party source validation
 11. Cross-platform CLI packaging evidence:
    - `bash scripts/build-cli-release.sh`
 12. CLI release artifact validation:
@@ -70,6 +90,8 @@ default, and it now cross-checks them against the checked-in archive under
 Local reruns work from that durable archive automatically and can still use
 either `FIRST_PARTY_PUBLICATION_EVIDENCE_DIR` or
 `FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST` when you want to override it.
+Local reruns still need the canonical sibling repos or equivalent explicit
+paths, because the first-party proof rows now fail closed instead of skipping.
 
 ## Outputs
 

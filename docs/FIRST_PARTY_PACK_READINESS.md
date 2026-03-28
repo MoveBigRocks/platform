@@ -56,7 +56,10 @@ generated from the public bundle catalog. The current closure proof also keeps
 a checked-in archive of the workflow-generated publication artifacts and
 digests under [`docs/evidence/public-bundle-publication/`](./evidence/public-bundle-publication/),
 verifies them against the manifest and publication plan, and cross-checks live
-downloads against those archived copies in CI.
+downloads against those archived copies in CI. Proof mode now fails closed when
+those canonical sibling repos are missing, and the committed milestone-proof CI
+workflow materializes `extensions`, `extension-sdk`, and `packs` before it runs
+that validation.
 
 ## Live Publication Evidence
 
