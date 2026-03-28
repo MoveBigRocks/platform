@@ -17,6 +17,9 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    env:
+      MBR_WORKSPACE_ROOT: ${{ github.workspace }}
+      MBR_REQUIRE_WORKSPACE_REFS: "true"
     outputs:
       passed: ${{ steps.unit_tests.outcome == 'success' && steps.integration_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' }}
       required_gate_passed: ${{ steps.unit_tests.outcome == 'success' && steps.integration_tests.outcome == 'success' && steps.postgres_tests.outcome == 'success' }}
@@ -40,6 +43,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Resolve canonical workspace refs
+        id: workspace_refs
+        run: |
+          manifest="docs/evidence/canonical-workspace-refs.json"
+          echo "extensions_ref=$(jq -r '.repositories.extensions.ref' "$manifest")" >> "$GITHUB_OUTPUT"
+          echo "extension_sdk_ref=$(jq -r '.repositories[\"extension-sdk\"].ref' "$manifest")" >> "$GITHUB_OUTPUT"
+          echo "packs_ref=$(jq -r '.repositories.packs.ref' "$manifest")" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout extensions
+        uses: actions/checkout@v4
+        with:
+          repository: MoveBigRocks/extensions
+          path: extensions
+          ref: ${{ steps.workspace_refs.outputs.extensions_ref }}
+
+      - name: Checkout extension-sdk
+        uses: actions/checkout@v4
+        with:
+          repository: MoveBigRocks/extension-sdk
+          path: extension-sdk
+          ref: ${{ steps.workspace_refs.outputs.extension_sdk_ref }}
+
+      - name: Checkout packs
+        uses: actions/checkout@v4
+        with:
+          repository: MoveBigRocks/packs
+          path: packs
+          ref: ${{ steps.workspace_refs.outputs.packs_ref }}
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -48,6 +80,13 @@ jobs:
 
       - name: Install dependencies
         run: go mod download
+
+      - name: Verify canonical workspace refs
+        run: |
+          bash scripts/verify-canonical-workspace-refs.sh \
+            --manifest docs/evidence/canonical-workspace-refs.json \
+            --workspace-root "$GITHUB_WORKSPACE" \
+            --out /tmp/canonical-workspace-refs-verification.json
 
       - name: Run linter
         uses: golangci/golangci-lint-action@v4
