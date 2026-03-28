@@ -66,8 +66,16 @@ Milestone 1 is complete only when all of the following are true:
   forms, queues, conversations, cases, knowledge, automation, and audit
 - the operator and agent surface is real through `mbr`, GraphQL, admin, and the
   public bootstrap/docs path
+- the core service-desk loop is operator-complete across the supported product
+  surfaces: manual case creation, inbound email intake, public form intake,
+  public conversation intake, queue placement, assign, priority, internal note,
+  reply, handoff, status transitions, escalation from conversation to case, and
+  attachment handling are all available and workflow-proven
 - installable extensions are a real runtime model with activation, validation,
   lifecycle operations, artifact surfaces, permissions, and event contracts
+- extensions and agents can request in-scope core case actions through a real
+  sanctioned core-action contract; placeholder command streams with no
+  production consumer do not satisfy this bar
 - the core first-party extension set is real: ATS, enterprise access, error
   tracking, and web analytics all ship on that runtime model
 - the in-scope beta first-party extension set is real: sales-pipeline and
@@ -251,6 +259,39 @@ The operator experience should still feel unified:
 - the case timeline should be the durable conversational surface for work, decisions, approvals, and follow-up
 - escalation from conversation to case preserves provenance and audit history
 - delegated cross-team routing remains visible and auditable in that thread
+- operators and agents should be able to execute the normal service-desk loop
+  without dropping into unsupported surfaces: reply, handoff, escalate, assign,
+  reprioritize, annotate, and attach files should all work through the approved
+  CLI, API, and admin paths
+
+## Product-Complete Operational Loop
+
+Milestone 1 is not complete merely because the primitives exist. It is complete
+when one real operational loop is mature enough to replace a fragmented support
+or intake stack for a small team.
+
+The minimum complete loop is:
+
+- intake from inbound email
+- intake from public forms
+- intake from a supported public conversation surface owned by core, such as a
+  website widget, app chat surface, or equivalent public conversation adapter
+- manual operator case creation without bypassing the approved product surfaces
+- queue visibility for both conversations and cases
+- conversation reply, handoff, and escalation with preserved provenance
+- case create, assign, unassign, set priority, add internal note, reply,
+  handoff, set status, and attachment handling
+- durable linkage across the resulting conversation, case, queue item,
+  attachment, and notification records
+
+That loop must be:
+
+- available through supported product surfaces rather than only through service
+  methods
+- usable by humans and agents without hidden setup steps
+- represented in the workflow-proof matrix and milestone proof bundle
+- strong enough that the public service-desk and shared-operations claims remain
+  honest
 
 ## Repository and Delivery Model
 
@@ -346,6 +387,14 @@ Minimum command surface:
 - `mbr conversations escalate`
 - `mbr cases list`
 - `mbr cases show`
+- `mbr cases create`
+- `mbr cases assign`
+- `mbr cases unassign`
+- `mbr cases set-priority`
+- `mbr cases add-note`
+- `mbr cases reply`
+- `mbr cases handoff`
+- `mbr cases set-status`
 - `mbr catalog list`
 - `mbr catalog show`
 - `mbr artifacts list`
@@ -408,6 +457,13 @@ The supported baseline includes:
 - `mbr health check`
 - `mbr cases list`
 - `mbr cases show`
+- `mbr cases create`
+- `mbr cases assign`
+- `mbr cases unassign`
+- `mbr cases set-priority`
+- `mbr cases add-note`
+- `mbr cases reply`
+- `mbr cases handoff`
 - `mbr cases set-status`
 - `mbr catalog list`
 - `mbr catalog show`
@@ -558,6 +614,11 @@ Milestone 1 also includes:
 - stable core event subscriptions
 - extension-owned event consumers
 - typed command and event flows for requesting core actions
+
+For Milestone 1, that sanctioned core-action contract must be real enough for
+extension or agent initiated case workflows that matter to the product promise.
+At minimum, case creation and follow-up actions used by in-scope product loops
+must execute through a supported contract with a production consumer and proof.
 
 Core automation reacts to both core and extension events and triggers outbound
 actions or connector deliveries when those events occur.
