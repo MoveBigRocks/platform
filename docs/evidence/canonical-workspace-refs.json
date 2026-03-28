@@ -3,7 +3,7 @@
     "extensions": {
       "repository": "MoveBigRocks/extensions",
       "path": "extensions",
-      "ref": "e957fb2272f77d24d3bb4a907ad372fb93175e30"
+      "ref": "37f1c80b5eb6f14701c00344d38d9bf2dcf607db"
     },
     "extension-sdk": {
       "repository": "MoveBigRocks/extension-sdk",

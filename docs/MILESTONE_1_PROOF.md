@@ -63,6 +63,7 @@ first-party sources rather than stale mirrored fixtures.
 7. ATS scenario proof:
    - run `MoveBigRocks/extensions/go test ./ats/runtime ./cmd/ats-runtime ./tools/ats-scenario-proof`
    - archive the ATS scenario JSON proving create job, publish, submit, review, move stage, close, and reopen
+   - require the archived scenario to show a clean uploaded resume attachment linked onto the created candidate case while portfolio context survives in durable case fields
 8. Public bundle publication planning:
    - run `MoveBigRocks/extensions/go run ./tools/publication-evidence --mode plan`
    - archive the generated publication-plan JSON from the public bundle catalog and current manifests
@@ -108,18 +109,16 @@ first-party sources rather than stale mirrored fixtures.
 External-provider reliability on the public internet remains outside what the
 archived proof artifacts can establish.
 
-Under the expanded Milestone 1 bar, the proof bundle also still does not cover:
+Under the expanded Milestone 1 bar, the proof bundle still does not cover:
 
 - conversation reply, handoff, escalation, and queue-parity workflows as
   product-complete operational proof rows
 - a supported public conversation intake surface such as the website widget or
   equivalent public conversation adapter implied by the public product promise
-- the remaining attachment-workflow gap outside the core case loop: ATS
-  resume and portfolio uploads as milestone-proof artifacts
 
 ## Current Live Publication Evidence
 
-- ATS `v0.8.24`: [run 23688333389](https://github.com/MoveBigRocks/extensions/actions/runs/23688333389)
+- ATS `v0.8.25`: [run 23693072851](https://github.com/MoveBigRocks/extensions/actions/runs/23693072851)
 - Error Tracking `v0.8.21`: [run 23688148347](https://github.com/MoveBigRocks/extensions/actions/runs/23688148347)
 - Web Analytics `v0.8.21`: [run 23688148371](https://github.com/MoveBigRocks/extensions/actions/runs/23688148371)
 - Sales Pipeline beta `v0.1.0`: [run 23683709265](https://github.com/MoveBigRocks/extensions/actions/runs/23683709265)

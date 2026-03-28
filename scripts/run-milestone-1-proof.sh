@@ -244,6 +244,8 @@ run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go test ./ats/runtime 
 run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go run ./tools/publication-evidence --mode plan --source-root \"$FIRST_PARTY_EXTENSIONS_ROOT\" --out \"$PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH\""
 run_step go run ./tools/runtime-bootstrap-proof --out "$BOOTSTRAP_PROOF_PATH" --version "$VERSION" --git-sha "$GIT_SHA" --build-date "$GENERATED_AT"
 run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go run ./tools/ats-scenario-proof --out \"$ATS_SCENARIO_PATH\" --version \"$VERSION\" --git-sha \"$GIT_SHA\" --build-date \"$GENERATED_AT\""
+require_file "$ATS_SCENARIO_PATH"
+run_step bash -lc "jq -e '.attachment.id == .case.customFields.ats_applicant_resume_attachment_id and .attachment.caseId == .case.id and .attachment.visibleCount >= 1 and .attachment.status == \"clean\" and (.case.customFields.ats_applicant_portfolio_url | type == \"string\" and length > 0)' \"$ATS_SCENARIO_PATH\" >/dev/null"
 require_file "$CASE_REPLY_PROOF_PATH"
 require_file "$CASE_COMMAND_CREATE_PROOF_PATH"
 require_file "$CASE_COMMAND_FAILURE_PROOF_PATH"

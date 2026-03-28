@@ -3,10 +3,10 @@
   "bundles": [
     {
       "slug": "ats",
-      "version": "v0.8.24",
-      "publishTag": "v0.8.24",
-      "runID": "23688333389",
-      "artifactName": "public-bundle-ats-v0.8.24"
+      "version": "v0.8.25",
+      "publishTag": "v0.8.25",
+      "runID": "23693072851",
+      "artifactName": "public-bundle-ats-v0.8.25"
     },
     {
       "slug": "error-tracking",

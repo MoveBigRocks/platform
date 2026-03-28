@@ -168,7 +168,8 @@ rows for:
   management, handoff/status, and attachment-bearing case flows can each be
   proved or kept honestly open
 - conversation reply, handoff, escalation, and public intake
-- attachment-bearing operational flows, including ATS candidate/resume paths
+- attachment-bearing operational flows, including first-party extension intake
+  paths such as ATS candidate resumes
 - sanctioned extension-or-agent initiated case actions when the architecture
   promises them
 

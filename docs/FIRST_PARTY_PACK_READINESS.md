@@ -20,7 +20,7 @@ A first-party pack is considered launch-ready when it has:
 
 | Pack | Launch Posture | Scope | Core Proof | Runtime / Surface Proof | Remaining Gap |
 | --- | --- | --- | --- | --- | --- |
-| ATS | Core launch pack, public | Workspace product pack with careers site, owned-schema recruiting workflow state, and application flow | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`internal/platform/services/extension_runtime_test.go`](../internal/platform/services/extension_runtime_test.go), [`MoveBigRocks/extensions/ats/runtime/service_test.go`](https://github.com/MoveBigRocks/extensions/blob/e957fb2272f77d24d3bb4a907ad372fb93175e30/ats/runtime/service_test.go), [`MoveBigRocks/extensions/tools/ats-scenario-proof/main.go`](https://github.com/MoveBigRocks/extensions/blob/e957fb2272f77d24d3bb4a907ad372fb93175e30/tools/ats-scenario-proof/main.go) | None for Milestone 1. Live publication evidence exists, is durably archived in-repo, and is verified in the milestone proof bundle. |
+| ATS | Core launch pack, public | Workspace product pack with careers site, owned-schema recruiting workflow state, and application flow | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`internal/platform/services/extension_runtime_test.go`](../internal/platform/services/extension_runtime_test.go), [`MoveBigRocks/extensions/ats/runtime/service_test.go`](https://github.com/MoveBigRocks/extensions/blob/37f1c80b5eb6f14701c00344d38d9bf2dcf607db/ats/runtime/service_test.go), [`MoveBigRocks/extensions/tools/ats-scenario-proof/main.go`](https://github.com/MoveBigRocks/extensions/blob/37f1c80b5eb6f14701c00344d38d9bf2dcf607db/tools/ats-scenario-proof/main.go) | None for Milestone 1. ATS now proves the uploaded-resume path end to end, live publication evidence exists for `v0.8.25`, and that evidence is durably archived in-repo and verified in the milestone proof bundle. |
 | Enterprise Access | Core launch pack, controlled privileged | Instance-scoped identity and privileged admin pack | [`internal/platform/services/first_party_extension_packages_test.go`](../internal/platform/services/first_party_extension_packages_test.go) | [`internal/platform/services/extension_admin_navigation_test.go`](../internal/platform/services/extension_admin_navigation_test.go) | Controlled distribution path is intentional for Milestone 1. |
 | Error Tracking | Core launch pack, public | Workspace operational pack with Sentry-compatible ingest and admin pages | [`cmd/api/error_tracking_extraction_test.go`](../cmd/api/error_tracking_extraction_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`cmd/api/extension_service_targets_test.go`](../cmd/api/extension_service_targets_test.go) | None for Milestone 1. Live publication evidence exists, is durably archived in-repo, and is verified in the milestone proof bundle. |
 | Web Analytics | Core launch pack, public | Workspace operational pack with analytics script and admin page | [`cmd/api/analytics_extraction_test.go`](../cmd/api/analytics_extraction_test.go), [`cmd/mbr/extension_contract_test.go`](../cmd/mbr/extension_contract_test.go) | [`cmd/api/extension_service_targets_test.go`](../cmd/api/extension_service_targets_test.go) | None for Milestone 1. Live publication evidence exists, is durably archived in-repo, and is verified in the milestone proof bundle. |
@@ -30,16 +30,16 @@ A first-party pack is considered launch-ready when it has:
 ## Pack Locations
 
 - ATS: public first-party source in
-  [`MoveBigRocks/extensions/ats`](https://github.com/MoveBigRocks/extensions/tree/e957fb2272f77d24d3bb4a907ad372fb93175e30/ats)
+  [`MoveBigRocks/extensions/ats`](https://github.com/MoveBigRocks/extensions/tree/37f1c80b5eb6f14701c00344d38d9bf2dcf607db/ats)
 - Enterprise Access: controlled first-party source in `packs/enterprise-access`
 - Error Tracking: public first-party source in
-  [`MoveBigRocks/extensions/error-tracking`](https://github.com/MoveBigRocks/extensions/tree/e957fb2272f77d24d3bb4a907ad372fb93175e30/error-tracking)
+  [`MoveBigRocks/extensions/error-tracking`](https://github.com/MoveBigRocks/extensions/tree/37f1c80b5eb6f14701c00344d38d9bf2dcf607db/error-tracking)
 - Sales Pipeline: public first-party beta source in
-  [`MoveBigRocks/extensions/sales-pipeline`](https://github.com/MoveBigRocks/extensions/tree/e957fb2272f77d24d3bb4a907ad372fb93175e30/sales-pipeline)
+  [`MoveBigRocks/extensions/sales-pipeline`](https://github.com/MoveBigRocks/extensions/tree/37f1c80b5eb6f14701c00344d38d9bf2dcf607db/sales-pipeline)
 - Community Feature Requests: public first-party beta source in
-  [`MoveBigRocks/extensions/community-feature-requests`](https://github.com/MoveBigRocks/extensions/tree/e957fb2272f77d24d3bb4a907ad372fb93175e30/community-feature-requests)
+  [`MoveBigRocks/extensions/community-feature-requests`](https://github.com/MoveBigRocks/extensions/tree/37f1c80b5eb6f14701c00344d38d9bf2dcf607db/community-feature-requests)
 - Web Analytics: public first-party source in
-  [`MoveBigRocks/extensions/web-analytics`](https://github.com/MoveBigRocks/extensions/tree/e957fb2272f77d24d3bb4a907ad372fb93175e30/web-analytics)
+  [`MoveBigRocks/extensions/web-analytics`](https://github.com/MoveBigRocks/extensions/tree/37f1c80b5eb6f14701c00344d38d9bf2dcf607db/web-analytics)
 
 ## Proof Loop
 
@@ -70,7 +70,7 @@ manifest so the artifact stays self-contained.
 
 ## Live Publication Evidence
 
-- ATS `v0.8.24`: [run 23688333389](https://github.com/MoveBigRocks/extensions/actions/runs/23688333389)
+- ATS `v0.8.25`: [run 23693072851](https://github.com/MoveBigRocks/extensions/actions/runs/23693072851)
 - Error Tracking `v0.8.21`: [run 23688148347](https://github.com/MoveBigRocks/extensions/actions/runs/23688148347)
 - Web Analytics `v0.8.21`: [run 23688148371](https://github.com/MoveBigRocks/extensions/actions/runs/23688148371)
 - Sales Pipeline beta `v0.1.0`: [run 23683709265](https://github.com/MoveBigRocks/extensions/actions/runs/23683709265)

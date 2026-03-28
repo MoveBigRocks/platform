@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-03-28T15:31:01Z",
+  "generatedAt": "2026-03-28T19:54:55Z",
   "publisher": "DemandOps",
   "extension": {
     "slug": "ats",
     "name": "Applicant Tracking",
     "sourceDir": "ats",
-    "version": "0.8.24",
+    "version": "0.8.25",
     "releaseChannel": "stable",
-    "releaseTag": "ats-v0.8.24",
-    "publishTag": "v0.8.24",
+    "releaseTag": "ats-v0.8.25",
+    "publishTag": "v0.8.25",
     "bundleImage": "ghcr.io/movebigrocks/mbr-ext-ats",
-    "bundleRef": "ghcr.io/movebigrocks/mbr-ext-ats:v0.8.24",
+    "bundleRef": "ghcr.io/movebigrocks/mbr-ext-ats:v0.8.25",
     "runtimeImage": "ghcr.io/movebigrocks/mbr-ext-ats-runtime",
-    "runtimeRef": "ghcr.io/movebigrocks/mbr-ext-ats-runtime:v0.8.24",
+    "runtimeRef": "ghcr.io/movebigrocks/mbr-ext-ats-runtime:v0.8.25",
     "kind": "product",
     "scope": "workspace",
     "risk": "standard",
@@ -25,14 +25,14 @@
   "publication": {
     "repository": "MoveBigRocks/extensions",
     "eventName": "push",
-    "gitSha": "e957fb2272f77d24d3bb4a907ad372fb93175e30",
-    "workflowRunUrl": "https://github.com/MoveBigRocks/extensions/actions/runs/23688333389",
-    "publishedAt": "2026-03-28T15:31:01Z",
-    "publishTag": "v0.8.24",
+    "gitSha": "37f1c80b5eb6f14701c00344d38d9bf2dcf607db",
+    "workflowRunUrl": "https://github.com/MoveBigRocks/extensions/actions/runs/23693072851",
+    "publishedAt": "2026-03-28T19:54:55Z",
+    "publishTag": "v0.8.25",
     "publishLatest": true,
-    "bundleRef": "ghcr.io/movebigrocks/mbr-ext-ats:v0.8.24",
-    "bundleDigest": "sha256:19dc08c237a99fec7b4ff15048fdd2e3bf7e90101c34ace886e51e0d866a9f2c",
-    "runtimeRef": "ghcr.io/movebigrocks/mbr-ext-ats-runtime:v0.8.24",
-    "runtimeDigest": "sha256:b088b43818302a866f053b73141885acfe5378b49550a3af4a52e022c67dcb13"
+    "bundleRef": "ghcr.io/movebigrocks/mbr-ext-ats:v0.8.25",
+    "bundleDigest": "sha256:520d2836026948bba08032efcdf87d1ca3f7e9c79cce18478da36461c69f4217",
+    "runtimeRef": "ghcr.io/movebigrocks/mbr-ext-ats-runtime:v0.8.25",
+    "runtimeDigest": "sha256:c7bc5604797d60006707b5e7cc99cdf3e7504062115a043176d742b78cdbcc87"
   }
 }

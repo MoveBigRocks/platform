@@ -172,8 +172,9 @@ Evidence:
 
 Remaining Phase 2 work:
 
-- ATS resume and portfolio uploads still need equivalent workflow proof so the
-  attachment workstream can be marked fully closed
+- None for Milestone 1. The ATS scenario now requires a clean uploaded resume
+  attachment to be linked onto the candidate case while portfolio context
+  remains visible in durable case fields.
 
 ### Phase 3: Complete Conversation Workflows And Public Intake
 
