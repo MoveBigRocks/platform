@@ -1,0 +1,40 @@
+{
+  "repository": "MoveBigRocks/extensions",
+  "bundles": [
+    {
+      "slug": "ats",
+      "version": "v0.8.23",
+      "publishTag": "v0.8.23",
+      "runID": "23683709259",
+      "artifactName": "public-bundle-ats-v0.8.23"
+    },
+    {
+      "slug": "error-tracking",
+      "version": "v0.8.20",
+      "publishTag": "v0.8.20",
+      "runID": "23683710893",
+      "artifactName": "public-bundle-error-tracking-v0.8.20"
+    },
+    {
+      "slug": "web-analytics",
+      "version": "v0.8.20",
+      "publishTag": "v0.8.20",
+      "runID": "23683711231",
+      "artifactName": "public-bundle-web-analytics-v0.8.20"
+    },
+    {
+      "slug": "sales-pipeline",
+      "version": "v0.1.0",
+      "publishTag": "v0.1.0",
+      "runID": "23683709265",
+      "artifactName": "public-bundle-sales-pipeline-v0.1.0"
+    },
+    {
+      "slug": "community-feature-requests",
+      "version": "v0.1.0",
+      "publishTag": "v0.1.0",
+      "runID": "23683709269",
+      "artifactName": "public-bundle-community-feature-requests-v0.1.0"
+    }
+  ]
+}

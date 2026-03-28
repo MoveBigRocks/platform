@@ -7,6 +7,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   proof:
     name: Run Milestone 1 Proof
@@ -50,7 +54,18 @@ jobs:
           go-version: '1.26.0'
           cache-dependency-path: go.sum
 
+      - name: Fetch live publication evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bash scripts/fetch-publication-evidence.sh \
+            --manifest docs/evidence/public-bundle-publication-runs.json \
+            --out dist/publication-evidence
+
       - name: Run milestone proof script
+        env:
+          FIRST_PARTY_PUBLICATION_EVIDENCE_DIR: dist/publication-evidence
+          REQUIRE_PUBLICATION_EVIDENCE: "true"
         run: |
           bash scripts/run-milestone-1-proof.sh \
             --version "proof-${GITHUB_SHA::12}" \

@@ -175,8 +175,12 @@ Target merge gate:
 Current reality:
 
 - the full `go test -tags=integration ./...` sweep is green and hard-gated in CI
+- milestone proof now runs that same full integration sweep and archives its log
 - milestone proof archives machine-readable workflow artifacts for scoped
   command-driven operational flows
+- milestone proof CI also downloads and archives the live public-bundle
+  publication evidence listed in
+  [`docs/evidence/public-bundle-publication-runs.json`](./evidence/public-bundle-publication-runs.json)
 - reusable CI outputs and summaries now report the integration sweep as part of
   the required gate instead of a soft signal
 
