@@ -6,7 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="$ROOT_DIR/dist/milestone-proof"
 VERSION=""
 WORKSPACE_ROOT="${MBR_WORKSPACE_ROOT:-${MOVEBIGROCKS_WORKSPACE_ROOT:-$(cd "$ROOT_DIR/.." && pwd)}}"
-FIRST_PARTY_EXTENSIONS_ROOT="${FIRST_PARTY_EXTENSIONS_ROOT:-$(cd "$ROOT_DIR/.." && pwd)/extensions}"
+FIRST_PARTY_EXTENSIONS_ROOT="${FIRST_PARTY_EXTENSIONS_ROOT:-$WORKSPACE_ROOT/extensions}"
 EXTENSION_SDK_ROOT="${EXTENSION_SDK_ROOT:-$WORKSPACE_ROOT/extension-sdk}"
 PACKS_ROOT="${PACKS_ROOT:-$WORKSPACE_ROOT/packs}"
 
@@ -135,6 +135,32 @@ artifact_rel() {
   echo "$path"
 }
 
+workspace_includes_module_dir() {
+  local gowork_path="$1"
+  local module_dir="$2"
+  local gowork_dir resolved_module resolved_use_path disk_path
+
+  if [[ ! -f "$gowork_path" ]]; then
+    return 1
+  fi
+
+  resolved_module="$(cd "$module_dir" && pwd)"
+  gowork_dir="$(cd "$(dirname "$gowork_path")" && pwd)"
+  while IFS= read -r disk_path; do
+    [[ -z "$disk_path" ]] && continue
+    if [[ "$disk_path" = /* ]]; then
+      resolved_use_path="$(cd "$disk_path" && pwd)"
+    else
+      resolved_use_path="$(cd "$gowork_dir/$disk_path" && pwd)"
+    fi
+    if [[ "$resolved_use_path" == "$resolved_module" ]]; then
+      return 0
+    fi
+  done < <(go work edit -json "$gowork_path" | jq -r '.Use[]?.DiskPath')
+
+  return 1
+}
+
 require_file() {
   local path="$1"
   if [[ ! -f "$path" ]]; then
@@ -156,11 +182,15 @@ ensure_go_workspace() {
     return
   fi
   if [[ -n "${GOWORK:-}" && -f "$GOWORK" ]]; then
-    return
+    if workspace_includes_module_dir "$GOWORK" "$ROOT_DIR"; then
+      return
+    fi
   fi
   if [[ -f "$WORKSPACE_ROOT/go.work" ]]; then
-    export GOWORK="$WORKSPACE_ROOT/go.work"
-    return
+    if workspace_includes_module_dir "$WORKSPACE_ROOT/go.work" "$ROOT_DIR"; then
+      export GOWORK="$WORKSPACE_ROOT/go.work"
+      return
+    fi
   fi
 
   local modules=("$ROOT_DIR")

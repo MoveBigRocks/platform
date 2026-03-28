@@ -24,12 +24,16 @@ first-party sources rather than stale mirrored fixtures.
 - Local reruns should use the same workspace shape, or explicitly point
   `MBR_WORKSPACE_ROOT`, `FIRST_PARTY_EXTENSIONS_ROOT`, `EXTENSION_SDK_ROOT`,
   and `PACKS_ROOT` at equivalent checkouts.
+- When `MBR_WORKSPACE_ROOT` is set, the proof script now resolves all sibling
+  repo defaults from that workspace root consistently, including `extensions`.
 - The proof script exports `MBR_REQUIRE_WORKSPACE_REFS=true`, so first-party
   tests fail closed when those canonical sibling repos are missing instead of
   silently skipping.
-- If the workspace does not already provide a top-level `go.work`, the proof
-  script now bootstraps a temporary one inside the proof bundle so the local
-  `extensions` module resolves the checked-out `platform` module correctly.
+- If the workspace does not already provide a top-level `go.work`, or if the
+  available `go.work` does not actually include the `platform` checkout being
+  proven, the proof script bootstraps a temporary one inside the proof bundle
+  so the exercised `platform` repo and its pinned sibling modules resolve
+  correctly together.
 - The proof script also verifies that the checked-out sibling repos exactly
   match the pinned refs in the manifest and archives that verification result.
 
