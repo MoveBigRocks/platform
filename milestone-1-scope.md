@@ -259,7 +259,7 @@ Milestone 1 standardizes on this delivery shape:
 - a public core repo for the shared source and releases
 - a public instance template repo for deployment bootstrapping
 - a public extension SDK/template repo
-- one private first-party extension monorepo at the start
+- one public first-party extension monorepo at the start
 - private customer instance repos created from the template
 - private customer extension repos by default
 - a public docs and bootstrap surface for humans and agents
@@ -368,10 +368,10 @@ Minimum command surface:
 - `mbr concepts list`
 - `mbr concepts show`
 - `mbr concepts register`
-- `mbr form specs list`
-- `mbr form specs show`
-- `mbr form submissions list`
-- `mbr form submissions show`
+- `mbr forms specs list`
+- `mbr forms specs show`
+- `mbr forms submissions list`
+- `mbr forms submissions show`
 - `mbr contacts list`
 - `mbr extensions list`
 - `mbr extensions install`
@@ -431,10 +431,10 @@ The supported baseline includes:
 - `mbr concepts list`
 - `mbr concepts show`
 - `mbr concepts register`
-- `mbr form specs list`
-- `mbr form specs show`
-- `mbr form submissions list`
-- `mbr form submissions show`
+- `mbr forms specs list`
+- `mbr forms specs show`
+- `mbr forms submissions list`
+- `mbr forms submissions show`
 - `mbr contacts list`
 - `mbr attachments upload`
 - `mbr extensions list`

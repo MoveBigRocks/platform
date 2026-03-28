@@ -38,6 +38,7 @@
 - Closed the remaining release-facing evidence gap by tagging and running the public bundle workflow for the full in-scope public set, then archiving the emitted publication evidence inside the milestone proof bundle.
 - Adopted a workflow-proof model for operational capabilities and added [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md) as the inventory of milestone-facing workflow evidence.
 - Closed the command-driven email and notification workflow gaps with end-to-end tests, archived workflow artifacts, and a green hard-gated integration sweep.
+- Synced [`milestone-1-scope.md`](../milestone-1-scope.md) to the shipped repo shape and CLI namespace so the scope matches the public first-party extensions repo and the `mbr forms ...` command surface.
 
 ## Next Closure Checkpoints
 
