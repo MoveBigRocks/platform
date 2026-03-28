@@ -191,6 +191,9 @@ Current reality:
   (`extensions`, `extension-sdk`, and `packs`) before running proof, and proof
   mode sets `MBR_REQUIRE_WORKSPACE_REFS=true` so canonical-source tests fail
   closed instead of silently skipping
+- those sibling repos are pinned by
+  [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
+  and verified by the proof script before milestone-critical tests run
 - milestone proof bootstraps a temporary `go.work` when the workspace does not
   already provide one, so multi-repo proof does not silently depend on a
   developer-specific local Go workspace

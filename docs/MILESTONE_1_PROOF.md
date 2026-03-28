@@ -18,6 +18,9 @@ first-party sources rather than stale mirrored fixtures.
 
 - CI now checks out `platform`, `extensions`, `extension-sdk`, and `packs`
   into one workspace before it runs the proof script.
+- Those sibling repos are pinned by
+  [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
+  instead of floating on whatever happens to be current on `main`.
 - Local reruns should use the same workspace shape, or explicitly point
   `MBR_WORKSPACE_ROOT`, `FIRST_PARTY_EXTENSIONS_ROOT`, `EXTENSION_SDK_ROOT`,
   and `PACKS_ROOT` at equivalent checkouts.
@@ -27,6 +30,8 @@ first-party sources rather than stale mirrored fixtures.
 - If the workspace does not already provide a top-level `go.work`, the proof
   script now bootstraps a temporary one inside the proof bundle so the local
   `extensions` module resolves the checked-out `platform` module correctly.
+- The proof script also verifies that the checked-out sibling repos exactly
+  match the pinned refs in the manifest and archives that verification result.
 
 ## What The Proof Run Covers Today
 
@@ -68,6 +73,15 @@ first-party sources rather than stale mirrored fixtures.
 12. CLI release artifact validation:
    - `bash scripts/verify-cli-release.sh dist/milestone-proof/cli-release`
 
+## Canonical Workspace Refs
+
+- Manifest:
+  [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
+- Verification script:
+  [`scripts/verify-canonical-workspace-refs.sh`](../scripts/verify-canonical-workspace-refs.sh)
+- Proof artifact:
+  `dist/milestone-proof/workspace-refs/canonical-workspace-refs-verification.json`
+
 ## What The Proof Run Does Not Yet Cover
 
 The proof bundle still does not claim anything about command streams that are
@@ -101,6 +115,8 @@ The current proof run writes:
 - `dist/milestone-proof/integration-go-test.log`
 - `dist/milestone-proof/runtime-bootstrap/`
 - `dist/milestone-proof/ats-scenario/`
+- `dist/milestone-proof/workspace-refs/`
+- `dist/milestone-proof/workspace-refs/canonical-workspace-refs-verification.json`
 - `dist/milestone-proof/workflow-proof/`
 - `dist/milestone-proof/public-bundle-publication/`
 - `dist/milestone-proof/public-bundle-publication/release-evidence/`
@@ -115,6 +131,7 @@ Those outputs currently provide the concrete proof bundle for:
 - first-party pack readiness
 - runtime discovery, extension lifecycle, and publication evidence
 - durable publication evidence archiving plus manifest/plan verification
+- canonical sibling-repo ref verification for deterministic multi-repo proof
 - milestone-scoped operational workflow evidence
 - command failure visibility for the scoped operational streams
 - cross-platform CLI release evidence

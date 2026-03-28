@@ -59,7 +59,9 @@ verifies them against the manifest and publication plan, and cross-checks live
 downloads against those archived copies in CI. Proof mode now fails closed when
 those canonical sibling repos are missing, and the committed milestone-proof CI
 workflow materializes `extensions`, `extension-sdk`, and `packs` before it runs
-that validation.
+that validation. Those sibling repos are also pinned in
+[`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
+and verified inside the proof bundle before the first-party pack checks run.
 
 ## Live Publication Evidence
 
