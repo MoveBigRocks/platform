@@ -350,3 +350,357 @@ This issue is fully resolved only when:
 
 Until then, the instance repo should be treated as having an honest but still
 unfinished extension control plane.
+
+## Fixed Decisions
+
+To avoid reopening the same design debates during implementation, this plan
+locks in the following decisions.
+
+### 1. Desired state stays git-backed
+
+`extensions/desired-state.yaml` remains the human-edited declaration of
+extension intent in the instance repo.
+
+We are **not** moving extension desired state into the database as the primary
+authoring interface.
+
+### 2. Reconciliation is host-side and admin-capable
+
+The canonical reconciler will run from a packaged platform tool on the host.
+
+We are **not** making GitHub Actions or local laptops mint ad hoc browser
+sessions to drive privileged install flows.
+
+### 3. No silent destructive reconciliation
+
+The reconciler will be convergent, but destructive changes must be explicit.
+
+Default behavior:
+
+- absent from YAML does not uninstall
+- uninstall requires explicit desired intent such as `state: absent`
+- instance-scoped privileged packs never auto-remove without clear intent
+
+### 4. Runtime intent and bundle intent must converge from one source
+
+Service-backed extension runtime deployment can no longer be maintained as a
+parallel hand-edited truth.
+
+The implementation may temporarily keep `extensions/runtime-manifest.json`, but
+it must become a generated derivative of extension desired state rather than an
+independent authority.
+
+### 5. Full fix means deploy-time proof, not just library correctness
+
+Unit and integration tests matter, but this issue is not closed until the
+instance-repo deploy flow:
+
+- plans reconciliation
+- applies it
+- verifies it
+- archives artifacts proving that no drift remains
+
+## Remaining Issues To Close
+
+The full fix still requires closing each of these concrete issues:
+
+1. **Schema gap**
+   `extensions/desired-state.yaml` cannot yet express full desired config,
+   preview rollout, or explicit removal semantics.
+
+2. **Double-entry drift**
+   `extensions/runtime-manifest.json` duplicates version-bearing service-backed
+   runtime intent outside the desired-state file.
+
+3. **Reusable source loading gap**
+   Bundle acquisition is still tied to `cmd/mbr`, which blocks a clean packaged
+   reconciler.
+
+4. **No reconciliation engine**
+   There is no canonical diff/plan/apply layer over installed extensions.
+
+5. **No packaged admin tool**
+   The core release artifact does not ship a reconciler that the instance repo
+   can invoke on the host.
+
+6. **Authority gap for instance-scoped packs**
+   Workspace agent tokens cannot reconcile privileged instance-scoped packs such
+   as `enterprise-access`.
+
+7. **Verification gap**
+   Production verification still proves runtime reachability more strongly than
+   full desired-state convergence.
+
+8. **Evidence gap**
+   Deploy runs do not yet archive machine-readable reconciliation plan and apply
+   artifacts.
+
+9. **Audit gap**
+   There is still no dedicated reconciliation audit trail beyond mutable install
+   rows and generic workflow logs.
+
+10. **DemandOps dogfood gap**
+    DemandOps still needs one clean no-manual-intervention rollout to prove the
+    fix end to end.
+
+## Execution Plan
+
+The safest path is to land this in seven phases.
+
+### Phase 0: Lock The Contract
+
+Goal:
+
+- define the desired-state schema and remove design ambiguity before code lands
+
+Work:
+
+- extend `extensions/desired-state.yaml` contract to cover:
+  - `state`
+  - `config`
+  - `configSecretRefs`
+  - `previewWorkspace`
+  - explicit scope and workspace resolution rules
+- define how service-backed runtime artifact refs are represented in desired
+  state
+- decide whether `runtime-manifest.json` becomes generated output or disappears
+
+Deliverables:
+
+- schema documentation update
+- one canonical example file covering workspace-scoped, instance-scoped,
+  service-backed, and planned entries
+
+Evidence:
+
+- parser tests for new fields
+- validation tests for forbidden combinations
+
+### Phase 1: Extract Shared Bundle Acquisition
+
+Goal:
+
+- make bundle loading reusable outside the CLI
+
+Work:
+
+- move source resolution and bundle decode logic from `cmd/mbr` into a shared
+  package
+- keep CLI behavior unchanged by making the CLI call the new package
+
+Deliverables:
+
+- shared package used by both CLI and future reconciler
+
+Evidence:
+
+- existing CLI tests still pass
+- new package tests cover local file, local source dir, HTTPS, OCI, and
+  marketplace alias cases
+
+### Phase 2: Build The Reconciliation Engine
+
+Goal:
+
+- compute and apply desired-state convergence deterministically
+
+Work:
+
+- parse desired-state entries
+- resolve workspace slug to workspace ID
+- load installed instance and workspace extensions
+- compare desired bundle ref, version, config, status, and activation state
+- produce explicit actions:
+  - `install`
+  - `upgrade`
+  - `configure`
+  - `validate`
+  - `activate`
+  - `deactivate`
+  - `uninstall`
+  - `noop`
+  - `drift`
+
+Deliverables:
+
+- reconciliation package with pure planning and apply layers
+
+Evidence:
+
+- plan tests for install/upgrade/configure/activate/deactivate/uninstall/noop
+- integration tests against real extension service flows
+- failure-path tests for validation, trust, runtime, and workspace resolution
+
+### Phase 3: Package The Host-Side Reconciler
+
+Goal:
+
+- make reconciliation callable from a pinned release artifact
+
+Work:
+
+- add `cmd/reconcile-extensions`
+- package it under `tools/reconcile-extensions`
+- support:
+  - `plan`
+  - `apply`
+  - `check`
+- support file-based desired-state input and machine-readable output paths
+- run under DB-backed admin context so instance-scoped packs work
+
+Deliverables:
+
+- packaged binary inside `servicesArtifact`
+- release contract update
+
+Evidence:
+
+- release artifact test proving the tool is shipped
+- command contract tests for JSON output and exit codes
+
+### Phase 4: Integrate Into Instance-Repo Deploy
+
+Goal:
+
+- make desired-state reconciliation part of the actual production rollout
+
+Work:
+
+- upload desired-state inputs during deploy
+- run `tools/reconcile-extensions --plan`
+- archive plan artifact
+- run `tools/reconcile-extensions --apply`
+- archive apply artifact
+- fail deploy if apply reports unresolved drift or partial failure
+
+Deliverables:
+
+- updated instance repo deploy workflow
+- updated runbook and bootstrap instructions
+
+Evidence:
+
+- CI workflow test or dry-run coverage where possible
+- checked-in example artifacts for plan and apply formats
+
+### Phase 5: Upgrade Verification And Drift Detection
+
+Goal:
+
+- fail closed on extension state drift
+
+Work:
+
+- update production verification to compare desired state against:
+  - installed bundle version
+  - scope and workspace placement
+  - activation state
+  - selected config expectations
+  - runtime protocol and service status
+- require reconcile artifacts to exist and match the live system
+
+Deliverables:
+
+- stronger verify workflow and scripts
+
+Evidence:
+
+- verification tests for drift detection
+- one failing fixture proving version mismatch is caught
+- one failing fixture proving scope mismatch is caught
+
+### Phase 6: Add Audit And Durable Proof
+
+Goal:
+
+- make reconcile operations attributable and durable
+
+Work:
+
+- assign a clear actor identity for reconciliation runs
+- record actor and actions in the apply artifact
+- optionally persist dedicated audit logs if the platform audit surface is ready
+- archive artifacts in both instance repo Actions and milestone-proof-style
+  evidence bundles where relevant
+
+Deliverables:
+
+- stable plan and apply artifact contract
+- documented retention location
+
+Evidence:
+
+- tests for actor attribution in artifacts
+- workflow proof that archives artifacts successfully
+
+### Phase 7: Prove It On DemandOps
+
+Goal:
+
+- demonstrate the issue is truly closed in the real dogfood environment
+
+Work:
+
+- choose a low-risk extension desired-state change
+- deploy from `main`
+- let the workflow reconcile automatically
+- verify first-pass success with no manual post-deploy extension command
+
+Deliverables:
+
+- one successful DemandOps production run using the new reconciler
+
+Evidence:
+
+- archived plan artifact
+- archived apply artifact
+- green verify workflow
+- live system matches desired state exactly
+
+## Cross-Cutting Requirements
+
+These rules apply across every phase.
+
+### Safety
+
+- no raw SQL mutation of `installed_extensions` as a substitute for lifecycle
+  operations
+- no implicit uninstall because a line disappeared from YAML
+- partial failure must be visible and must fail the deploy
+
+### Compatibility
+
+- existing operator CLI workflows must keep working
+- workspace-scoped extension flows must not regress while adding instance-scoped
+  support
+
+### Observability
+
+- every reconcile run must emit machine-readable output
+- outputs must be stable enough for CI and verify workflows to parse
+
+## Exit Criteria
+
+This issue is fully fixed only when **all** of the following are true:
+
+- the desired-state schema can express complete extension intent
+- service-backed runtime refs no longer drift independently from desired state
+- a packaged reconciler ships in the core release artifact
+- the instance repo deploy workflow plans and applies reconciliation
+- production verification proves desired-state convergence, not just runtime
+  health
+- plan and apply artifacts are archived and attributable
+- DemandOps completes a clean real deployment with no manual extension upgrade
+  or activation follow-up
+
+## Recommended Immediate Sequence
+
+To keep momentum and minimize churn, the next commits should land in this order:
+
+1. desired-state schema contract update
+2. shared bundle-source extraction
+3. reconciliation engine plus tests
+4. packaged `tools/reconcile-extensions`
+5. instance repo deploy integration
+6. verification upgrade
+7. DemandOps proof run
