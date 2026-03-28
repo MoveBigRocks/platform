@@ -59,6 +59,7 @@ ATS_SCENARIO_PATH="$ATS_SCENARIO_DIR/ats-scenario.json"
 INTEGRATION_LOG_PATH="$OUT_DIR/integration-go-test.log"
 PUBLIC_BUNDLE_PUBLICATION_DIR="$OUT_DIR/public-bundle-publication"
 PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH="$PUBLIC_BUNDLE_PUBLICATION_DIR/publication-plan.json"
+PUBLIC_BUNDLE_PUBLICATION_MANIFEST_ARCHIVE_PATH="$PUBLIC_BUNDLE_PUBLICATION_DIR/publication-evidence-manifest.json"
 PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR="$PUBLIC_BUNDLE_PUBLICATION_DIR/release-evidence"
 FETCHED_PUBLICATION_EVIDENCE_DIR="$PUBLIC_BUNDLE_PUBLICATION_DIR/fetched-evidence"
 PUBLIC_BUNDLE_EVIDENCE_VERIFICATION_PATH="$PUBLIC_BUNDLE_PUBLICATION_DIR/evidence-verification.json"
@@ -66,6 +67,7 @@ WORKFLOW_PROOF_DIR="$OUT_DIR/workflow-proof"
 PROOF_GO_WORK_DIR="$OUT_DIR/go-work"
 PROOF_GO_WORK_PATH="$PROOF_GO_WORK_DIR/go.work"
 WORKSPACE_REFS_DIR="$OUT_DIR/workspace-refs"
+WORKSPACE_REFS_MANIFEST_ARCHIVE_PATH="$WORKSPACE_REFS_DIR/canonical-workspace-refs.json"
 WORKSPACE_REFS_VERIFICATION_PATH="$WORKSPACE_REFS_DIR/canonical-workspace-refs-verification.json"
 CASE_REPLY_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-reply-send.json"
 EMAIL_COMMAND_FAILURE_PROOF_PATH="$WORKFLOW_PROOF_DIR/email-command-failure-visible.json"
@@ -176,8 +178,9 @@ require_file "$ROOT_DIR/scripts/verify-canonical-workspace-refs.sh"
 require_file "$CANONICAL_WORKSPACE_REFS_MANIFEST"
 ensure_go_workspace
 mkdir -p "$WORKSPACE_REFS_DIR"
+cp "$CANONICAL_WORKSPACE_REFS_MANIFEST" "$WORKSPACE_REFS_MANIFEST_ARCHIVE_PATH"
 run_step bash scripts/verify-canonical-workspace-refs.sh \
-  --manifest "$CANONICAL_WORKSPACE_REFS_MANIFEST" \
+  --manifest "$WORKSPACE_REFS_MANIFEST_ARCHIVE_PATH" \
   --workspace-root "$WORKSPACE_ROOT" \
   --out "$WORKSPACE_REFS_VERIFICATION_PATH"
 
@@ -206,6 +209,9 @@ if [[ -z "$FIRST_PARTY_PUBLICATION_EVIDENCE_DIR" && -d "$ARCHIVED_PUBLICATION_EV
   FIRST_PARTY_PUBLICATION_EVIDENCE_DIR="$ARCHIVED_PUBLICATION_EVIDENCE_DIR"
 fi
 if [[ -n "$FIRST_PARTY_PUBLICATION_EVIDENCE_DIR" ]]; then
+  publication_manifest_path="${FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST:-$ROOT_DIR/docs/evidence/public-bundle-publication-runs.json}"
+  require_file "$publication_manifest_path"
+  cp "$publication_manifest_path" "$PUBLIC_BUNDLE_PUBLICATION_MANIFEST_ARCHIVE_PATH"
   mkdir -p "$PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR"
   shopt -s nullglob
   evidence_files=("$FIRST_PARTY_PUBLICATION_EVIDENCE_DIR"/*.publication-evidence.json)
@@ -221,14 +227,14 @@ if [[ -n "$FIRST_PARTY_PUBLICATION_EVIDENCE_DIR" ]]; then
   fi
   if [[ "${#compare_args[@]}" -gt 0 ]]; then
     run_step bash scripts/verify-publication-evidence.sh \
-      --manifest "${FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST:-$ROOT_DIR/docs/evidence/public-bundle-publication-runs.json}" \
+      --manifest "$PUBLIC_BUNDLE_PUBLICATION_MANIFEST_ARCHIVE_PATH" \
       --plan "$PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH" \
       --evidence-dir "$PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR" \
       "${compare_args[@]}" \
       --out "$PUBLIC_BUNDLE_EVIDENCE_VERIFICATION_PATH"
   else
     run_step bash scripts/verify-publication-evidence.sh \
-      --manifest "${FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST:-$ROOT_DIR/docs/evidence/public-bundle-publication-runs.json}" \
+      --manifest "$PUBLIC_BUNDLE_PUBLICATION_MANIFEST_ARCHIVE_PATH" \
       --plan "$PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH" \
       --evidence-dir "$PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR" \
       --out "$PUBLIC_BUNDLE_EVIDENCE_VERIFICATION_PATH"
@@ -254,7 +260,7 @@ cat >"$SUMMARY_PATH" <<EOF
 - integration_log: ${INTEGRATION_LOG_PATH}
 - runtime_bootstrap_artifact: ${BOOTSTRAP_PROOF_PATH}
 - ats_scenario_artifact: ${ATS_SCENARIO_PATH}
-- canonical_workspace_refs_manifest: ${CANONICAL_WORKSPACE_REFS_MANIFEST}
+- canonical_workspace_refs_manifest: ${WORKSPACE_REFS_MANIFEST_ARCHIVE_PATH}
 - canonical_workspace_refs_verification: ${WORKSPACE_REFS_VERIFICATION_PATH}
 - workflow_proof_dir: ${WORKFLOW_PROOF_DIR}
 - go_work_path: ${GOWORK:-off}
@@ -268,13 +274,14 @@ cat >"$SUMMARY_PATH" <<EOF
 - workflow_notification_command_failure_artifact: ${NOTIFICATION_COMMAND_FAILURE_PROOF_PATH}
 - extensions_validation_dir: ${EXTENSIONS_VALIDATION_DIR}
 - public_bundle_publication_plan: ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH}
+- public_bundle_publication_manifest: ${PUBLIC_BUNDLE_PUBLICATION_MANIFEST_ARCHIVE_PATH}
 - public_bundle_release_evidence_dir: ${PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR}
 - public_bundle_evidence_verification: ${PUBLIC_BUNDLE_EVIDENCE_VERIFICATION_PATH}
 
 ## Commands Run
 
 1. \`go test -count=1 ./internal/service/services ./internal/knowledge/services ./internal/platform/services ./cmd/api ./cmd/mbr\`
-2. \`bash scripts/verify-canonical-workspace-refs.sh --manifest ${CANONICAL_WORKSPACE_REFS_MANIFEST} --workspace-root ${WORKSPACE_ROOT} --out ${WORKSPACE_REFS_VERIFICATION_PATH}\`
+2. \`bash scripts/verify-canonical-workspace-refs.sh --manifest ${WORKSPACE_REFS_MANIFEST_ARCHIVE_PATH} --workspace-root ${WORKSPACE_ROOT} --out ${WORKSPACE_REFS_VERIFICATION_PATH}\`
 3. \`bash scripts/check-cli-contract-docs.sh\`
 4. \`go build -trimpath -o ${LOCAL_MBR_BIN} ./cmd/mbr\`
 5. \`env WORKFLOW_PROOF_DIR=${WORKFLOW_PROOF_DIR} go test -count=1 ./internal/knowledge/services\`
@@ -285,7 +292,7 @@ cat >"$SUMMARY_PATH" <<EOF
 10. \`go run ./tools/runtime-bootstrap-proof --out ${BOOTSTRAP_PROOF_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT}\`
 11. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go run ./tools/ats-scenario-proof --out ${ATS_SCENARIO_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT})\`
 12. \`bash scripts/fetch-publication-evidence.sh --manifest ${FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST_DISPLAY} --out ${FETCHED_PUBLICATION_EVIDENCE_DIR}\` when a manifest is supplied
-13. \`bash scripts/verify-publication-evidence.sh --manifest ${FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST:-docs/evidence/public-bundle-publication-runs.json} --plan ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH} --evidence-dir ${PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR}\`
+13. \`bash scripts/verify-publication-evidence.sh --manifest ${PUBLIC_BUNDLE_PUBLICATION_MANIFEST_ARCHIVE_PATH} --plan ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH} --evidence-dir ${PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR}\`
 14. \`MBR_BIN=${LOCAL_MBR_BIN} bash ${FIRST_PARTY_VALIDATION_SCRIPT}\`
 15. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
 16. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
