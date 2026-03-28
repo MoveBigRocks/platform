@@ -3,9 +3,7 @@ package extensionruntime
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
-	"io/fs"
 	"mime"
 	"net/http"
 	"net/http/httptest"
@@ -422,14 +420,10 @@ func loadEnterpriseAccessReferencePackage(t *testing.T) (platformdomain.Extensio
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)
 
-	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", "..", ".."))
-	baseDir, err := testutil.ResolveWorkspaceSiblingDir(repoRoot, filepath.Join("packs", "enterprise-access"))
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			t.Skip("enterprise-access reference pack checkout not available")
-		}
-		require.NoError(t, err)
-	}
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", ".."))
+	baseDir := filepath.Join(repoRoot, "testdata", "first-party-packs", "enterprise-access")
+	_, err := os.Stat(baseDir)
+	require.NoError(t, err)
 	manifestPath := filepath.Join(baseDir, "manifest.json")
 	manifestBytes, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)

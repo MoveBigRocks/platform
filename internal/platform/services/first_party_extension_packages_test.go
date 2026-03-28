@@ -457,19 +457,30 @@ func loadRepoExtensionPackage(t *testing.T, slug string) (platformdomain.Extensi
 func canonicalExtensionSourceDir(t *testing.T, slug string) string {
 	t.Helper()
 
+	repoRoot := platformRepoRoot(t)
+
 	var rel string
+	useWorkspaceRef := true
 	switch slug {
 	case "ats", "community-feature-requests", "error-tracking", "sales-pipeline", "web-analytics":
 		rel = filepath.Join("extensions", slug)
 	case "enterprise-access":
-		rel = filepath.Join("packs", slug)
+		useWorkspaceRef = false
+		rel = filepath.Join("testdata", "first-party-packs", slug)
 	case "sample-ops-pack":
 		rel = "extension-sdk"
 	default:
 		t.Fatalf("unknown canonical extension source %q", slug)
 	}
 
-	dir, err := testutil.ResolveWorkspaceSiblingDir(platformRepoRoot(t), rel)
+	if !useWorkspaceRef {
+		dir := filepath.Join(repoRoot, rel)
+		_, err := os.Stat(dir)
+		require.NoError(t, err)
+		return dir
+	}
+
+	dir, err := testutil.ResolveWorkspaceSiblingDir(repoRoot, rel)
 	if errors.Is(err, fs.ErrNotExist) {
 		t.Skipf("reference source checkout not available for %s", slug)
 	}

@@ -1,0 +1,7 @@
+{
+  "repository": "MoveBigRocks/packs",
+  "path": "enterprise-access",
+  "ref": "6d8d28aac67a8096bab9c757ff536d4b88955803",
+  "capturedFor": "Milestone 1 public proof fixture",
+  "note": "Repo-owned reference fixture used so platform CI can prove enterprise-access contracts without direct access to the private packs repository."
+}

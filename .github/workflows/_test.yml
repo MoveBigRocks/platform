@@ -49,7 +49,6 @@ jobs:
           manifest="docs/evidence/canonical-workspace-refs.json"
           echo "extensions_ref=$(jq -r '.repositories.extensions.ref' "$manifest")" >> "$GITHUB_OUTPUT"
           echo "extension_sdk_ref=$(jq -r '.repositories["extension-sdk"].ref' "$manifest")" >> "$GITHUB_OUTPUT"
-          echo "packs_ref=$(jq -r '.repositories.packs.ref' "$manifest")" >> "$GITHUB_OUTPUT"
 
       - name: Checkout extensions
         uses: actions/checkout@v4
@@ -64,13 +63,6 @@ jobs:
           repository: MoveBigRocks/extension-sdk
           path: extension-sdk
           ref: ${{ steps.workspace_refs.outputs.extension_sdk_ref }}
-
-      - name: Checkout packs
-        uses: actions/checkout@v4
-        with:
-          repository: MoveBigRocks/packs
-          path: packs
-          ref: ${{ steps.workspace_refs.outputs.packs_ref }}
 
       - name: Set up Go
         uses: actions/setup-go@v5

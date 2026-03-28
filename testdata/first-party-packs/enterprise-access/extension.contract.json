@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "extensionSlug": "enterprise-access",
+  "resolvedAdminNavigation": [
+    {
+      "section": "Identity",
+      "title": "Enterprise Access",
+      "icon": "shield-check",
+      "href": "/extensions/enterprise-access",
+      "activePage": "enterprise-access"
+    }
+  ],
+  "publicPaths": [
+    "/webhooks/extensions/enterprise-access/callback/oidc"
+  ],
+  "adminPaths": [
+    "/extensions/enterprise-access",
+    "/extensions/enterprise-access/oidc/start",
+    "/extensions/enterprise-access/providers"
+  ],
+  "healthPaths": [
+    "/extensions/enterprise-access/health"
+  ],
+  "commands": [
+    "enterprise-access.providers.list"
+  ],
+  "agentSkills": [
+    "configure-oidc"
+  ]
+}

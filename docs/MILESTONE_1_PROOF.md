@@ -14,12 +14,13 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
 
 ## Workspace Contract
 
-The milestone proof is intentionally a multi-repo proof, because part of the
-Milestone 1 contract is that `platform` validates and exercises the canonical
-first-party sources rather than stale mirrored fixtures.
+The milestone proof is intentionally a multi-repo proof for the public
+first-party sources, because part of the Milestone 1 contract is that
+`platform` validates and exercises the canonical public pack sources rather
+than floating copies.
 
-- CI now checks out `platform`, `extensions`, `extension-sdk`, and `packs`
-  into one workspace before it runs the proof script.
+- CI now checks out `platform`, `extensions`, and `extension-sdk` into one
+  workspace before it runs the proof script.
 - Local reruns can materialize the pinned sibling repos into a disposable
   workspace root with [`scripts/bootstrap-canonical-workspace.sh`](../scripts/bootstrap-canonical-workspace.sh)
   instead of assembling that workspace by hand.
@@ -27,13 +28,19 @@ first-party sources rather than stale mirrored fixtures.
   [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
   instead of floating on whatever happens to be current on `main`.
 - Local reruns should use the same workspace shape, or explicitly point
-  `MBR_WORKSPACE_ROOT`, `FIRST_PARTY_EXTENSIONS_ROOT`, `EXTENSION_SDK_ROOT`,
-  and `PACKS_ROOT` at equivalent checkouts.
+  `MBR_WORKSPACE_ROOT`, `FIRST_PARTY_EXTENSIONS_ROOT`, and
+  `EXTENSION_SDK_ROOT` at equivalent checkouts.
 - When `MBR_WORKSPACE_ROOT` is set, the proof script now resolves all sibling
   repo defaults from that workspace root consistently, including `extensions`.
 - The proof script exports `MBR_REQUIRE_WORKSPACE_REFS=true`, so first-party
   tests fail closed when those canonical sibling repos are missing instead of
   silently skipping.
+- The controlled `enterprise-access` pack no longer requires direct access to
+  the private `MoveBigRocks/packs` repository during proof. The repo now owns a
+  pinned reference fixture under
+  [`testdata/first-party-packs/enterprise-access/`](../testdata/first-party-packs/enterprise-access/)
+  with source provenance recorded in
+  [`SOURCE.json`](../testdata/first-party-packs/enterprise-access/SOURCE.json).
 - If the workspace does not already provide a top-level `go.work`, or if the
   available `go.work` does not actually include the `platform` checkout being
   proven, the proof script bootstraps a temporary one inside the proof bundle
@@ -127,8 +134,9 @@ default, and it now cross-checks them against the checked-in archive under
 Local reruns work from that durable archive automatically and can still use
 either `FIRST_PARTY_PUBLICATION_EVIDENCE_DIR` or
 `FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST` when you want to override it.
-Local reruns still need the canonical sibling repos or equivalent explicit
-paths, because the first-party proof rows now fail closed instead of skipping.
+Local reruns still need the canonical public sibling repos or equivalent
+explicit paths, because the first-party proof rows now fail closed instead of
+skipping.
 
 ## Outputs
 

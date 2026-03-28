@@ -9,7 +9,8 @@ A first-party pack is considered launch-ready when it has:
 
 - a canonical checked-in source in the public first-party extensions repo or the
   controlled first-party repo, depending on its release posture
-- no stale first-party bundle mirrors or pack fixtures left behind in `platform`
+- any repo-owned proof fixture must be explicitly marked as a pinned reference
+  fixture with source provenance, not an unmanaged mirror
 - install and activation proof in automated tests
 - evidence for its public or admin runtime surface where applicable
 - a clear scope and risk profile consistent with the manifest
@@ -31,7 +32,9 @@ A first-party pack is considered launch-ready when it has:
 
 - ATS: public first-party source in
   [`MoveBigRocks/extensions/ats`](https://github.com/MoveBigRocks/extensions/tree/37f1c80b5eb6f14701c00344d38d9bf2dcf607db/ats)
-- Enterprise Access: controlled first-party source in `packs/enterprise-access`
+- Enterprise Access: controlled first-party source in `MoveBigRocks/packs`
+  with the pinned public-proof reference fixture in
+  [`testdata/first-party-packs/enterprise-access/`](../testdata/first-party-packs/enterprise-access/)
 - Error Tracking: public first-party source in
   [`MoveBigRocks/extensions/error-tracking`](https://github.com/MoveBigRocks/extensions/tree/37f1c80b5eb6f14701c00344d38d9bf2dcf607db/error-tracking)
 - Sales Pipeline: public first-party beta source in
@@ -48,18 +51,22 @@ These packs are part of the standard milestone readiness run:
 - [`scripts/run-milestone-1-proof.sh`](../scripts/run-milestone-1-proof.sh)
 - [`docs/MILESTONE_1_PROOF.md`](./MILESTONE_1_PROOF.md)
 
-The pack proof tests load ATS, the beta public packs, enterprise access, and
-the SDK sample pack from their canonical sibling repos instead of from
-duplicated `platform` fixtures. The milestone proof now pulls in the
-extensions-side ATS scenario, catalog validation steps, and a publication plan
-generated from the public bundle catalog. The current closure proof also keeps
-a checked-in archive of the workflow-generated publication artifacts and
-digests under [`docs/evidence/public-bundle-publication/`](./evidence/public-bundle-publication/),
+The pack proof tests load ATS, the beta public packs, and the SDK sample pack
+from their canonical sibling repos. The controlled `enterprise-access` pack is
+validated from the pinned repo-owned reference fixture in
+[`testdata/first-party-packs/enterprise-access/`](../testdata/first-party-packs/enterprise-access/)
+with source provenance recorded in
+[`SOURCE.json`](../testdata/first-party-packs/enterprise-access/SOURCE.json).
+The milestone proof now pulls in the extensions-side ATS scenario, catalog
+validation steps, and a publication plan generated from the public bundle
+catalog. The current closure proof also keeps a checked-in archive of the
+workflow-generated publication artifacts and digests under
+[`docs/evidence/public-bundle-publication/`](./evidence/public-bundle-publication/),
 verifies them against the manifest and publication plan, and cross-checks live
 downloads against those archived copies in CI. Proof mode now fails closed when
 those canonical sibling repos are missing, and the committed milestone-proof CI
-workflow materializes `extensions`, `extension-sdk`, and `packs` before it runs
-that validation. Those sibling repos are also pinned in
+workflow materializes `extensions` and `extension-sdk` before it runs that
+validation. Those sibling repos are also pinned in
 [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
 and verified inside the proof bundle before the first-party pack checks run.
 Local reruns can materialize that same pinned sibling workspace with

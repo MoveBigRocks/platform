@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "slug": "enterprise-access",
+  "name": "Enterprise Access",
+  "version": "1.0.0",
+  "publisher": "DemandOps",
+  "kind": "identity",
+  "scope": "instance",
+  "risk": "privileged",
+  "runtimeClass": "service_backed",
+  "storageClass": "owned_schema",
+  "schema": {
+    "name": "ext_demandops_enterprise_access",
+    "packageKey": "demandops/enterprise-access",
+    "targetVersion": "000001",
+    "migrationEngine": "postgres_sql"
+  },
+  "runtime": {
+    "protocol": "in_process_http"
+  },
+  "description": "Enterprise SSO and identity federation for a Move Big Rocks instance, starting with OIDC and later SAML.",
+  "permissions": [
+    "identity:read",
+    "identity:write",
+    "workspace:read"
+  ],
+  "defaultConfig": {
+    "providers": [],
+    "jitProvisioning": true,
+    "breakGlassMagicLink": true
+  },
+  "adminNavigation": [
+    {
+      "name": "enterprise-access-settings",
+      "section": "Identity",
+      "title": "Enterprise Access",
+      "icon": "shield-check",
+      "endpoint": "enterprise-access-settings",
+      "activePage": "enterprise-access"
+    }
+  ],
+  "events": {
+    "publishes": [
+      {
+        "type": "ext.demandops.enterprise_access.user_authenticated",
+        "description": "Published when an enterprise identity provider authentication succeeds.",
+        "schemaVersion": 1
+      },
+      {
+        "type": "ext.demandops.enterprise_access.user_provisioned",
+        "description": "Published when JIT provisioning creates or updates a Move Big Rocks user membership.",
+        "schemaVersion": 1
+      }
+    ]
+  },
+  "endpoints": [
+    {
+      "name": "enterprise-access-settings",
+      "class": "admin_page",
+      "mountPath": "/extensions/enterprise-access",
+      "methods": ["GET", "HEAD"],
+      "auth": "session",
+      "workspaceBinding": "instance_scoped",
+      "serviceTarget": "enterprise-access.admin.settings"
+    },
+    {
+      "name": "enterprise-access-provider-upsert",
+      "class": "admin_action",
+      "mountPath": "/extensions/enterprise-access/providers",
+      "methods": ["POST"],
+      "auth": "session",
+      "workspaceBinding": "instance_scoped",
+      "serviceTarget": "enterprise-access.admin.providers.upsert"
+    },
+    {
+      "name": "enterprise-access-oidc-start",
+      "class": "admin_action",
+      "mountPath": "/extensions/enterprise-access/oidc/start",
+      "methods": ["POST"],
+      "auth": "session",
+      "workspaceBinding": "instance_scoped",
+      "serviceTarget": "enterprise-access.auth.oidc.start"
+    },
+    {
+      "name": "enterprise-access-oidc-callback",
+      "class": "webhook",
+      "mountPath": "/webhooks/extensions/enterprise-access/callback/oidc",
+      "methods": ["GET", "POST"],
+      "auth": "public",
+      "workspaceBinding": "instance_scoped",
+      "serviceTarget": "enterprise-access.auth.oidc.callback"
+    },
+    {
+      "name": "enterprise-access-runtime-health",
+      "class": "health",
+      "mountPath": "/extensions/enterprise-access/health",
+      "methods": ["GET", "HEAD"],
+      "auth": "internal_only",
+      "workspaceBinding": "instance_scoped",
+      "serviceTarget": "enterprise-access.runtime.health"
+    }
+  ],
+  "commands": [
+    {
+      "name": "enterprise-access.providers.list",
+      "description": "List configured enterprise identity providers."
+    }
+  ],
+  "agentSkills": [
+    {
+      "name": "configure-oidc",
+      "description": "Walk through configuring OIDC for the enterprise-access pack.",
+      "assetPath": "agent-skills/configure-oidc.md"
+    }
+  ]
+}
