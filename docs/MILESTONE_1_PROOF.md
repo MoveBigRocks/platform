@@ -81,8 +81,12 @@ first-party sources rather than stale mirrored fixtures.
      `case-operator-work-management.json`, `case-operator-reply.json`,
      `case-operator-handoff.json`, `case-operator-status-transition.json`,
      `case-operator-attachment-upload.json`, and
-     `inbound-email-attachments.json`
-   - this is still not the full expanded product-complete workflow set
+      `inbound-email-attachments.json`
+   - archive machine-readable JSON artifacts for the conversation loop as
+     `conversation-operator-reply.json`,
+     `conversation-operator-handoff.json`,
+     `conversation-operator-escalation.json`, and
+     `public-conversation-intake.json`
 10. Full integration sweep:
    - run `go test -tags=integration ./...`
    - archive the integration log inside the proof bundle
@@ -108,13 +112,6 @@ first-party sources rather than stale mirrored fixtures.
 
 External-provider reliability on the public internet remains outside what the
 archived proof artifacts can establish.
-
-Under the expanded Milestone 1 bar, the proof bundle still does not cover:
-
-- conversation reply, handoff, escalation, and queue-parity workflows as
-  product-complete operational proof rows
-- a supported public conversation intake surface such as the website widget or
-  equivalent public conversation adapter implied by the public product promise
 
 ## Current Live Publication Evidence
 
@@ -163,6 +160,8 @@ Those outputs currently provide the concrete proof bundle for:
 - canonical sibling-repo ref verification for deterministic multi-repo proof
 - milestone-scoped operational workflow evidence
 - command failure visibility for the scoped production command streams
+- the full product-complete conversation loop, including public intake plus
+  operator reply, handoff, and escalation artifacts
 - cross-platform CLI release evidence
 
 ## Related Evidence

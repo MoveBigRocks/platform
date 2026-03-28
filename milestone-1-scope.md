@@ -293,6 +293,12 @@ That loop must be:
 - strong enough that the public service-desk and shared-operations claims remain
   honest
 
+For Milestone 1, the supported core-owned public conversation surface is the
+web-chat intake API under `/v1/conversations` and
+`/v1/conversations/:session_id/messages`, which is designed to sit behind the
+website widget or equivalent public chat adapter while keeping the
+conversation, queue, and escalation records inside core Move Big Rocks.
+
 ## Repository and Delivery Model
 
 Milestone 1 standardizes on this delivery shape:

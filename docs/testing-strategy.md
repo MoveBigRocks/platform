@@ -192,6 +192,9 @@ Current reality:
 - milestone proof archives machine-readable workflow artifacts for scoped
   command-driven operational flows, including success and failure artifacts for
   `email-commands`, `notification-commands`, and `case-commands`
+- milestone proof now also archives the supported public conversation intake
+  artifact plus the operator conversation reply, handoff, and escalation
+  artifacts required by the expanded Milestone 1 bar
 - worker-manager registration is covered directly in
   [`internal/workers/manager_test.go`](../internal/workers/manager_test.go)
 - full container startup wiring is covered in

@@ -181,6 +181,27 @@ Remaining Phase 2 work:
 Goal: make supervised conversation a real core product loop instead of mainly a
 public promise plus isolated service behavior.
 
+Progress on 2026-03-28:
+
+- The repo now has a supported core-owned public web-chat intake surface under
+  [`/v1/conversations`](../internal/infrastructure/routes/v1/router.go),
+  implemented by
+  [`internal/service/handlers/public_conversation_handler.go`](../internal/service/handlers/public_conversation_handler.go)
+  and
+  [`internal/service/services/conversation_public.go`](../internal/service/services/conversation_public.go).
+- Public intake now creates or resumes a durable core conversation session,
+  writes the customer message, assigns queue visibility, and allows operators
+  to continue from that same record.
+- Operator conversation reply, handoff, and escalation now have workflow proof
+  in
+  [`internal/service/resolvers/conversation_operator_workflow_integration_test.go`](../internal/service/resolvers/conversation_operator_workflow_integration_test.go),
+  archived as `conversation-operator-reply.json`,
+  `conversation-operator-handoff.json`, and
+  `conversation-operator-escalation.json`.
+- Public conversation intake now has workflow proof in
+  [`internal/service/handlers/public_conversation_handler_test.go`](../internal/service/handlers/public_conversation_handler_test.go),
+  archived as `public-conversation-intake.json`.
+
 Changes:
 
 - Add workflow-proof rows for conversation reply, handoff, and escalation with
@@ -202,6 +223,11 @@ Evidence:
 - workflow tests plus archived artifacts for conversation reply, handoff, and
   escalation
 - workflow test plus archived artifact for public conversation intake
+
+Remaining Phase 3 work:
+
+- None for Milestone 1. The conversation loop is now proven through supported
+  public intake plus operator reply, handoff, and escalation artifacts.
 
 ### Phase 4: Implement The Sanctioned Case Action Contract
 

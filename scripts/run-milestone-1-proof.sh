@@ -74,9 +74,14 @@ CASE_COMMAND_CREATE_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-command-create.json"
 CASE_COMMAND_FAILURE_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-command-failure-visible.json"
 CASE_OPERATOR_MANUAL_CREATE_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-manual-create.json"
 CASE_OPERATOR_WORK_MANAGEMENT_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-work-management.json"
+CASE_OPERATOR_REPLY_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-reply.json"
 CASE_OPERATOR_HANDOFF_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-handoff.json"
 CASE_OPERATOR_STATUS_TRANSITION_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-status-transition.json"
 CASE_OPERATOR_ATTACHMENT_UPLOAD_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-attachment-upload.json"
+CONVERSATION_OPERATOR_REPLY_PROOF_PATH="$WORKFLOW_PROOF_DIR/conversation-operator-reply.json"
+CONVERSATION_OPERATOR_HANDOFF_PROOF_PATH="$WORKFLOW_PROOF_DIR/conversation-operator-handoff.json"
+CONVERSATION_OPERATOR_ESCALATION_PROOF_PATH="$WORKFLOW_PROOF_DIR/conversation-operator-escalation.json"
+PUBLIC_CONVERSATION_INTAKE_PROOF_PATH="$WORKFLOW_PROOF_DIR/public-conversation-intake.json"
 EMAIL_COMMAND_FAILURE_PROOF_PATH="$WORKFLOW_PROOF_DIR/email-command-failure-visible.json"
 INBOUND_NEW_EMAIL_PROOF_PATH="$WORKFLOW_PROOF_DIR/inbound-new-email-case-create.json"
 INBOUND_EMAIL_ATTACHMENTS_PROOF_PATH="$WORKFLOW_PROOF_DIR/inbound-email-attachments.json"
@@ -251,9 +256,14 @@ require_file "$CASE_COMMAND_CREATE_PROOF_PATH"
 require_file "$CASE_COMMAND_FAILURE_PROOF_PATH"
 require_file "$CASE_OPERATOR_MANUAL_CREATE_PROOF_PATH"
 require_file "$CASE_OPERATOR_WORK_MANAGEMENT_PROOF_PATH"
+require_file "$CASE_OPERATOR_REPLY_PROOF_PATH"
 require_file "$CASE_OPERATOR_HANDOFF_PROOF_PATH"
 require_file "$CASE_OPERATOR_STATUS_TRANSITION_PROOF_PATH"
 require_file "$CASE_OPERATOR_ATTACHMENT_UPLOAD_PROOF_PATH"
+require_file "$CONVERSATION_OPERATOR_REPLY_PROOF_PATH"
+require_file "$CONVERSATION_OPERATOR_HANDOFF_PROOF_PATH"
+require_file "$CONVERSATION_OPERATOR_ESCALATION_PROOF_PATH"
+require_file "$PUBLIC_CONVERSATION_INTAKE_PROOF_PATH"
 require_file "$EMAIL_COMMAND_FAILURE_PROOF_PATH"
 require_file "$INBOUND_NEW_EMAIL_PROOF_PATH"
 require_file "$INBOUND_EMAIL_ATTACHMENTS_PROOF_PATH"
@@ -262,6 +272,11 @@ require_file "$FORM_NOTIFICATION_PROOF_PATH"
 require_file "$RULE_EMAIL_PROOF_PATH"
 require_file "$KNOWLEDGE_NOTIFICATION_PROOF_PATH"
 require_file "$NOTIFICATION_COMMAND_FAILURE_PROOF_PATH"
+run_step bash -lc "jq -e '.participant_kind == \"user\" or .participant_kind == \"agent\"' \"$CONVERSATION_OPERATOR_REPLY_PROOF_PATH\" >/dev/null"
+run_step bash -lc "jq -e '.role == \"assistant\" and .visibility == \"customer\" and (.reply_message_id | type == \"string\" and length > 0) and (.reply_participant_id | type == \"string\" and length > 0) and (.queue_id | type == \"string\" and length > 0)' \"$CONVERSATION_OPERATOR_REPLY_PROOF_PATH\" >/dev/null"
+run_step bash -lc "jq -e '(.target_queue_id | type == \"string\" and length > 0) and (.target_team_id | type == \"string\" and length > 0) and (.target_user_id | type == \"string\" and length > 0) and (.performed_by_id | type == \"string\" and length > 0)' \"$CONVERSATION_OPERATOR_HANDOFF_PROOF_PATH\" >/dev/null"
+run_step bash -lc "jq -e '.linked_case_id == .case_id and .case_origin_conversation == .session_id and .conversation_status == \"escalated\" and (.case_queue_id | type == \"string\" and length > 0)' \"$CONVERSATION_OPERATOR_ESCALATION_PROOF_PATH\" >/dev/null"
+run_step bash -lc "jq -e '.status == \"waiting\" and (.queue_item_id | type == \"string\" and length > 0) and (.operator_reply_id | type == \"string\" and length > 0) and (.follow_up_message_id | type == \"string\" and length > 0) and (.message_count >= 3)' \"$PUBLIC_CONVERSATION_INTAKE_PROOF_PATH\" >/dev/null"
 if [[ -z "$FIRST_PARTY_PUBLICATION_EVIDENCE_DIR" && -n "$FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST" ]]; then
   run_step bash scripts/fetch-publication-evidence.sh --manifest "$FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST" --out "$FETCHED_PUBLICATION_EVIDENCE_DIR"
   FIRST_PARTY_PUBLICATION_EVIDENCE_DIR="$FETCHED_PUBLICATION_EVIDENCE_DIR"
@@ -330,9 +345,14 @@ cat >"$SUMMARY_PATH" <<EOF
 - workflow_case_command_failure_artifact: $(artifact_rel "$CASE_COMMAND_FAILURE_PROOF_PATH")
 - workflow_case_operator_manual_create_artifact: $(artifact_rel "$CASE_OPERATOR_MANUAL_CREATE_PROOF_PATH")
 - workflow_case_operator_work_management_artifact: $(artifact_rel "$CASE_OPERATOR_WORK_MANAGEMENT_PROOF_PATH")
+- workflow_case_operator_reply_artifact: $(artifact_rel "$CASE_OPERATOR_REPLY_PROOF_PATH")
 - workflow_case_operator_handoff_artifact: $(artifact_rel "$CASE_OPERATOR_HANDOFF_PROOF_PATH")
 - workflow_case_operator_status_transition_artifact: $(artifact_rel "$CASE_OPERATOR_STATUS_TRANSITION_PROOF_PATH")
 - workflow_case_operator_attachment_upload_artifact: $(artifact_rel "$CASE_OPERATOR_ATTACHMENT_UPLOAD_PROOF_PATH")
+- workflow_conversation_operator_reply_artifact: $(artifact_rel "$CONVERSATION_OPERATOR_REPLY_PROOF_PATH")
+- workflow_conversation_operator_handoff_artifact: $(artifact_rel "$CONVERSATION_OPERATOR_HANDOFF_PROOF_PATH")
+- workflow_conversation_operator_escalation_artifact: $(artifact_rel "$CONVERSATION_OPERATOR_ESCALATION_PROOF_PATH")
+- workflow_public_conversation_intake_artifact: $(artifact_rel "$PUBLIC_CONVERSATION_INTAKE_PROOF_PATH")
 - workflow_email_command_failure_artifact: $(artifact_rel "$EMAIL_COMMAND_FAILURE_PROOF_PATH")
 - workflow_inbound_case_create_artifact: $(artifact_rel "$INBOUND_NEW_EMAIL_PROOF_PATH")
 - workflow_inbound_email_attachments_artifact: $(artifact_rel "$INBOUND_EMAIL_ATTACHMENTS_PROOF_PATH")
