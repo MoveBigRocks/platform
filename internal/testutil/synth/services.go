@@ -14,7 +14,14 @@ type TestServices struct {
 // NewTestServices creates a fully wired service layer for testing
 func NewTestServices(store stores.Store) *TestServices {
 	return &TestServices{
-		Store:       store,
-		CaseService: serviceapp.NewCaseService(store.Queues(), store.Cases(), store.Workspaces(), nil, serviceapp.WithOutboundEmailStore(store.OutboundEmails())),
+		Store: store,
+		CaseService: serviceapp.NewCaseService(
+			store.Queues(),
+			store.Cases(),
+			store.Workspaces(),
+			nil,
+			serviceapp.WithOutboundEmailStore(store.OutboundEmails()),
+			serviceapp.WithUserStore(store.Users()),
+		),
 	}
 }

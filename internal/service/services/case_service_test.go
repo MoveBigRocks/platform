@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/movebigrocks/platform/internal/infrastructure/stores"
+	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	"github.com/movebigrocks/platform/internal/testutil"
@@ -139,6 +140,24 @@ func TestCaseService_HandoffCase(t *testing.T) {
 	targetTeamID := id.New()
 	operatorUserID := id.New()
 	ownerUserID := id.New()
+	sourceTeam := &platformdomain.Team{
+		ID:          originalTeamID,
+		WorkspaceID: workspaceID,
+		Name:        "Support",
+		IsActive:    true,
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
+	}
+	require.NoError(t, store.Workspaces().CreateTeam(ctx, sourceTeam))
+	targetTeam := &platformdomain.Team{
+		ID:          targetTeamID,
+		WorkspaceID: workspaceID,
+		Name:        "Billing",
+		IsActive:    true,
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
+	}
+	require.NoError(t, store.Workspaces().CreateTeam(ctx, targetTeam))
 
 	sourceQueue := servicedomain.NewQueue(workspaceID, "Support Inbox", "support-inbox", "")
 	require.NoError(t, store.Queues().CreateQueue(ctx, sourceQueue))
@@ -1095,6 +1114,14 @@ func TestCaseService_AssignCase(t *testing.T) {
 
 	t.Run("Assigns case to team", func(t *testing.T) {
 		teamID := id.New()
+		require.NoError(t, store.Workspaces().CreateTeam(ctx, &platformdomain.Team{
+			ID:          teamID,
+			WorkspaceID: workspaceID,
+			Name:        "Team assignment",
+			IsActive:    true,
+			CreatedAt:   time.Now().UTC(),
+			UpdatedAt:   time.Now().UTC(),
+		}))
 		params := CreateCaseParams{
 			WorkspaceID:  workspaceID,
 			Subject:      "Team assignment test",
@@ -1128,6 +1155,33 @@ func TestCaseService_AssignCase(t *testing.T) {
 	t.Run("Returns error for non-existent case", func(t *testing.T) {
 		err := svc.AssignCase(ctx, "non-existent-case", id.New(), "")
 		assert.Error(t, err)
+	})
+
+	t.Run("Fails when validated assignee user does not exist", func(t *testing.T) {
+		validatingSvc := NewCaseService(store.Queues(), store.Cases(), store.Workspaces(), nil, WithUserStore(store.Users()))
+		caseObj, err := validatingSvc.CreateCase(ctx, CreateCaseParams{
+			WorkspaceID:  workspaceID,
+			Subject:      "Validated assignment test",
+			ContactEmail: "customer@example.com",
+		})
+		require.NoError(t, err)
+
+		err = validatingSvc.AssignCase(ctx, caseObj.ID, id.New(), "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "user")
+	})
+
+	t.Run("Fails when target team does not exist", func(t *testing.T) {
+		caseObj, err := svc.CreateCase(ctx, CreateCaseParams{
+			WorkspaceID:  workspaceID,
+			Subject:      "Missing team assignment test",
+			ContactEmail: "customer@example.com",
+		})
+		require.NoError(t, err)
+
+		err = svc.AssignCase(ctx, caseObj.ID, "", id.New())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "team")
 	})
 }
 
@@ -1238,6 +1292,64 @@ func TestCaseService_SetCaseStatus(t *testing.T) {
 		retrieved, err := svc.GetCase(ctx, caseObj.ID)
 		require.NoError(t, err)
 		assert.Equal(t, servicedomain.CaseStatusPending, retrieved.Status)
+	})
+
+	t.Run("Resolve via set status records lifecycle timestamps", func(t *testing.T) {
+		caseObj, err := svc.CreateCase(ctx, CreateCaseParams{
+			WorkspaceID:  workspaceID,
+			Subject:      "Resolve lifecycle test",
+			ContactEmail: "customer@example.com",
+		})
+		require.NoError(t, err)
+
+		err = svc.SetCaseStatus(ctx, caseObj.ID, servicedomain.CaseStatusResolved)
+		require.NoError(t, err)
+
+		retrieved, err := svc.GetCase(ctx, caseObj.ID)
+		require.NoError(t, err)
+		assert.Equal(t, servicedomain.CaseStatusResolved, retrieved.Status)
+		assert.NotNil(t, retrieved.ResolvedAt)
+		assert.NotNil(t, retrieved.ClosedAt)
+	})
+
+	t.Run("Moving resolved case back to pending reopens and clears timestamps", func(t *testing.T) {
+		caseObj, err := svc.CreateCase(ctx, CreateCaseParams{
+			WorkspaceID:  workspaceID,
+			Subject:      "Reopen lifecycle test",
+			ContactEmail: "customer@example.com",
+		})
+		require.NoError(t, err)
+		require.NoError(t, svc.MarkCaseResolved(ctx, caseObj.ID, time.Now().UTC()))
+
+		err = svc.SetCaseStatus(ctx, caseObj.ID, servicedomain.CaseStatusPending)
+		require.NoError(t, err)
+
+		retrieved, err := svc.GetCase(ctx, caseObj.ID)
+		require.NoError(t, err)
+		assert.Equal(t, servicedomain.CaseStatusPending, retrieved.Status)
+		assert.Nil(t, retrieved.ResolvedAt)
+		assert.Nil(t, retrieved.ClosedAt)
+		assert.Equal(t, 1, retrieved.ReopenCount)
+	})
+
+	t.Run("Close via set status preserves resolved timestamp and stamps closure", func(t *testing.T) {
+		caseObj, err := svc.CreateCase(ctx, CreateCaseParams{
+			WorkspaceID:  workspaceID,
+			Subject:      "Close lifecycle test",
+			ContactEmail: "customer@example.com",
+		})
+		require.NoError(t, err)
+		require.NoError(t, svc.MarkCaseResolved(ctx, caseObj.ID, time.Now().UTC()))
+
+		err = svc.SetCaseStatus(ctx, caseObj.ID, servicedomain.CaseStatusClosed)
+		require.NoError(t, err)
+
+		retrieved, err := svc.GetCase(ctx, caseObj.ID)
+		require.NoError(t, err)
+		assert.Equal(t, servicedomain.CaseStatusClosed, retrieved.Status)
+		assert.NotNil(t, retrieved.ResolvedAt)
+		assert.NotNil(t, retrieved.ClosedAt)
+		assert.False(t, retrieved.ClosedAt.Before(*retrieved.ResolvedAt))
 	})
 }
 
@@ -1642,6 +1754,14 @@ func TestCaseService_CompleteAgentWorkflow(t *testing.T) {
 	t.Run("Complete agent triage and resolution workflow", func(t *testing.T) {
 		agentID := id.New()
 		teamID := id.New()
+		require.NoError(t, store.Workspaces().CreateTeam(ctx, &platformdomain.Team{
+			ID:          teamID,
+			WorkspaceID: workspaceID,
+			Name:        "Support",
+			IsActive:    true,
+			CreatedAt:   time.Now().UTC(),
+			UpdatedAt:   time.Now().UTC(),
+		}))
 		// Customer creates a case
 		params := CreateCaseParams{
 			WorkspaceID:  workspaceID,

@@ -80,6 +80,7 @@ func NewServiceContainer(deps ServiceContainerDeps) (*ServiceContainer, error) {
 		serviceapp.WithQueueItemStore(deps.Store.QueueItems()),
 		serviceapp.WithOutboundEmailStore(deps.Store.OutboundEmails()),
 		serviceapp.WithTransactionRunner(deps.Store),
+		serviceapp.WithUserStore(deps.Store.Users()),
 	)
 
 	c.Conversation = serviceapp.NewConversationService(

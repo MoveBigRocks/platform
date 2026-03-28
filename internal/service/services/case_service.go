@@ -23,6 +23,7 @@ type CaseService struct {
 	queueItemStore     shared.QueueItemStore
 	caseStore          shared.CaseStore
 	workspaceStore     shared.WorkspaceStore
+	userStore          shared.UserStore
 	outboundEmailStore shared.OutboundEmailStore
 	outbox             contracts.OutboxPublisher
 	tx                 contracts.TransactionRunner // Optional: enables atomic case+event writes
@@ -50,6 +51,12 @@ func WithQueueItemStore(queueItemStore shared.QueueItemStore) CaseServiceOption 
 func WithOutboundEmailStore(outboundEmailStore shared.OutboundEmailStore) CaseServiceOption {
 	return func(cs *CaseService) {
 		cs.outboundEmailStore = outboundEmailStore
+	}
+}
+
+func WithUserStore(userStore shared.UserStore) CaseServiceOption {
+	return func(cs *CaseService) {
+		cs.userStore = userStore
 	}
 }
 
@@ -694,17 +701,27 @@ func (cs *CaseService) AutoCloseResolvedCases(ctx context.Context, gracePeriod t
 
 // AssignCase assigns a case to a user and/or team
 func (cs *CaseService) AssignCase(ctx context.Context, caseID, userID, teamID string) error {
-	return cs.withCaseTrackingStatus(ctx, caseID,
-		func(c *servicedomain.Case) error {
-			return c.Assign(userID, teamID)
-		},
-		func(c *servicedomain.Case, oldStatus servicedomain.CaseStatus) {
-			cs.publishCaseAssignedEvent(ctx, c, userID, teamID)
-			if c.Status != oldStatus {
-				cs.publishCaseStatusChangedEvent(ctx, c, oldStatus, c.Status)
-			}
-		},
-	)
+	caseObj, err := cs.GetCase(ctx, caseID)
+	if err != nil {
+		return err
+	}
+	if err := cs.validateAssignmentTargets(ctx, caseObj.WorkspaceID, userID, teamID); err != nil {
+		return err
+	}
+
+	oldStatus := caseObj.Status
+	if err := caseObj.Assign(userID, teamID); err != nil {
+		return apierrors.Wrap(err, apierrors.ErrorTypeValidation, "case mutation failed")
+	}
+	if err := cs.UpdateCase(ctx, caseObj); err != nil {
+		return err
+	}
+
+	cs.publishCaseAssignedEvent(ctx, caseObj, userID, teamID)
+	if caseObj.Status != oldStatus {
+		cs.publishCaseStatusChangedEvent(ctx, caseObj, oldStatus, caseObj.Status)
+	}
+	return nil
 }
 
 // HandoffCase moves durable work between teams and queues while preserving an
@@ -716,6 +733,9 @@ func (cs *CaseService) HandoffCase(ctx context.Context, caseID string, params Ca
 
 	caseObj, err := cs.GetCase(ctx, caseID)
 	if err != nil {
+		return err
+	}
+	if err := cs.validateAssignmentTargets(ctx, caseObj.WorkspaceID, strings.TrimSpace(params.AssigneeID), strings.TrimSpace(params.TeamID)); err != nil {
 		return err
 	}
 
@@ -850,6 +870,29 @@ func emptyLabel(value string) string {
 	return strings.TrimSpace(value)
 }
 
+func (cs *CaseService) validateAssignmentTargets(ctx context.Context, workspaceID, userID, teamID string) error {
+	userID = strings.TrimSpace(userID)
+	teamID = strings.TrimSpace(teamID)
+
+	if teamID != "" {
+		team, err := cs.workspaceStore.GetTeam(ctx, teamID)
+		if err != nil {
+			return apierrors.NotFoundError("team", teamID)
+		}
+		if team.WorkspaceID != workspaceID {
+			return apierrors.NotFoundError("team", teamID)
+		}
+	}
+
+	if userID != "" && cs.userStore != nil {
+		if _, err := cs.userStore.GetUser(ctx, userID); err != nil {
+			return apierrors.NotFoundError("user", userID)
+		}
+	}
+
+	return nil
+}
+
 // SetCasePriority changes the priority of a case
 func (cs *CaseService) SetCasePriority(ctx context.Context, caseID string, priority servicedomain.CasePriority) error {
 	return cs.withCase(ctx, caseID, func(c *servicedomain.Case) error {
@@ -861,7 +904,22 @@ func (cs *CaseService) SetCasePriority(ctx context.Context, caseID string, prior
 func (cs *CaseService) SetCaseStatus(ctx context.Context, caseID string, status servicedomain.CaseStatus) error {
 	return cs.withCaseTrackingStatus(ctx, caseID,
 		func(c *servicedomain.Case) error {
-			return c.SetStatus(status)
+			now := time.Now().UTC()
+			switch status {
+			case servicedomain.CaseStatusResolved:
+				return c.MarkResolved(now)
+			case servicedomain.CaseStatusClosed:
+				return c.MarkClosed(now)
+			default:
+				if (c.Status == servicedomain.CaseStatusResolved || c.Status == servicedomain.CaseStatusClosed) &&
+					status != servicedomain.CaseStatusResolved &&
+					status != servicedomain.CaseStatusClosed {
+					if err := c.Reopen(); err != nil {
+						return err
+					}
+				}
+				return c.SetStatus(status)
+			}
 		},
 		func(c *servicedomain.Case, oldStatus servicedomain.CaseStatus) {
 			if c.Status != oldStatus {
