@@ -35,32 +35,20 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
    - run `MoveBigRocks/extensions/go run ./tools/publication-evidence --mode plan`
    - archive the generated publication-plan JSON from the public bundle catalog and current manifests
    - archive the workflow-generated `*.publication-evidence.json` files inside `public-bundle-publication/release-evidence/`
-9. Cross-platform CLI packaging evidence:
+9. Operational workflow proof:
+   - archive machine-readable JSON artifacts for inbound-new-email case creation, case reply send, inbound reply threading, public form notification delivery, rule-driven email delivery, and knowledge-review notifications
+10. Cross-platform CLI packaging evidence:
    - `bash scripts/build-cli-release.sh`
-10. CLI release artifact validation:
+11. CLI release artifact validation:
    - `bash scripts/verify-cli-release.sh dist/milestone-proof/cli-release`
 
 ## What The Proof Run Does Not Yet Cover
 
-The current proof loop is still incomplete for command-driven operational
-workflows. It does **not** yet archive end-to-end workflow evidence for:
-
-1. `email-commands` consumer execution from case replies, public forms, or rule
-   actions
-2. `notification-commands` consumer execution from knowledge-review workflows
-3. real Postmark webhook parsing through `In-Reply-To` / `References` case
-   threading
-4. durable outbound-email persistence and provider message correlation for case
-   replies
-5. the full hard-gated `go test -tags=integration ./...` sweep, which remains
-   unstable and soft-gated in CI
-
-Those gaps are tracked in [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md)
-and mean this proof bundle is strong for CLI/runtime/release/publication
-surfaces, but only partial for milestone-facing operational workflows.
-
-The phased plan for extending this proof bundle is documented in
-[`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md).
+The proof bundle still does not claim anything about command streams that are
+outside the Milestone 1 workflow set. In particular, `case-commands` still has
+no production consumer and must not be treated as proven. External-provider
+reliability on the public internet also remains outside what the archived proof
+artifacts can establish.
 
 ## Current Live Publication Evidence
 
@@ -80,6 +68,7 @@ The current proof run writes:
 - `dist/milestone-proof/summary.md`
 - `dist/milestone-proof/runtime-bootstrap/`
 - `dist/milestone-proof/ats-scenario/`
+- `dist/milestone-proof/workflow-proof/`
 - `dist/milestone-proof/public-bundle-publication/`
 - `dist/milestone-proof/public-bundle-publication/release-evidence/`
 - `dist/milestone-proof/extensions-validation/`
@@ -91,10 +80,8 @@ Those outputs currently provide the concrete proof bundle for:
 - milestone readiness status
 - first-party pack readiness
 - runtime discovery, extension lifecycle, and publication evidence
+- milestone-scoped operational workflow evidence
 - cross-platform CLI release evidence
-
-They do not yet constitute complete proof for the operational workflow set in
-[`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md).
 
 ## Related Evidence
 

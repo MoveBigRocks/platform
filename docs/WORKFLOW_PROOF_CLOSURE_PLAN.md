@@ -7,6 +7,20 @@ It exists to answer a simple question: what must change, in what order, before
 the repo can honestly claim that milestone-facing operational workflows work
 end to end.
 
+## Status
+
+Closed on 2026-03-28.
+
+The phases below were completed in order:
+
+- entrypoint and integration fixtures were repaired so the full integration
+  sweep is green
+- `email-commands` and `notification-commands` now have production consumers
+  plus workflow proof
+- Postmark reply threading is proven through the real webhook path
+- milestone proof archives machine-readable operational workflow artifacts
+- CI now hard-gates `go test -tags=integration ./...`
+
 ## Closure Principles
 
 - Do not mark a workflow `Proven` until the production path is implemented and
@@ -235,3 +249,5 @@ The operational workflow gap is closed only when all of the following are true:
 - scenario-runner simulations are no longer represented as workflow proof.
 - the milestone proof archives machine-readable operational workflow artifacts.
 - the full integration suite is green enough to be hard-gated in CI.
+
+All of those conditions are now satisfied on `main`.

@@ -174,15 +174,11 @@ Target merge gate:
 
 Current reality:
 
-- the repo still carries soft-gated integration coverage in CI
-- the full `go test -tags=integration ./...` sweep is not yet a stable hard gate
-- milestone proof does not yet archive workflow artifacts for command-driven
-  operational flows
-- reusable CI outputs and summaries must distinguish hard-gated checks from
-  soft-gated sweeps; a soft-failed integration run must never be surfaced as a
-  full pass
-
-That means readiness must stay honest about what is only partially evidenced.
+- the full `go test -tags=integration ./...` sweep is green and hard-gated in CI
+- milestone proof archives machine-readable workflow artifacts for scoped
+  command-driven operational flows
+- reusable CI outputs and summaries now report the integration sweep as part of
+  the required gate instead of a soft signal
 
 ### Milestone Proof Gate
 
@@ -195,16 +191,19 @@ prove:
 - the durable side effect exists
 - the resulting state is queryable from the system of record
 
-## Immediate Uplift Priorities
+## Ongoing Guardrails
 
-1. Add workflow-proof coverage for command-driven email and notification paths.
-2. Add consumer tests for every production command stream.
-3. Replace simulated email and form scenario claims with real workflow tests.
-4. Stabilize the full integration suite so CI can stop soft-gating it.
-5. Extend milestone proof to archive workflow artifacts for scoped operational
-   flows, not just release artifacts and publication evidence.
+1. Keep milestone-facing workflows aligned with
+   [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md).
+2. Add or update workflow artifacts whenever an entrypoint, consumer, or
+   durable side effect changes.
+3. Do not add new producer streams without a real consumer, consumer test, and
+   workflow proof.
+4. Treat scenario-runner flows as smoke coverage only unless they traverse the
+   real production path.
+5. Keep the full integration sweep green so CI can continue to hard-gate it.
 
-Track the concrete sequence, dependencies, and acceptance criteria in
+The completed uplift sequence remains documented in
 [`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md).
 
 ## Running Tests

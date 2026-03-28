@@ -54,6 +54,13 @@ ATS_SCENARIO_PATH="$ATS_SCENARIO_DIR/ats-scenario.json"
 PUBLIC_BUNDLE_PUBLICATION_DIR="$OUT_DIR/public-bundle-publication"
 PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH="$PUBLIC_BUNDLE_PUBLICATION_DIR/publication-plan.json"
 PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR="$PUBLIC_BUNDLE_PUBLICATION_DIR/release-evidence"
+WORKFLOW_PROOF_DIR="$OUT_DIR/workflow-proof"
+CASE_REPLY_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-reply-send.json"
+INBOUND_NEW_EMAIL_PROOF_PATH="$WORKFLOW_PROOF_DIR/inbound-new-email-case-create.json"
+INBOUND_REPLY_THREADING_PROOF_PATH="$WORKFLOW_PROOF_DIR/inbound-reply-threading.json"
+FORM_NOTIFICATION_PROOF_PATH="$WORKFLOW_PROOF_DIR/public-form-case-notification.json"
+RULE_EMAIL_PROOF_PATH="$WORKFLOW_PROOF_DIR/rule-send-email.json"
+KNOWLEDGE_NOTIFICATION_PROOF_PATH="$WORKFLOW_PROOF_DIR/knowledge-review-notification.json"
 SUMMARY_PATH="$OUT_DIR/summary.md"
 GENERATED_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 GIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD)"
@@ -103,17 +110,25 @@ require_file() {
 
 cd "$ROOT_DIR"
 
-mkdir -p "$PROOF_BIN_DIR" "$EXTENSIONS_VALIDATION_DIR" "$BOOTSTRAP_PROOF_DIR" "$ATS_SCENARIO_DIR" "$PUBLIC_BUNDLE_PUBLICATION_DIR"
+mkdir -p "$PROOF_BIN_DIR" "$EXTENSIONS_VALIDATION_DIR" "$BOOTSTRAP_PROOF_DIR" "$ATS_SCENARIO_DIR" "$PUBLIC_BUNDLE_PUBLICATION_DIR" "$WORKFLOW_PROOF_DIR"
 require_file "$FIRST_PARTY_VALIDATION_SCRIPT"
 require_file "$FIRST_PARTY_CATALOG_PATH"
 
 run_step go test -count=1 ./internal/service/services ./internal/knowledge/services ./internal/platform/services ./cmd/api ./cmd/mbr
 run_step bash scripts/check-cli-contract-docs.sh
 run_step go build -trimpath -o "$LOCAL_MBR_BIN" ./cmd/mbr
+run_step env WORKFLOW_PROOF_DIR="$WORKFLOW_PROOF_DIR" go test -count=1 ./internal/knowledge/services
+run_step env WORKFLOW_PROOF_DIR="$WORKFLOW_PROOF_DIR" go test -tags=integration -count=1 ./internal/service/handlers ./internal/automation/services
 run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go test ./ats/runtime ./cmd/ats-runtime ./tools/ats-scenario-proof -count=1"
 run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go run ./tools/publication-evidence --mode plan --source-root \"$FIRST_PARTY_EXTENSIONS_ROOT\" --out \"$PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH\""
 run_step go run ./tools/runtime-bootstrap-proof --out "$BOOTSTRAP_PROOF_PATH" --version "$VERSION" --git-sha "$GIT_SHA" --build-date "$GENERATED_AT"
 run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go run ./tools/ats-scenario-proof --out \"$ATS_SCENARIO_PATH\" --version \"$VERSION\" --git-sha \"$GIT_SHA\" --build-date \"$GENERATED_AT\""
+require_file "$CASE_REPLY_PROOF_PATH"
+require_file "$INBOUND_NEW_EMAIL_PROOF_PATH"
+require_file "$INBOUND_REPLY_THREADING_PROOF_PATH"
+require_file "$FORM_NOTIFICATION_PROOF_PATH"
+require_file "$RULE_EMAIL_PROOF_PATH"
+require_file "$KNOWLEDGE_NOTIFICATION_PROOF_PATH"
 if [[ -n "$FIRST_PARTY_PUBLICATION_EVIDENCE_DIR" ]]; then
   mkdir -p "$PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR"
   shopt -s nullglob
@@ -140,6 +155,13 @@ cat >"$SUMMARY_PATH" <<EOF
 - local_mbr_bin: ${LOCAL_MBR_BIN}
 - runtime_bootstrap_artifact: ${BOOTSTRAP_PROOF_PATH}
 - ats_scenario_artifact: ${ATS_SCENARIO_PATH}
+- workflow_proof_dir: ${WORKFLOW_PROOF_DIR}
+- workflow_case_reply_artifact: ${CASE_REPLY_PROOF_PATH}
+- workflow_inbound_case_create_artifact: ${INBOUND_NEW_EMAIL_PROOF_PATH}
+- workflow_inbound_reply_threading_artifact: ${INBOUND_REPLY_THREADING_PROOF_PATH}
+- workflow_form_notification_artifact: ${FORM_NOTIFICATION_PROOF_PATH}
+- workflow_rule_email_artifact: ${RULE_EMAIL_PROOF_PATH}
+- workflow_knowledge_notification_artifact: ${KNOWLEDGE_NOTIFICATION_PROOF_PATH}
 - extensions_validation_dir: ${EXTENSIONS_VALIDATION_DIR}
 - public_bundle_publication_plan: ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH}
 - public_bundle_release_evidence_dir: ${PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR}
@@ -149,13 +171,15 @@ cat >"$SUMMARY_PATH" <<EOF
 1. \`go test -count=1 ./internal/service/services ./internal/knowledge/services ./internal/platform/services ./cmd/api ./cmd/mbr\`
 2. \`bash scripts/check-cli-contract-docs.sh\`
 3. \`go build -trimpath -o ${LOCAL_MBR_BIN} ./cmd/mbr\`
-4. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go test ./ats/runtime ./cmd/ats-runtime ./tools/ats-scenario-proof -count=1)\`
-5. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go run ./tools/publication-evidence --mode plan --source-root ${FIRST_PARTY_EXTENSIONS_ROOT} --out ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH})\`
-6. \`go run ./tools/runtime-bootstrap-proof --out ${BOOTSTRAP_PROOF_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT}\`
-7. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go run ./tools/ats-scenario-proof --out ${ATS_SCENARIO_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT})\`
-8. \`MBR_BIN=${LOCAL_MBR_BIN} bash ${FIRST_PARTY_VALIDATION_SCRIPT}\`
-9. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
-10. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
+4. \`env WORKFLOW_PROOF_DIR=${WORKFLOW_PROOF_DIR} go test -count=1 ./internal/knowledge/services\`
+5. \`env WORKFLOW_PROOF_DIR=${WORKFLOW_PROOF_DIR} go test -tags=integration -count=1 ./internal/service/handlers ./internal/automation/services\`
+6. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go test ./ats/runtime ./cmd/ats-runtime ./tools/ats-scenario-proof -count=1)\`
+7. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go run ./tools/publication-evidence --mode plan --source-root ${FIRST_PARTY_EXTENSIONS_ROOT} --out ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH})\`
+8. \`go run ./tools/runtime-bootstrap-proof --out ${BOOTSTRAP_PROOF_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT}\`
+9. \`(cd ${FIRST_PARTY_EXTENSIONS_ROOT} && go run ./tools/ats-scenario-proof --out ${ATS_SCENARIO_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT})\`
+10. \`MBR_BIN=${LOCAL_MBR_BIN} bash ${FIRST_PARTY_VALIDATION_SCRIPT}\`
+11. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
+12. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
 
 ## Evidence Docs
 
