@@ -779,10 +779,18 @@ func (cs *CaseService) HandoffCase(ctx context.Context, caseID string, params Ca
 
 // UnassignCase removes the assigned user from a case (keeps team)
 func (cs *CaseService) UnassignCase(ctx context.Context, caseID string) error {
-	return cs.withCase(ctx, caseID, func(c *servicedomain.Case) error {
-		c.Unassign()
-		return nil
-	})
+	return cs.withCaseTrackingStatus(ctx, caseID,
+		func(c *servicedomain.Case) error {
+			c.Unassign()
+			return nil
+		},
+		func(c *servicedomain.Case, oldStatus servicedomain.CaseStatus) {
+			cs.publishCaseAssignedEvent(ctx, c, "", c.TeamID)
+			if c.Status != oldStatus {
+				cs.publishCaseStatusChangedEvent(ctx, c, oldStatus, c.Status)
+			}
+		},
+	)
 }
 
 func (cs *CaseService) recordCaseHandoffCommunication(ctx context.Context, caseObj *servicedomain.Case, previousQueueID, previousTeamID, previousAssigneeID string, params CaseHandoffParams) error {

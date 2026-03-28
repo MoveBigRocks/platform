@@ -34,18 +34,18 @@ func (s *CaseStore) CreateCommunication(ctx context.Context, comm *servicedomain
 	normalizePersistedUUID(&comm.ID)
 	query := `INSERT INTO core_service.communications (
 		id, case_id, workspace_id, type, direction, subject, body, body_html,
-		from_email, from_name, from_user_id, to_emails, cc_emails, bcc_emails,
+		from_email, from_name, from_user_id, from_agent_id, to_emails, cc_emails, bcc_emails,
 		message_id, in_reply_to, email_references, attachment_ids,
 		is_internal, is_read, is_spam, created_at, updated_at
 	) VALUES (
-		COALESCE(NULLIF(?, '')::uuid, uuidv7()), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+		COALESCE(NULLIF(?, '')::uuid, uuidv7()), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
 		?, ?, ?, ?, ?, ?, ?, ?, ?
 	) RETURNING id`
 
 	err = s.db.Get(ctx).QueryRowxContext(ctx, query,
 		comm.ID, comm.CaseID, comm.WorkspaceID, string(comm.Type), string(comm.Direction),
 		comm.Subject, comm.Body, comm.BodyHTML, comm.FromEmail, comm.FromName,
-		nullableUUIDValue(comm.FromUserID), toEmails, ccEmails, bccEmails, comm.MessageID,
+		nullableUUIDValue(comm.FromUserID), nullableUUIDValue(comm.FromAgentID), toEmails, ccEmails, bccEmails, comm.MessageID,
 		comm.InReplyTo, emailReferences, attachments, comm.IsInternal, comm.IsRead,
 		comm.IsSpam, comm.CreatedAt, comm.UpdatedAt,
 	).Scan(&comm.ID)
@@ -86,7 +86,7 @@ func (s *CaseStore) UpdateCommunication(ctx context.Context, comm *servicedomain
 
 	query := `UPDATE core_service.communications SET
 		type = ?, direction = ?, subject = ?, body = ?, body_html = ?,
-		from_email = ?, from_name = ?, from_user_id = ?, to_emails = ?,
+		from_email = ?, from_name = ?, from_user_id = ?, from_agent_id = ?, to_emails = ?,
 		cc_emails = ?, bcc_emails = ?, message_id = ?, in_reply_to = ?,
 		email_references = ?, attachment_ids = ?, is_internal = ?, is_read = ?,
 		is_spam = ?, updated_at = ?
@@ -94,7 +94,7 @@ func (s *CaseStore) UpdateCommunication(ctx context.Context, comm *servicedomain
 
 	_, err = s.db.Get(ctx).ExecContext(ctx, query,
 		string(comm.Type), string(comm.Direction), comm.Subject, comm.Body, comm.BodyHTML,
-		comm.FromEmail, comm.FromName, nullableUUIDValue(comm.FromUserID), toEmails,
+		comm.FromEmail, comm.FromName, nullableUUIDValue(comm.FromUserID), nullableUUIDValue(comm.FromAgentID), toEmails,
 		ccEmails, bccEmails, comm.MessageID, comm.InReplyTo, emailReferences,
 		attachments, comm.IsInternal, comm.IsRead, comm.IsSpam, comm.UpdatedAt,
 		comm.ID, comm.WorkspaceID,

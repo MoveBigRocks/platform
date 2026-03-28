@@ -1108,7 +1108,7 @@ func (r *Resolver) SetCasePriority(ctx context.Context, id, priority string) (*C
 	return &CaseResolver{case_: caseObj, r: r}, nil
 }
 
-// AssignCase assigns a case to a user
+// AssignCase assigns a case to a user, or unassigns it when assigneeID is nil.
 func (r *Resolver) AssignCase(ctx context.Context, id string, assigneeID *string) (*CaseResolver, error) {
 	authCtx, err := graphshared.RequirePermission(ctx, platformdomain.PermissionCaseWrite)
 	if err != nil {
@@ -1126,13 +1126,14 @@ func (r *Resolver) AssignCase(ctx context.Context, id string, assigneeID *string
 		return nil, fmt.Errorf("case not found")
 	}
 
-	userID := ""
-	if assigneeID != nil {
-		userID = *assigneeID
-	}
-
-	if err := r.caseService.AssignCase(ctx, id, userID, ""); err != nil {
-		return nil, fmt.Errorf("failed to assign case: %w", err)
+	if assigneeID == nil {
+		if err := r.caseService.UnassignCase(ctx, id); err != nil {
+			return nil, fmt.Errorf("failed to unassign case: %w", err)
+		}
+	} else {
+		if err := r.caseService.AssignCase(ctx, id, *assigneeID, ""); err != nil {
+			return nil, fmt.Errorf("failed to assign case: %w", err)
+		}
 	}
 
 	// Re-fetch to get updated state
