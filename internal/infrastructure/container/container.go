@@ -244,7 +244,16 @@ func (c *Container) initHealth(opts Options) {
 // Start starts all background services.
 // Use StartWithHealthCheck for production to verify health after startup.
 func (c *Container) Start(ctx context.Context) error {
-	// Start outbox
+	// Start embedded worker manager (event handlers)
+	if c.WorkerManager != nil {
+		if err := c.WorkerManager.Start(ctx); err != nil {
+			return fmt.Errorf("failed to start worker manager: %w", err)
+		}
+		c.Logger.Info("Embedded worker manager started")
+	}
+
+	// Start outbox after workers are subscribed so pending startup events cannot
+	// be dispatched to an empty bus and marked as published.
 	c.Outbox.Start()
 	c.Logger.Info("Outbox service started")
 
@@ -252,14 +261,6 @@ func (c *Container) Start(ctx context.Context) error {
 	if c.DBStatsCollector != nil {
 		c.DBStatsCollector.Start()
 		c.Logger.Info("Database metrics collector started")
-	}
-
-	// Start embedded worker manager (event handlers)
-	if c.WorkerManager != nil {
-		if err := c.WorkerManager.Start(ctx); err != nil {
-			return fmt.Errorf("failed to start worker manager: %w", err)
-		}
-		c.Logger.Info("Embedded worker manager started")
 	}
 
 	return nil

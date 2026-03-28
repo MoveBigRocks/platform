@@ -10,13 +10,12 @@ import (
 	"github.com/movebigrocks/platform/internal/infrastructure/stores"
 	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	servicehandlers "github.com/movebigrocks/platform/internal/service/handlers"
 	serviceapp "github.com/movebigrocks/platform/internal/service/services"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/internal/testutil/managedworkflowruntime"
 	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
-	"github.com/movebigrocks/platform/internal/testutil/workflowruntime"
 	"github.com/movebigrocks/platform/pkg/eventbus"
 	"github.com/movebigrocks/platform/pkg/logger"
 
@@ -311,11 +310,12 @@ func TestKnowledgeReviewWorkflow_PersistsInAppNotification(t *testing.T) {
 		UpdatedAt:   now,
 	}))
 
-	runtime := workflowruntime.NewHarness(t, store)
+	runtime := managedworkflowruntime.NewHarness(t, store)
 	service := NewKnowledgeService(store.KnowledgeResources(), store.Workspaces(), store.ConceptSpecs(), artifactservices.NewGitService(t.TempDir()), runtime.Outbox, store)
 	notificationService := serviceapp.NewNotificationService(store, nil, logger.NewNop())
-	notificationHandler := servicehandlers.NewNotificationCommandHandler(notificationService, logger.NewNop())
-	require.NoError(t, notificationHandler.RegisterHandlers(runtime.EventBus.Subscribe))
+	runtime.UseManager(t, managedworkflowruntime.ManagerDeps{
+		NotificationService: notificationService,
+	})
 	runtime.Start(t)
 	ctx := context.Background()
 

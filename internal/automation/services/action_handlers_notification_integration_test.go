@@ -13,13 +13,11 @@ import (
 	automationservices "github.com/movebigrocks/platform/internal/automation/services"
 	"github.com/movebigrocks/platform/internal/infrastructure/stores"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
-	servicehandlers "github.com/movebigrocks/platform/internal/service/handlers"
 	serviceapp "github.com/movebigrocks/platform/internal/service/services"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/internal/testutil/managedworkflowruntime"
 	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
-	"github.com/movebigrocks/platform/internal/testutil/workflowruntime"
-	"github.com/movebigrocks/platform/pkg/logger"
 )
 
 func TestNotificationActionHandler_SendEmailDeliversOutboundSideEffect(t *testing.T) {
@@ -27,7 +25,7 @@ func TestNotificationActionHandler_SendEmailDeliversOutboundSideEffect(t *testin
 	defer cleanup()
 
 	ctx := context.Background()
-	runtime := workflowruntime.NewHarness(t, store)
+	runtime := managedworkflowruntime.NewHarness(t, store)
 	workspace := testutil.NewIsolatedWorkspace(t)
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
@@ -52,8 +50,9 @@ func TestNotificationActionHandler_SendEmailDeliversOutboundSideEffect(t *testin
 		DefaultFromName:  "Support",
 	}, nil, registry)
 	require.NoError(t, err)
-	emailHandler := servicehandlers.NewEmailCommandHandler(emailService, logger.NewNop())
-	require.NoError(t, emailHandler.RegisterHandlers(runtime.EventBus.Subscribe))
+	runtime.UseManager(t, managedworkflowruntime.ManagerDeps{
+		EmailService: emailService,
+	})
 	runtime.Start(t)
 
 	action := automationservices.RuleAction{
