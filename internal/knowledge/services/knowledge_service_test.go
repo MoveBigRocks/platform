@@ -2,7 +2,6 @@ package knowledgeservices
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/internal/testutil"
 	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
+	"github.com/movebigrocks/platform/internal/testutil/workflowruntime"
 	"github.com/movebigrocks/platform/pkg/eventbus"
 	"github.com/movebigrocks/platform/pkg/logger"
 
@@ -311,10 +311,12 @@ func TestKnowledgeReviewWorkflow_PersistsInAppNotification(t *testing.T) {
 		UpdatedAt:   now,
 	}))
 
-	outbox := &knowledgeMockOutbox{}
-	service := NewKnowledgeService(store.KnowledgeResources(), store.Workspaces(), store.ConceptSpecs(), artifactservices.NewGitService(t.TempDir()), outbox, store)
+	runtime := workflowruntime.NewHarness(t, store)
+	service := NewKnowledgeService(store.KnowledgeResources(), store.Workspaces(), store.ConceptSpecs(), artifactservices.NewGitService(t.TempDir()), runtime.Outbox, store)
 	notificationService := serviceapp.NewNotificationService(store, nil, logger.NewNop())
 	notificationHandler := servicehandlers.NewNotificationCommandHandler(notificationService, logger.NewNop())
+	require.NoError(t, notificationHandler.RegisterHandlers(runtime.EventBus.Subscribe))
+	runtime.Start(t)
 	ctx := context.Background()
 
 	resource, err := service.CreateKnowledgeResource(ctx, CreateKnowledgeResourceParams{
@@ -330,23 +332,13 @@ func TestKnowledgeReviewWorkflow_PersistsInAppNotification(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	var notificationEvent sharedevents.SendNotificationRequestedEvent
-	for _, event := range outbox.events {
-		candidate, ok := event.(sharedevents.SendNotificationRequestedEvent)
-		if !ok {
-			continue
-		}
-		notificationEvent = candidate
-	}
-	require.NotEmpty(t, notificationEvent.EventID)
+	var notifications []*shareddomain.Notification
+	require.Eventually(t, func() bool {
+		notifications, err = store.Notifications().ListUserNotifications(ctx, workspaceID, reviewer.ID)
+		require.NoError(t, err)
+		return len(notifications) == 1
+	}, 2*time.Second, 25*time.Millisecond)
 
-	payload, err := json.Marshal(notificationEvent)
-	require.NoError(t, err)
-	require.NoError(t, notificationHandler.HandleSendNotificationRequested(ctx, payload))
-
-	notifications, err := store.Notifications().ListUserNotifications(ctx, workspaceID, reviewer.ID)
-	require.NoError(t, err)
-	require.Len(t, notifications, 1)
 	assert.Equal(t, resource.ID, notifications[0].EntityID)
 	assert.Equal(t, "New RFC: Queue Routing RFC", notifications[0].Subject)
 

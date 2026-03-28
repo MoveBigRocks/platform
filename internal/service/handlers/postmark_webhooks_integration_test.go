@@ -19,9 +19,9 @@ import (
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	serviceapp "github.com/movebigrocks/platform/internal/service/services"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
-	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/internal/testutil"
 	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
+	"github.com/movebigrocks/platform/internal/testutil/workflowruntime"
 	"github.com/movebigrocks/platform/pkg/eventbus"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
@@ -328,6 +328,7 @@ func TestHandleInboundEmail_CreatesCaseThroughWorker(t *testing.T) {
 
 	ctx := t.Context()
 	log := logger.NewNop()
+	runtime := workflowruntime.NewHarness(t, store)
 
 	workspace := testutil.NewIsolatedWorkspace(t)
 	workspace.Name = "Inbound Workflow Workspace"
@@ -344,20 +345,21 @@ func TestHandleInboundEmail_CreatesCaseThroughWorker(t *testing.T) {
 		store.Queues(),
 		store.Cases(),
 		store.Workspaces(),
-		nil,
+		runtime.Outbox,
 		serviceapp.WithTransactionRunner(store),
 	)
 	emailService, err := serviceapp.NewEmailService(store, serviceapp.EmailConfig{Provider: "mock"}, caseService)
 	require.NoError(t, err)
 	eventHandler := NewEmailEventHandler(emailService, log)
-	eventBus := &capturedWebhookBus{}
+	require.NoError(t, eventHandler.RegisterHandlers(runtime.EventBus.Subscribe))
+	runtime.Start(t)
 
 	webhookHandler := NewPostmarkWebhookHandlers(
 		workspaceService,
 		emailService,
 		nil,
 		"test-secret-123",
-		eventBus,
+		runtime.EventBus,
 		log,
 	)
 
@@ -388,22 +390,20 @@ func TestHandleInboundEmail_CreatesCaseThroughWorker(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
-	require.Len(t, eventBus.published, 1)
-
-	eventPayload, err := json.Marshal(eventBus.published[0].data)
-	require.NoError(t, err)
-	require.NoError(t, eventHandler.HandleEmailReceived(ctx, eventPayload))
 
 	var resp map[string]string
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	emailID := resp["email_id"]
 	require.NotEmpty(t, emailID)
 
-	inbound, err := store.InboundEmails().GetInboundEmail(ctx, emailID)
-	require.NoError(t, err)
-	require.Equal(t, servicedomain.EmailProcessingStatusProcessed, inbound.ProcessingStatus)
-	require.NotEmpty(t, inbound.CaseID)
-	require.NotEmpty(t, inbound.CommunicationID)
+	var inbound *servicedomain.InboundEmail
+	require.Eventually(t, func() bool {
+		inbound, err = store.InboundEmails().GetInboundEmail(ctx, emailID)
+		require.NoError(t, err)
+		return inbound.ProcessingStatus == servicedomain.EmailProcessingStatusProcessed &&
+			inbound.CaseID != "" &&
+			inbound.CommunicationID != ""
+	}, 2*time.Second, 25*time.Millisecond)
 
 	caseObj, err := store.Cases().GetCase(ctx, inbound.CaseID)
 	require.NoError(t, err)
@@ -435,6 +435,7 @@ func TestHandleInboundEmail_ThreadsReplyToExistingCase(t *testing.T) {
 
 	ctx := t.Context()
 	log := logger.NewNop()
+	runtime := workflowruntime.NewHarness(t, store)
 
 	workspace := testutil.NewIsolatedWorkspace(t)
 	workspace.Name = "Threading Workspace"
@@ -452,7 +453,7 @@ func TestHandleInboundEmail_ThreadsReplyToExistingCase(t *testing.T) {
 		store.Queues(),
 		store.Cases(),
 		store.Workspaces(),
-		nil,
+		runtime.Outbox,
 		serviceapp.WithTransactionRunner(store),
 		serviceapp.WithOutboundEmailStore(store.OutboundEmails()),
 	)
@@ -469,17 +470,18 @@ func TestHandleInboundEmail_ThreadsReplyToExistingCase(t *testing.T) {
 		DefaultFromName:  "Support",
 	}, caseService, registry)
 	require.NoError(t, err)
-
-	commandHandler := NewEmailCommandHandler(emailService, log)
 	eventHandler := NewEmailEventHandler(emailService, log)
-	eventBus := &capturedWebhookBus{}
+	commandHandler := NewEmailCommandHandler(emailService, log)
+	require.NoError(t, eventHandler.RegisterHandlers(runtime.EventBus.Subscribe))
+	require.NoError(t, commandHandler.RegisterHandlers(runtime.EventBus.Subscribe))
+	runtime.Start(t)
 
 	webhookHandler := NewPostmarkWebhookHandlers(
 		workspaceService,
 		emailService,
 		nil,
 		"test-secret-123",
-		eventBus,
+		runtime.EventBus,
 		log,
 	)
 
@@ -495,52 +497,45 @@ func TestHandleInboundEmail_ThreadsReplyToExistingCase(t *testing.T) {
 
 	user := testutil.NewIsolatedUser(t, workspace.ID)
 	require.NoError(t, store.Users().CreateUser(ctx, user))
-
-	comm := servicedomain.NewCommunication(caseObj.ID, workspace.ID, shareddomain.CommTypeEmail, "Prior agent response")
-	comm.Direction = shareddomain.DirectionOutbound
-	comm.IsInternal = false
-	comm.FromUserID = user.ID
-	comm.FromEmail = "agent@example.com"
-	comm.FromName = "Test Agent"
-	comm.ToEmails = []string{"customer@example.com"}
-	comm.Subject = "Re: Billing follow-up"
-	require.NoError(t, caseService.AddCommunication(ctx, comm))
-
-	outbound := servicedomain.NewOutboundEmail(workspace.ID, "agent@example.com", comm.Subject, comm.Body)
-	outbound.FromName = "Test Agent"
-	outbound.ToEmails = []string{"customer@example.com"}
-	outbound.ReplyToEmail = "agent@example.com"
-	outbound.Category = "case-reply"
-	outbound.CaseID = caseObj.ID
-	outbound.CommunicationID = comm.ID
-	outbound.CreatedByID = user.ID
-	require.NoError(t, store.OutboundEmails().CreateOutboundEmail(ctx, outbound))
-
-	command := sharedevents.NewSendEmailRequestedEvent(
-		workspace.ID,
-		"case_service",
-		[]string{"customer@example.com"},
-		comm.Subject,
-		comm.Body,
-	)
-	command.OutboundEmailID = outbound.ID
-	command.CaseID = caseObj.ID
-	command.Category = "case-reply"
-	command.ReplyTo = "agent@example.com"
-
-	commandPayload, err := json.Marshal(command)
+	reply, err := caseService.ReplyToCase(ctx, serviceapp.ReplyToCaseParams{
+		WorkspaceID: workspace.ID,
+		CaseID:      caseObj.ID,
+		UserID:      user.ID,
+		UserName:    user.Name,
+		UserEmail:   user.Email,
+		ToEmails:    []string{"customer@example.com"},
+		Subject:     "Re: Billing follow-up",
+		Body:        "Prior agent response",
+	})
 	require.NoError(t, err)
-	require.NoError(t, commandHandler.HandleSendEmailRequested(ctx, commandPayload))
 
-	storedOutbound, err := store.OutboundEmails().GetOutboundEmail(ctx, outbound.ID)
-	require.NoError(t, err)
+	var storedOutbound *servicedomain.OutboundEmail
+	require.Eventually(t, func() bool {
+		comms, listErr := store.Cases().ListCaseCommunications(ctx, caseObj.ID)
+		require.NoError(t, listErr)
+		if len(comms) == 0 {
+			return false
+		}
+		for _, comm := range comms {
+			if comm.ID != reply.ID {
+				continue
+			}
+			if comm.MessageID == "" {
+				return false
+			}
+			for _, sent := range mockProvider.GetSentEmails() {
+				storedOutbound, err = store.OutboundEmails().GetOutboundEmailByProviderMessageID(ctx, sent.ProviderMessageID)
+				if err == nil && storedOutbound.CommunicationID == reply.ID {
+					return true
+				}
+			}
+		}
+		return false
+	}, 2*time.Second, 25*time.Millisecond)
+
 	threadMessageID, ok := storedOutbound.ProviderSettings["header_message_id"].(string)
 	require.True(t, ok)
 	require.NotEmpty(t, threadMessageID)
-
-	updatedComm, err := store.Cases().GetCommunication(ctx, workspace.ID, comm.ID)
-	require.NoError(t, err)
-	assert.Equal(t, threadMessageID, updatedComm.MessageID)
 
 	router := gin.New()
 	router.POST("/webhooks/postmark/:secret/inbound", webhookHandler.HandleInboundEmail)
@@ -572,47 +567,46 @@ func TestHandleInboundEmail_ThreadsReplyToExistingCase(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
-	require.Len(t, eventBus.published, 1)
-	assert.Equal(t, eventbus.StreamEmailEvents, eventBus.published[0].stream)
-
-	eventPayload, err := json.Marshal(eventBus.published[0].data)
-	require.NoError(t, err)
-	require.NoError(t, eventHandler.HandleEmailReceived(ctx, eventPayload))
 
 	var resp map[string]string
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	emailID := resp["email_id"]
 	require.NotEmpty(t, emailID)
 
-	inbound, err := store.InboundEmails().GetInboundEmail(ctx, emailID)
-	require.NoError(t, err)
-	assert.Equal(t, caseObj.ID, inbound.CaseID)
-	assert.Equal(t, servicedomain.EmailProcessingStatusProcessed, inbound.ProcessingStatus)
+	var inbound *servicedomain.InboundEmail
+	var updatedCase *servicedomain.Case
+	var comms []*servicedomain.Communication
+	require.Eventually(t, func() bool {
+		inbound, err = store.InboundEmails().GetInboundEmail(ctx, emailID)
+		require.NoError(t, err)
+		updatedCase, err = store.Cases().GetCase(ctx, caseObj.ID)
+		require.NoError(t, err)
+		comms, err = store.Cases().ListCaseCommunications(ctx, caseObj.ID)
+		require.NoError(t, err)
+		return inbound.ProcessingStatus == servicedomain.EmailProcessingStatusProcessed &&
+			inbound.CaseID == caseObj.ID &&
+			updatedCase.Status == servicedomain.CaseStatusOpen &&
+			len(comms) == 2
+	}, 2*time.Second, 25*time.Millisecond)
+
 	assert.Equal(t, threadMessageID, inbound.InReplyTo)
 	assert.Equal(t, []string{threadMessageID}, inbound.References)
 	assert.Equal(t, "Casey Customer", inbound.FromName)
 	assert.Equal(t, "I still need help with this invoice.", inbound.TextContent)
 
-	updatedCase, err := store.Cases().GetCase(ctx, caseObj.ID)
-	require.NoError(t, err)
-	assert.Equal(t, servicedomain.CaseStatusOpen, updatedCase.Status)
-
-	comms, err := store.Cases().ListCaseCommunications(ctx, caseObj.ID)
-	require.NoError(t, err)
-	require.Len(t, comms, 2)
-	reply := comms[1]
-	assert.Equal(t, shareddomain.DirectionInbound, reply.Direction)
-	assert.Equal(t, replyMessageID, reply.MessageID)
-	assert.Equal(t, threadMessageID, reply.InReplyTo)
-	assert.Equal(t, []string{threadMessageID}, reply.References)
-	assert.Equal(t, "Casey Customer", reply.FromName)
-	assert.Equal(t, "I still need help with this invoice.", reply.Body)
+	inboundReply := comms[1]
+	assert.Equal(t, shareddomain.DirectionInbound, inboundReply.Direction)
+	assert.Equal(t, replyMessageID, inboundReply.MessageID)
+	assert.Equal(t, threadMessageID, inboundReply.InReplyTo)
+	assert.Equal(t, []string{threadMessageID}, inboundReply.References)
+	assert.Equal(t, "Casey Customer", inboundReply.FromName)
+	assert.Equal(t, "I still need help with this invoice.", inboundReply.Body)
 
 	workflowproof.WriteJSON(t, "inbound-reply-threading", map[string]interface{}{
 		"workspace_id":             workspace.ID,
 		"case_id":                  caseObj.ID,
 		"inbound_email_id":         inbound.ID,
-		"matched_communication_id": reply.ID,
+		"matched_communication_id": inboundReply.ID,
 		"thread_message_id":        threadMessageID,
 		"reply_message_id":         replyMessageID,
 		"case_status":              updatedCase.Status,

@@ -23,13 +23,11 @@ import (
 	"github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
 	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	"github.com/movebigrocks/platform/internal/shared/contracts"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
-	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/internal/testutil"
 	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
+	"github.com/movebigrocks/platform/internal/testutil/workflowruntime"
 	"github.com/movebigrocks/platform/pkg/eventbus"
-	"github.com/movebigrocks/platform/pkg/logger"
 )
 
 func init() {
@@ -322,8 +320,18 @@ func TestSubmitPublicForm(t *testing.T) {
 }
 
 func TestSubmitPublicForm_WorkflowCreatesCaseAndSendsNotification(t *testing.T) {
-	handler, store, outbox, cleanup := setupFormHandler(t)
+	store, cleanup := setupFormTestStore(t)
 	defer cleanup()
+	runtime := workflowruntime.NewHarness(t, store)
+
+	formService := automationservices.NewFormServiceWithDeps(
+		store.Forms(),
+		store.Users(),
+		store,
+		store,
+		runtime.Outbox,
+	)
+	handler := NewFormPublicHandler(formService)
 
 	form := createPublicForm(t, store, "ws_public_workflow", "Support Request", "support-request")
 	form.AutoCreateCase = true
@@ -333,6 +341,31 @@ func TestSubmitPublicForm_WorkflowCreatesCaseAndSendsNotification(t *testing.T) 
 	require.NoError(t, store.Forms().UpdateFormSchema(context.Background(), form))
 
 	router := setupPublicFormRouter(handler)
+	caseService := serviceapp.NewCaseService(
+		store.Queues(),
+		store.Cases(),
+		store.Workspaces(),
+		runtime.Outbox,
+		serviceapp.WithTransactionRunner(store),
+		serviceapp.WithOutboundEmailStore(store.OutboundEmails()),
+	)
+	mockProvider := serviceapp.NewMockProvider()
+	registry := serviceapp.NewEmailProviderRegistry()
+	registry.Register("mock", func(config serviceapp.EmailConfig) (serviceapp.EmailProvider, error) {
+		return mockProvider, nil
+	})
+	emailService, err := serviceapp.NewEmailServiceWithRegistry(store, serviceapp.EmailConfig{
+		Provider:         "mock",
+		DefaultFromEmail: "support@movebigrocks.test",
+		DefaultFromName:  "Support",
+	}, caseService, registry)
+	require.NoError(t, err)
+	formHandler := NewFormEventHandler(formService, caseService, runtime.Outbox, store, nil)
+	emailHandler := NewEmailCommandHandler(emailService, nil)
+	require.NoError(t, formHandler.RegisterHandlers(runtime.EventBus.Subscribe))
+	require.NoError(t, emailHandler.RegisterHandlers(runtime.EventBus.Subscribe))
+	runtime.Start(t)
+
 	submissionBody, err := json.Marshal(map[string]interface{}{
 		"name":    "Jane Doe",
 		"email":   "jane@example.com",
@@ -354,78 +387,27 @@ func TestSubmitPublicForm_WorkflowCreatesCaseAndSendsNotification(t *testing.T) 
 	submissionID, _ := submissionResp["submission_id"].(string)
 	require.NotEmpty(t, submissionID)
 
-	var formEvent contracts.FormSubmittedEvent
-	for _, published := range outbox.publishedEvents {
-		event, ok := published.(contracts.FormSubmittedEvent)
-		if !ok {
-			continue
+	var submission *servicedomain.PublicFormSubmission
+	var caseObj *servicedomain.Case
+	var storedOutbound *servicedomain.OutboundEmail
+	require.Eventually(t, func() bool {
+		submission, err = store.Forms().GetFormSubmission(context.Background(), submissionID)
+		require.NoError(t, err)
+		if submission.Status != servicedomain.SubmissionStatusCompleted || submission.CaseID == "" {
+			return false
 		}
-		formEvent = event
-		break
-	}
-	require.NotEmpty(t, formEvent.FormID)
-
-	formService := automationservices.NewFormServiceWithDeps(
-		store.Forms(),
-		store.Users(),
-		store,
-		store,
-		outbox,
-	)
-	caseService := serviceapp.NewCaseService(
-		store.Queues(),
-		store.Cases(),
-		store.Workspaces(),
-		outbox,
-		serviceapp.WithTransactionRunner(store),
-		serviceapp.WithOutboundEmailStore(store.OutboundEmails()),
-	)
-	formHandler := NewFormEventHandler(formService, caseService, outbox, store, logger.NewNop())
-
-	mockProvider := serviceapp.NewMockProvider()
-	registry := serviceapp.NewEmailProviderRegistry()
-	registry.Register("mock", func(config serviceapp.EmailConfig) (serviceapp.EmailProvider, error) {
-		return mockProvider, nil
-	})
-	emailService, err := serviceapp.NewEmailServiceWithRegistry(store, serviceapp.EmailConfig{
-		Provider:         "mock",
-		DefaultFromEmail: "support@movebigrocks.test",
-		DefaultFromName:  "Support",
-	}, caseService, registry)
-	require.NoError(t, err)
-	emailHandler := NewEmailCommandHandler(emailService, logger.NewNop())
-
-	formEventPayload, err := json.Marshal(formEvent)
-	require.NoError(t, err)
-	require.NoError(t, formHandler.HandleFormSubmitted(context.Background(), formEventPayload))
-
-	var emailEvent sharedevents.SendEmailRequestedEvent
-	for _, published := range outbox.publishedEvents {
-		event, ok := published.(sharedevents.SendEmailRequestedEvent)
-		if !ok {
-			continue
+		caseObj, err = store.Cases().GetCase(context.Background(), submission.CaseID)
+		require.NoError(t, err)
+		for _, sent := range mockProvider.GetSentEmails() {
+			storedOutbound, err = store.OutboundEmails().GetOutboundEmailByProviderMessageID(context.Background(), sent.ProviderMessageID)
+			if err == nil && storedOutbound.Status == servicedomain.EmailStatusSent {
+				return true
+			}
 		}
-		emailEvent = event
-	}
-	require.NotEmpty(t, emailEvent.EventID)
+		return false
+	}, 2*time.Second, 25*time.Millisecond)
 
-	emailEventPayload, err := json.Marshal(emailEvent)
-	require.NoError(t, err)
-	require.NoError(t, emailHandler.HandleSendEmailRequested(context.Background(), emailEventPayload))
-
-	submission, err := store.Forms().GetFormSubmission(context.Background(), submissionID)
-	require.NoError(t, err)
-	require.Equal(t, servicedomain.SubmissionStatusCompleted, submission.Status)
-	require.NotEmpty(t, submission.CaseID)
-
-	caseObj, err := store.Cases().GetCase(context.Background(), submission.CaseID)
-	require.NoError(t, err)
 	assert.Equal(t, servicedomain.CasePriorityHigh, caseObj.Priority)
-
-	sent := mockProvider.GetSentEmails()
-	require.Len(t, sent, 1)
-	storedOutbound, err := store.OutboundEmails().GetOutboundEmailByProviderMessageID(context.Background(), sent[0].ProviderMessageID)
-	require.NoError(t, err)
 	assert.Equal(t, servicedomain.EmailStatusSent, storedOutbound.Status)
 	assert.Equal(t, "form", storedOutbound.Category)
 

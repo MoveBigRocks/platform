@@ -4,43 +4,30 @@ package automationservices_test
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	automationservices "github.com/movebigrocks/platform/internal/automation/services"
 	"github.com/movebigrocks/platform/internal/infrastructure/stores"
+	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	servicehandlers "github.com/movebigrocks/platform/internal/service/handlers"
 	serviceapp "github.com/movebigrocks/platform/internal/service/services"
 	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
-	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/internal/testutil"
 	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
-	"github.com/movebigrocks/platform/pkg/eventbus"
+	"github.com/movebigrocks/platform/internal/testutil/workflowruntime"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
-
-type automationRecordingOutbox struct {
-	events []interface{}
-}
-
-func (o *automationRecordingOutbox) Publish(_ context.Context, _ eventbus.Stream, event interface{}) error {
-	o.events = append(o.events, event)
-	return nil
-}
-
-func (o *automationRecordingOutbox) PublishEvent(_ context.Context, _ eventbus.Stream, event eventbus.Event) error {
-	o.events = append(o.events, event)
-	return nil
-}
 
 func TestNotificationActionHandler_SendEmailDeliversOutboundSideEffect(t *testing.T) {
 	store, cleanup := setupAutomationTestStore(t)
 	defer cleanup()
 
 	ctx := context.Background()
+	runtime := workflowruntime.NewHarness(t, store)
 	workspace := testutil.NewIsolatedWorkspace(t)
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
@@ -52,8 +39,7 @@ func TestNotificationActionHandler_SendEmailDeliversOutboundSideEffect(t *testin
 	caseObj.ContactName = contact.Name
 	require.NoError(t, store.Cases().CreateCase(ctx, caseObj))
 
-	outbox := &automationRecordingOutbox{}
-	handler := automationservices.NewNotificationActionHandler(outbox)
+	handler := automationservices.NewNotificationActionHandler(runtime.Outbox)
 
 	mockProvider := serviceapp.NewMockProvider()
 	registry := serviceapp.NewEmailProviderRegistry()
@@ -67,6 +53,8 @@ func TestNotificationActionHandler_SendEmailDeliversOutboundSideEffect(t *testin
 	}, nil, registry)
 	require.NoError(t, err)
 	emailHandler := servicehandlers.NewEmailCommandHandler(emailService, logger.NewNop())
+	require.NoError(t, emailHandler.RegisterHandlers(runtime.EventBus.Subscribe))
+	runtime.Start(t)
 
 	action := automationservices.RuleAction{
 		Type:    "send_email",
@@ -82,27 +70,17 @@ func TestNotificationActionHandler_SendEmailDeliversOutboundSideEffect(t *testin
 
 	require.NoError(t, handler.Handle(ctx, action, ruleContext, result))
 
-	var emailEvent sharedevents.SendEmailRequestedEvent
-	for _, event := range outbox.events {
-		candidate, ok := event.(sharedevents.SendEmailRequestedEvent)
-		if !ok {
-			continue
+	var storedOutbound *servicedomain.OutboundEmail
+	require.Eventually(t, func() bool {
+		for _, sent := range mockProvider.GetSentEmails() {
+			storedOutbound, err = store.OutboundEmails().GetOutboundEmailByProviderMessageID(ctx, sent.ProviderMessageID)
+			if err == nil && storedOutbound.Status == servicedomain.EmailStatusSent {
+				return true
+			}
 		}
-		emailEvent = candidate
-		break
-	}
-	require.NotEmpty(t, emailEvent.EventID)
-	assert.Equal(t, contact.Email, emailEvent.ToEmails[0])
+		return false
+	}, 2*time.Second, 25*time.Millisecond)
 
-	payload, err := json.Marshal(emailEvent)
-	require.NoError(t, err)
-	require.NoError(t, emailHandler.HandleSendEmailRequested(ctx, payload))
-
-	sent := mockProvider.GetSentEmails()
-	require.Len(t, sent, 1)
-
-	storedOutbound, err := store.OutboundEmails().GetOutboundEmailByProviderMessageID(ctx, sent[0].ProviderMessageID)
-	require.NoError(t, err)
 	assert.Equal(t, "rule", storedOutbound.Category)
 	assert.Equal(t, caseObj.ID, storedOutbound.CaseID)
 	assert.Equal(t, "Refund update", storedOutbound.Subject)

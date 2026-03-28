@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,6 +17,8 @@ import (
 	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/internal/testutil"
 	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
+	"github.com/movebigrocks/platform/internal/testutil/workflowruntime"
+	"github.com/movebigrocks/platform/pkg/eventbus"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 
@@ -126,7 +129,6 @@ func TestEmailCommandHandler_HandleSendEmailRequestedUsesExistingOutboundEmailAn
 		DefaultFromName:  "Support",
 	}, caseService, registry)
 	require.NoError(t, err)
-
 	handler := NewEmailCommandHandler(emailService, logger.NewNop())
 
 	event := sharedevents.NewSendEmailRequestedEvent(
@@ -170,12 +172,12 @@ func TestCaseReplyWorkflow_QueuesAndSendsOutboundEmail(t *testing.T) {
 	user := testutil.NewIsolatedUser(t, workspace.ID)
 	require.NoError(t, store.Users().CreateUser(ctx, user))
 
-	outbox := &formMockOutbox{publishedEvents: []interface{}{}}
+	runtime := workflowruntime.NewHarness(t, store)
 	caseService := serviceapp.NewCaseService(
 		store.Queues(),
 		store.Cases(),
 		store.Workspaces(),
-		outbox,
+		runtime.Outbox,
 		serviceapp.WithTransactionRunner(store),
 		serviceapp.WithOutboundEmailStore(store.OutboundEmails()),
 	)
@@ -201,8 +203,8 @@ func TestCaseReplyWorkflow_QueuesAndSendsOutboundEmail(t *testing.T) {
 		DefaultFromName:  "Support",
 	}, caseService, registry)
 	require.NoError(t, err)
-
 	handler := NewEmailCommandHandler(emailService, logger.NewNop())
+	require.NoError(t, handler.RegisterHandlers(runtime.EventBus.Subscribe))
 
 	reply, err := caseService.ReplyToCase(ctx, serviceapp.ReplyToCaseParams{
 		WorkspaceID: workspace.ID,
@@ -217,16 +219,20 @@ func TestCaseReplyWorkflow_QueuesAndSendsOutboundEmail(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, reply)
 
+	pendingEvents, err := store.Outbox().GetPendingOutboxEvents(ctx, 10)
+	require.NoError(t, err)
+	require.NotEmpty(t, pendingEvents)
+
 	var emailEvent sharedevents.SendEmailRequestedEvent
-	for _, published := range outbox.publishedEvents {
-		event, ok := published.(sharedevents.SendEmailRequestedEvent)
-		if !ok {
+	for _, pending := range pendingEvents {
+		if pending.Stream != eventbus.StreamEmailCommands.String() {
 			continue
 		}
-		emailEvent = event
-		break
+		require.NoError(t, json.Unmarshal(pending.EventData, &emailEvent))
+		if emailEvent.CaseID == caseObj.ID {
+			break
+		}
 	}
-	require.NotEmpty(t, emailEvent.EventID)
 	require.NotEmpty(t, emailEvent.OutboundEmailID)
 
 	pendingOutbound, err := store.OutboundEmails().GetOutboundEmail(ctx, emailEvent.OutboundEmailID)
@@ -234,14 +240,14 @@ func TestCaseReplyWorkflow_QueuesAndSendsOutboundEmail(t *testing.T) {
 	assert.Equal(t, servicedomain.EmailStatusPending, pendingOutbound.Status)
 	assert.Equal(t, reply.ID, pendingOutbound.CommunicationID)
 
-	eventPayload, err := json.Marshal(emailEvent)
-	require.NoError(t, err)
-	require.NoError(t, handler.HandleSendEmailRequested(ctx, eventPayload))
+	runtime.Start(t)
 
-	storedOutbound, err := store.OutboundEmails().GetOutboundEmail(ctx, emailEvent.OutboundEmailID)
-	require.NoError(t, err)
-	assert.Equal(t, servicedomain.EmailStatusSent, storedOutbound.Status)
-	assert.NotEmpty(t, storedOutbound.ProviderMessageID)
+	var storedOutbound *servicedomain.OutboundEmail
+	require.Eventually(t, func() bool {
+		storedOutbound, err = store.OutboundEmails().GetOutboundEmail(ctx, pendingOutbound.ID)
+		require.NoError(t, err)
+		return storedOutbound.Status == servicedomain.EmailStatusSent && storedOutbound.ProviderMessageID != ""
+	}, 2*time.Second, 25*time.Millisecond)
 
 	threadMessageID, ok := storedOutbound.ProviderSettings["header_message_id"].(string)
 	require.True(t, ok)
