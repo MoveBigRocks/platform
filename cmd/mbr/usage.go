@@ -57,6 +57,10 @@ func printSpecUsage(w io.Writer) {
 	printUsageSection(w, "spec")
 }
 
+func printSandboxesUsage(w io.Writer) {
+	printUsageSection(w, "sandboxes")
+}
+
 func printContextUsage(w io.Writer) {
 	printUsageSection(w, "context")
 }

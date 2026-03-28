@@ -51,6 +51,8 @@ BOOTSTRAP_PROOF_DIR="$OUT_DIR/sandbox-bootstrap"
 BOOTSTRAP_PROOF_PATH="$BOOTSTRAP_PROOF_DIR/mbr-instance.json"
 SANDBOX_LIFECYCLE_DIR="$OUT_DIR/sandbox-lifecycle"
 SANDBOX_LIFECYCLE_PATH="$SANDBOX_LIFECYCLE_DIR/lifecycle.json"
+CLI_SANDBOX_DIR="$OUT_DIR/cli-sandbox"
+CLI_SANDBOX_PATH="$CLI_SANDBOX_DIR/cli-sandbox.json"
 SUMMARY_PATH="$OUT_DIR/summary.md"
 GENERATED_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 GIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD)"
@@ -99,7 +101,7 @@ require_file() {
 
 cd "$ROOT_DIR"
 
-mkdir -p "$PROOF_BIN_DIR" "$EXTENSIONS_VALIDATION_DIR" "$BOOTSTRAP_PROOF_DIR" "$SANDBOX_LIFECYCLE_DIR"
+mkdir -p "$PROOF_BIN_DIR" "$EXTENSIONS_VALIDATION_DIR" "$BOOTSTRAP_PROOF_DIR" "$SANDBOX_LIFECYCLE_DIR" "$CLI_SANDBOX_DIR"
 require_file "$FIRST_PARTY_VALIDATION_SCRIPT"
 require_file "$FIRST_PARTY_CATALOG_PATH"
 
@@ -108,6 +110,7 @@ run_step bash scripts/check-cli-contract-docs.sh
 run_step go build -trimpath -o "$LOCAL_MBR_BIN" ./cmd/mbr
 run_step go run ./tools/runtime-bootstrap-proof --out "$BOOTSTRAP_PROOF_PATH" --version "$VERSION" --git-sha "$GIT_SHA" --build-date "$GENERATED_AT"
 run_step go run ./tools/sandbox-lifecycle-proof --out "$SANDBOX_LIFECYCLE_PATH" --version "$VERSION" --git-sha "$GIT_SHA" --build-date "$GENERATED_AT"
+run_step go run ./tools/cli-sandbox-proof --mbr-bin "$LOCAL_MBR_BIN" --out "$CLI_SANDBOX_PATH" --version "$VERSION" --git-sha "$GIT_SHA" --build-date "$GENERATED_AT"
 cp "$FIRST_PARTY_CATALOG_PATH" "$EXTENSIONS_VALIDATION_DIR/public-bundles.json"
 run_step_capture "$EXTENSIONS_VALIDATION_LOG" env MBR_BIN="$LOCAL_MBR_BIN" bash "$FIRST_PARTY_VALIDATION_SCRIPT"
 run_step bash scripts/build-cli-release.sh --version "$VERSION" --out "$CLI_OUT_DIR"
@@ -123,6 +126,7 @@ cat >"$SUMMARY_PATH" <<EOF
 - local_mbr_bin: ${LOCAL_MBR_BIN}
 - sandbox_bootstrap_artifact: ${BOOTSTRAP_PROOF_PATH}
 - sandbox_lifecycle_artifact: ${SANDBOX_LIFECYCLE_PATH}
+- cli_sandbox_artifact: ${CLI_SANDBOX_PATH}
 - extensions_validation_dir: ${EXTENSIONS_VALIDATION_DIR}
 
 ## Commands Run
@@ -132,9 +136,10 @@ cat >"$SUMMARY_PATH" <<EOF
 3. \`go build -trimpath -o ${LOCAL_MBR_BIN} ./cmd/mbr\`
 4. \`go run ./tools/runtime-bootstrap-proof --out ${BOOTSTRAP_PROOF_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT}\`
 5. \`go run ./tools/sandbox-lifecycle-proof --out ${SANDBOX_LIFECYCLE_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT}\`
-6. \`MBR_BIN=${LOCAL_MBR_BIN} bash ${FIRST_PARTY_VALIDATION_SCRIPT}\`
-7. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
-8. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
+6. \`go run ./tools/cli-sandbox-proof --mbr-bin ${LOCAL_MBR_BIN} --out ${CLI_SANDBOX_PATH} --version ${VERSION} --git-sha ${GIT_SHA} --build-date ${GENERATED_AT}\`
+7. \`MBR_BIN=${LOCAL_MBR_BIN} bash ${FIRST_PARTY_VALIDATION_SCRIPT}\`
+8. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
+9. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
 
 ## Evidence Docs
 

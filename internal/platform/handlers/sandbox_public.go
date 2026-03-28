@@ -46,8 +46,9 @@ func (h *SandboxPublicHandler) CreateSandbox(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, sandboxResponse(result.Sandbox, gin.H{
-		"manage_token": result.ManageToken,
-		"next_steps":   sandboxCreateNextSteps(result.Sandbox),
+		"manage_token":     result.ManageToken,
+		"verification_url": result.VerificationURL,
+		"next_steps":       sandboxCreateNextSteps(result.Sandbox),
 	}))
 }
 

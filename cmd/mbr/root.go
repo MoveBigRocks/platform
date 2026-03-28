@@ -12,6 +12,7 @@ var rootCommandHandlers = map[string]rootCommandHandler{
 	"auth":              runAuth,
 	"context":           runContext,
 	"spec":              runSpec,
+	"sandboxes":         runSandboxes,
 	"workspaces":        runWorkspaces,
 	"teams":             runTeams,
 	"agents":            runAgents,
