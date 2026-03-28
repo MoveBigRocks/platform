@@ -194,6 +194,8 @@ Current reality:
 - those sibling repos are pinned by
   [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
   and verified by the proof script before milestone-critical tests run
+- the proof bundle archives the canonical workspace manifest and the publication
+  evidence manifest so the artifact retains its own proof inputs
 - milestone proof bootstraps a temporary `go.work` when the workspace does not
   already provide one, so multi-repo proof does not silently depend on a
   developer-specific local Go workspace

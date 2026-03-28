@@ -79,6 +79,8 @@ first-party sources rather than stale mirrored fixtures.
   [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
 - Verification script:
   [`scripts/verify-canonical-workspace-refs.sh`](../scripts/verify-canonical-workspace-refs.sh)
+- Archived manifest artifact:
+  `dist/milestone-proof/workspace-refs/canonical-workspace-refs.json`
 - Proof artifact:
   `dist/milestone-proof/workspace-refs/canonical-workspace-refs-verification.json`
 
@@ -116,9 +118,11 @@ The current proof run writes:
 - `dist/milestone-proof/runtime-bootstrap/`
 - `dist/milestone-proof/ats-scenario/`
 - `dist/milestone-proof/workspace-refs/`
+- `dist/milestone-proof/workspace-refs/canonical-workspace-refs.json`
 - `dist/milestone-proof/workspace-refs/canonical-workspace-refs-verification.json`
 - `dist/milestone-proof/workflow-proof/`
 - `dist/milestone-proof/public-bundle-publication/`
+- `dist/milestone-proof/public-bundle-publication/publication-evidence-manifest.json`
 - `dist/milestone-proof/public-bundle-publication/release-evidence/`
 - `dist/milestone-proof/public-bundle-publication/evidence-verification.json`
 - `dist/milestone-proof/extensions-validation/`
@@ -131,6 +135,7 @@ Those outputs currently provide the concrete proof bundle for:
 - first-party pack readiness
 - runtime discovery, extension lifecycle, and publication evidence
 - durable publication evidence archiving plus manifest/plan verification
+- archived input manifests for canonical workspace refs and publication evidence
 - canonical sibling-repo ref verification for deterministic multi-repo proof
 - milestone-scoped operational workflow evidence
 - command failure visibility for the scoped operational streams
