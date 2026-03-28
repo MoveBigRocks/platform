@@ -105,7 +105,7 @@ func TestCreateAPIRouter_ServesErrorTrackingEnvelopeFromInstalledExtension(t *te
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid sentry auth header"})
 	})
 
-	router := createAPIRouter(cfg, c, nil, nil, registry)
+	router := createAPIRouter(cfg, c, nil, nil, nil, registry)
 
 	testCases := []struct {
 		name           string

@@ -339,6 +339,7 @@ func createAPIRouter(
 	c *container.Container,
 	postmarkHandlers *servicehandlers.PostmarkWebhookHandlers,
 	publicFormHandler *servicehandlers.FormPublicHandler,
+	publicConversationHandler *servicehandlers.PublicConversationHandler,
 	serviceTargets *extensionruntime.Registry,
 ) *gin.Engine {
 	router := gin.New()
@@ -411,6 +412,7 @@ func createAPIRouter(
 	v1Router := v1routes.NewRouter()
 	v1Router.SetPostmarkHandlers(postmarkHandlers)
 	v1Router.SetPublicFormHandler(publicFormHandler)
+	v1Router.SetPublicConversationHandler(publicConversationHandler)
 	v1Router.RegisterRoutes(v1)
 
 	// CLI browser login bootstrap endpoints. These stay unauthenticated because

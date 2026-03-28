@@ -1258,8 +1258,28 @@ func (r *Resolver) AddConversationMessage(ctx context.Context, sessionID string,
 	if err != nil {
 		return nil, err
 	}
+	participantID := valueOrEmpty(input.ParticipantID)
+	if participantID == "" && authCtx.Principal != nil {
+		participantParams := serviceapp.EnsureConversationParticipantParams{
+			ParticipantRef: authCtx.Principal.GetID(),
+			DisplayName:    authCtx.Principal.GetName(),
+		}
+		switch {
+		case authCtx.IsAgent():
+			participantParams.ParticipantKind = servicedomain.ConversationParticipantKindAgent
+			participantParams.RoleInSession = servicedomain.ConversationParticipantRoleAssistant
+		default:
+			participantParams.ParticipantKind = servicedomain.ConversationParticipantKindUser
+			participantParams.RoleInSession = servicedomain.ConversationParticipantRoleOperator
+		}
+		participant, err := r.conversationService.EnsureConversationParticipant(ctx, sessionID, participantParams)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve conversation participant: %w", err)
+		}
+		participantID = participant.ID
+	}
 	message, err := r.conversationService.AddConversationMessage(ctx, sessionID, serviceapp.AddConversationMessageParams{
-		ParticipantID: valueOrEmpty(input.ParticipantID),
+		ParticipantID: participantID,
 		Role:          role,
 		Kind:          kind,
 		Visibility:    visibility,

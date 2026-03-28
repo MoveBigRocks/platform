@@ -83,7 +83,7 @@ func TestCreateAPIRouter_ServesAnalyticsScriptFromInstalledExtension(t *testing.
 		ctx.String(http.StatusOK, "window.__mbrAnalyticsEndpoint = '/api/analytics/event';")
 	})
 
-	router := createAPIRouter(cfg, c, nil, nil, registry)
+	router := createAPIRouter(cfg, c, nil, nil, nil, registry)
 
 	req := httptest.NewRequest(http.MethodGet, "/js/analytics.js", nil)
 	w := httptest.NewRecorder()

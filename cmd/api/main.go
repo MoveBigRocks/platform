@@ -118,10 +118,11 @@ func main() {
 	)
 
 	publicFormHandler := servicehandlers.NewFormPublicHandler(c.Automation.Form)
+	publicConversationHandler := servicehandlers.NewPublicConversationHandler(c.Service.Conversation, c.Store.Users())
 
 	// Create routers
 	adminRouter := createAdminRouter(cfg, c, cfg.Admin.Emails, serviceTargets)
-	apiRouter := createAPIRouter(cfg, c, postmarkHandlers, publicFormHandler, serviceTargets)
+	apiRouter := createAPIRouter(cfg, c, postmarkHandlers, publicFormHandler, publicConversationHandler, serviceTargets)
 	publicRouter := createPublicRouter(cfg, c.Platform.Session, c.Platform.Extension, c.Platform.CLILogin, c.Platform.Sandbox, cfg.Admin.Emails, Version, GitCommit, BuildDate)
 
 	// Workspace router factory

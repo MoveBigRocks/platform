@@ -10,6 +10,7 @@ import (
 type Router struct {
 	postmarkWebhookHandlers *servicehandlers.PostmarkWebhookHandlers
 	publicFormHandler       *servicehandlers.FormPublicHandler
+	publicConversation      *servicehandlers.PublicConversationHandler
 }
 
 // NewRouter creates a new v1 router
@@ -25,6 +26,11 @@ func (r *Router) SetPostmarkHandlers(handlers *servicehandlers.PostmarkWebhookHa
 // SetPublicFormHandler sets the public form handler
 func (r *Router) SetPublicFormHandler(handler *servicehandlers.FormPublicHandler) {
 	r.publicFormHandler = handler
+}
+
+// SetPublicConversationHandler sets the public conversation handler.
+func (r *Router) SetPublicConversationHandler(handler *servicehandlers.PublicConversationHandler) {
+	r.publicConversation = handler
 }
 
 // RegisterRoutes registers all v1 API routes
@@ -58,6 +64,14 @@ func (r *Router) RegisterRoutes(api *gin.RouterGroup) {
 			{
 				apiSubmit.POST("/:crypto_id/api/submit", r.publicFormHandler.SubmitPublicForm)
 			}
+		}
+	}
+
+	if r.publicConversation != nil {
+		conversations := api.Group("/conversations")
+		{
+			conversations.POST("", r.publicConversation.StartConversation)
+			conversations.POST("/:session_id/messages", r.publicConversation.AddMessage)
 		}
 	}
 }
