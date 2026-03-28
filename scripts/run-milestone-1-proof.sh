@@ -70,8 +70,14 @@ WORKSPACE_REFS_DIR="$OUT_DIR/workspace-refs"
 WORKSPACE_REFS_MANIFEST_ARCHIVE_PATH="$WORKSPACE_REFS_DIR/canonical-workspace-refs.json"
 WORKSPACE_REFS_VERIFICATION_PATH="$WORKSPACE_REFS_DIR/canonical-workspace-refs-verification.json"
 CASE_REPLY_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-reply-send.json"
+CASE_OPERATOR_MANUAL_CREATE_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-manual-create.json"
+CASE_OPERATOR_WORK_MANAGEMENT_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-work-management.json"
+CASE_OPERATOR_HANDOFF_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-handoff.json"
+CASE_OPERATOR_STATUS_TRANSITION_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-status-transition.json"
+CASE_OPERATOR_ATTACHMENT_UPLOAD_PROOF_PATH="$WORKFLOW_PROOF_DIR/case-operator-attachment-upload.json"
 EMAIL_COMMAND_FAILURE_PROOF_PATH="$WORKFLOW_PROOF_DIR/email-command-failure-visible.json"
 INBOUND_NEW_EMAIL_PROOF_PATH="$WORKFLOW_PROOF_DIR/inbound-new-email-case-create.json"
+INBOUND_EMAIL_ATTACHMENTS_PROOF_PATH="$WORKFLOW_PROOF_DIR/inbound-email-attachments.json"
 INBOUND_REPLY_THREADING_PROOF_PATH="$WORKFLOW_PROOF_DIR/inbound-reply-threading.json"
 FORM_NOTIFICATION_PROOF_PATH="$WORKFLOW_PROOF_DIR/public-form-case-notification.json"
 RULE_EMAIL_PROOF_PATH="$WORKFLOW_PROOF_DIR/rule-send-email.json"
@@ -237,8 +243,14 @@ run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go run ./tools/publica
 run_step go run ./tools/runtime-bootstrap-proof --out "$BOOTSTRAP_PROOF_PATH" --version "$VERSION" --git-sha "$GIT_SHA" --build-date "$GENERATED_AT"
 run_step bash -lc "cd \"$FIRST_PARTY_EXTENSIONS_ROOT\" && go run ./tools/ats-scenario-proof --out \"$ATS_SCENARIO_PATH\" --version \"$VERSION\" --git-sha \"$GIT_SHA\" --build-date \"$GENERATED_AT\""
 require_file "$CASE_REPLY_PROOF_PATH"
+require_file "$CASE_OPERATOR_MANUAL_CREATE_PROOF_PATH"
+require_file "$CASE_OPERATOR_WORK_MANAGEMENT_PROOF_PATH"
+require_file "$CASE_OPERATOR_HANDOFF_PROOF_PATH"
+require_file "$CASE_OPERATOR_STATUS_TRANSITION_PROOF_PATH"
+require_file "$CASE_OPERATOR_ATTACHMENT_UPLOAD_PROOF_PATH"
 require_file "$EMAIL_COMMAND_FAILURE_PROOF_PATH"
 require_file "$INBOUND_NEW_EMAIL_PROOF_PATH"
+require_file "$INBOUND_EMAIL_ATTACHMENTS_PROOF_PATH"
 require_file "$INBOUND_REPLY_THREADING_PROOF_PATH"
 require_file "$FORM_NOTIFICATION_PROOF_PATH"
 require_file "$RULE_EMAIL_PROOF_PATH"
@@ -308,8 +320,14 @@ cat >"$SUMMARY_PATH" <<EOF
 - workflow_proof_dir: $(artifact_rel "$WORKFLOW_PROOF_DIR")
 - go_work_path: $(artifact_rel "${GOWORK:-off}")
 - workflow_case_reply_artifact: $(artifact_rel "$CASE_REPLY_PROOF_PATH")
+- workflow_case_operator_manual_create_artifact: $(artifact_rel "$CASE_OPERATOR_MANUAL_CREATE_PROOF_PATH")
+- workflow_case_operator_work_management_artifact: $(artifact_rel "$CASE_OPERATOR_WORK_MANAGEMENT_PROOF_PATH")
+- workflow_case_operator_handoff_artifact: $(artifact_rel "$CASE_OPERATOR_HANDOFF_PROOF_PATH")
+- workflow_case_operator_status_transition_artifact: $(artifact_rel "$CASE_OPERATOR_STATUS_TRANSITION_PROOF_PATH")
+- workflow_case_operator_attachment_upload_artifact: $(artifact_rel "$CASE_OPERATOR_ATTACHMENT_UPLOAD_PROOF_PATH")
 - workflow_email_command_failure_artifact: $(artifact_rel "$EMAIL_COMMAND_FAILURE_PROOF_PATH")
 - workflow_inbound_case_create_artifact: $(artifact_rel "$INBOUND_NEW_EMAIL_PROOF_PATH")
+- workflow_inbound_email_attachments_artifact: $(artifact_rel "$INBOUND_EMAIL_ATTACHMENTS_PROOF_PATH")
 - workflow_inbound_reply_threading_artifact: $(artifact_rel "$INBOUND_REPLY_THREADING_PROOF_PATH")
 - workflow_form_notification_artifact: $(artifact_rel "$FORM_NOTIFICATION_PROOF_PATH")
 - workflow_rule_email_artifact: $(artifact_rel "$RULE_EMAIL_PROOF_PATH")

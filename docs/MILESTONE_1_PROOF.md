@@ -75,7 +75,9 @@ first-party sources rather than stale mirrored fixtures.
    - archive machine-readable JSON artifacts for base operator case creation and
      work-management flows as `case-operator-manual-create.json`,
      `case-operator-work-management.json`, `case-operator-reply.json`,
-     `case-operator-handoff.json`, and `case-operator-status-transition.json`
+     `case-operator-handoff.json`, `case-operator-status-transition.json`,
+     `case-operator-attachment-upload.json`, and
+     `inbound-email-attachments.json`
    - this is still not the full expanded product-complete workflow set
 10. Full integration sweep:
    - run `go test -tags=integration ./...`
@@ -108,14 +110,14 @@ artifacts can establish.
 
 Under the expanded Milestone 1 bar, the proof bundle also still does not cover:
 
-- the remaining operator-complete case-loop gap through supported product
-  surfaces: attachment-bearing case workflows
 - conversation reply, handoff, escalation, and queue-parity workflows as
   product-complete operational proof rows
 - a supported public conversation intake surface such as the website widget or
   equivalent public conversation adapter implied by the public product promise
 - a sanctioned extension-to-core case action contract with a production
   consumer, if `case-commands` remains the chosen mechanism
+- the remaining attachment-workflow gap outside the core case loop: ATS
+  resume and portfolio uploads as milestone-proof artifacts
 
 ## Current Live Publication Evidence
 

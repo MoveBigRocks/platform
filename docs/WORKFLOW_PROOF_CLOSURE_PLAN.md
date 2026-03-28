@@ -133,6 +133,23 @@ Remaining Phase 1 work:
 Goal: make attachments part of the real supported work loop instead of an
 unproven support surface.
 
+Progress on 2026-03-28:
+
+- Manual case attachment upload is now proven through the supported upload
+  entrypoint, durable metadata persistence, and the supported case query
+  surface via
+  [`internal/service/handlers/attachment_upload_handler_integration_test.go`](../internal/service/handlers/attachment_upload_handler_integration_test.go).
+- Inbound email attachment ingest is now proven through the real Postmark
+  webhook path, including durable audit visibility for rejected attachments, via
+  [`internal/service/handlers/postmark_webhooks_integration_test.go`](../internal/service/handlers/postmark_webhooks_integration_test.go).
+- The milestone-proof artifact set now includes
+  `workflow-proof/case-operator-attachment-upload.json` and
+  `workflow-proof/inbound-email-attachments.json`.
+- Attachment IDs are now durable at creation time, successful uploads persist
+  the real S3 storage key, inbound webhook ingest persists attachment metadata,
+  and inbound case threading links those attachment records back to the case and
+  communication surfaces operators use.
+
 Changes:
 
 - Add workflow-proof rows for manual case attachment upload, inbound email
@@ -152,6 +169,11 @@ Evidence:
 
 - workflow tests and archived artifacts for manual and inbound attachment flows
 - ATS proof artifact updated to include attachment-bearing candidate evidence
+
+Remaining Phase 2 work:
+
+- ATS resume and portfolio uploads still need equivalent workflow proof so the
+  attachment workstream can be marked fully closed
 
 ### Phase 3: Complete Conversation Workflows And Public Intake
 
