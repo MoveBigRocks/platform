@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -105,11 +106,11 @@ func (p URLSandboxProvisioner) Export(_ context.Context, sandbox *platformdomain
 		Includes: []string{
 			"sandbox_metadata",
 			"runtime_urls",
+			"runtime_configuration",
 			"promotion_handoff",
 		},
 		Omissions: []string{
 			"runtime_database_dump",
-			"runtime_artifact_snapshot",
 			"runtime_secrets",
 		},
 		Data: map[string]any{
@@ -118,11 +119,18 @@ func (p URLSandboxProvisioner) Export(_ context.Context, sandbox *platformdomain
 				"login_url":     sandbox.LoginURL,
 				"bootstrap_url": sandbox.BootstrapURL,
 			},
+			"runtime_configuration": map[string]any{
+				"runtime_domain":       strings.TrimSpace(p.RuntimeDomain),
+				"bootstrap_discovery":  "well_known_json",
+				"delivery_model":       "vendor_operated_preview",
+				"teardown_on_expiry":   true,
+				"export_before_delete": true,
+			},
 			"promotion": map[string]any{
 				"recommended_path": "self_host",
 				"notes": []string{
-					"Use the sandbox export as a handoff bundle for a real instance repo.",
-					"Provider-backed runtime data export is not yet available from the preview URL provisioner.",
+					"Use the sandbox export as a handoff bundle for a real instance repo or hosted trial close-out.",
+					"Runtime URLs and configuration metadata are preserved here even after the preview runtime is torn down.",
 				},
 			},
 		},
@@ -237,6 +245,8 @@ func (s *SandboxService) VerifySandbox(ctx context.Context, verificationToken st
 	switch sandbox.Status {
 	case platformdomain.SandboxStatusReady, platformdomain.SandboxStatusProvisioning:
 		return sandbox, nil
+	case platformdomain.SandboxStatusExpired:
+		return nil, fmt.Errorf("sandbox expired")
 	case platformdomain.SandboxStatusDestroyed:
 		return nil, fmt.Errorf("sandbox already destroyed")
 	}
@@ -276,6 +286,42 @@ func (s *SandboxService) DestroySandbox(ctx context.Context, sandboxID, manageTo
 	return sandbox, nil
 }
 
+func (s *SandboxService) ReapExpiredSandboxes(ctx context.Context, now time.Time) ([]*platformdomain.Sandbox, error) {
+	if s == nil {
+		return nil, fmt.Errorf("sandbox service is required")
+	}
+	if s.store == nil {
+		return nil, fmt.Errorf("sandbox store is not configured")
+	}
+	candidates, err := s.store.ListReapableSandboxes(ctx, now.UTC())
+	if err != nil {
+		return nil, fmt.Errorf("list reapable sandboxes: %w", err)
+	}
+	reaped := make([]*platformdomain.Sandbox, 0, len(candidates))
+	for _, sandbox := range candidates {
+		if sandbox == nil {
+			continue
+		}
+		due, reason := sandbox.ExpiryDue(now)
+		if !due {
+			continue
+		}
+		if strings.TrimSpace(sandbox.RuntimeURL) != "" && s.provisioner != nil {
+			if err := s.provisioner.Destroy(ctx, sandbox); err != nil {
+				return nil, fmt.Errorf("destroy expired sandbox runtime %s: %w", sandbox.ID, err)
+			}
+		}
+		if err := sandbox.MarkExpired(reason, now); err != nil {
+			return nil, fmt.Errorf("expire sandbox %s: %w", sandbox.ID, err)
+		}
+		if err := s.store.UpdateSandbox(ctx, sandbox); err != nil {
+			return nil, fmt.Errorf("persist expired sandbox %s: %w", sandbox.ID, err)
+		}
+		reaped = append(reaped, sandbox)
+	}
+	return reaped, nil
+}
+
 func (s *SandboxService) ExportSandbox(ctx context.Context, sandboxID, manageToken string) (*SandboxExportResult, error) {
 	sandbox, err := s.GetSandbox(ctx, sandboxID, manageToken)
 	if err != nil {
@@ -299,6 +345,41 @@ func (s *SandboxService) ExportSandbox(ctx context.Context, sandboxID, manageTok
 	if bundle.Data == nil {
 		bundle.Data = map[string]any{}
 	}
+	ensureSandboxExportIncludes(&bundle, "sandbox_metadata", "runtime_configuration", "lifecycle_snapshot", "cli_handoff", "public_bundle_catalog", "promotion_handoff")
+	ensureSandboxExportOmissions(&bundle, "runtime_database_dump", "runtime_secrets")
+	mergeSandboxExportMap(bundle.Data, "runtime_configuration", map[string]any{
+		"activation_window_hours": s.BootstrapPolicy().ActivationWindowHours,
+		"default_trial_days":      s.BootstrapPolicy().DefaultTrialDays,
+		"extension_days":          s.BootstrapPolicy().ExtensionDays,
+		"verification_path":       s.BootstrapPolicy().VerificationPath,
+		"status":                  sandbox.Status,
+		"expired_at":              sandbox.ExpiredAt,
+		"destroyed_at":            sandbox.DestroyedAt,
+	})
+	bundle.Data["lifecycle"] = map[string]any{
+		"status":                 sandbox.Status,
+		"activation_deadline_at": sandbox.ActivationDeadlineAt,
+		"verified_at":            sandbox.VerifiedAt,
+		"expires_at":             sandbox.ExpiresAt,
+		"expired_at":             sandbox.ExpiredAt,
+		"extended_at":            sandbox.ExtendedAt,
+		"destroyed_at":           sandbox.DestroyedAt,
+		"last_error":             sandbox.LastError,
+	}
+	bundle.Data["cli"] = map[string]any{
+		"login_command": fmt.Sprintf("mbr auth login --url %s", sandbox.RuntimeURL),
+		"show_url":      sandboxManageURL(s.config.PublicBaseURL, sandbox.ID),
+		"extend_url":    sandboxActionURL(s.config.PublicBaseURL, sandbox.ID, "extend"),
+		"export_url":    sandboxActionURL(s.config.PublicBaseURL, sandbox.ID, "export"),
+		"destroy_url":   sandboxManageURL(s.config.PublicBaseURL, sandbox.ID),
+	}
+	bundle.Data["public_bundle_catalog"] = []map[string]any{
+		{"slug": "ats", "channel": "launch"},
+		{"slug": "error-tracking", "channel": "launch"},
+		{"slug": "web-analytics", "channel": "launch"},
+		{"slug": "sales-pipeline", "channel": "beta"},
+		{"slug": "community-feature-requests", "channel": "beta"},
+	}
 	bundle.Data["sandbox"] = map[string]any{
 		"id":                     sandbox.ID,
 		"slug":                   sandbox.Slug,
@@ -311,6 +392,7 @@ func (s *SandboxService) ExportSandbox(ctx context.Context, sandboxID, manageTok
 		"activation_deadline_at": sandbox.ActivationDeadlineAt,
 		"verified_at":            sandbox.VerifiedAt,
 		"expires_at":             sandbox.ExpiresAt,
+		"expired_at":             sandbox.ExpiredAt,
 		"extended_at":            sandbox.ExtendedAt,
 		"destroyed_at":           sandbox.DestroyedAt,
 		"created_at":             sandbox.CreatedAt,
@@ -373,6 +455,9 @@ func (s *SandboxService) provisionSandbox(ctx context.Context, sandbox *platform
 	if sandbox.Status == platformdomain.SandboxStatusReady || sandbox.Status == platformdomain.SandboxStatusProvisioning {
 		return sandbox, nil
 	}
+	if sandbox.Status == platformdomain.SandboxStatusExpired {
+		return nil, fmt.Errorf("sandbox expired")
+	}
 	if sandbox.Status == platformdomain.SandboxStatusDestroyed {
 		return nil, fmt.Errorf("sandbox already destroyed")
 	}
@@ -417,6 +502,63 @@ func randomSandboxSlug() string {
 	noun := sandboxNouns[randomIndex(len(sandboxNouns))]
 	number := 10 + randomIndex(90)
 	return fmt.Sprintf("%s-%s-%d", adj, noun, number)
+}
+
+func ensureSandboxExportIncludes(bundle *SandboxExportBundle, values ...string) {
+	if bundle == nil {
+		return
+	}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || slices.Contains(bundle.Includes, value) {
+			continue
+		}
+		bundle.Includes = append(bundle.Includes, value)
+	}
+}
+
+func ensureSandboxExportOmissions(bundle *SandboxExportBundle, values ...string) {
+	if bundle == nil {
+		return
+	}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || slices.Contains(bundle.Omissions, value) {
+			continue
+		}
+		bundle.Omissions = append(bundle.Omissions, value)
+	}
+}
+
+func mergeSandboxExportMap(data map[string]any, key string, values map[string]any) {
+	if data == nil {
+		return
+	}
+	existing, _ := data[key].(map[string]any)
+	if existing == nil {
+		existing = map[string]any{}
+	}
+	for mapKey, value := range values {
+		existing[mapKey] = value
+	}
+	data[key] = existing
+}
+
+func sandboxManageURL(baseURL, sandboxID string) string {
+	base := strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if base == "" {
+		return "/api/public/sandboxes/" + strings.TrimSpace(sandboxID)
+	}
+	return base + "/api/public/sandboxes/" + strings.TrimSpace(sandboxID)
+}
+
+func sandboxActionURL(baseURL, sandboxID, action string) string {
+	base := sandboxManageURL(baseURL, sandboxID)
+	action = strings.Trim(strings.TrimSpace(action), "/")
+	if action == "" {
+		return base
+	}
+	return base + "/" + action
 }
 
 func randomIndex(length int) int {

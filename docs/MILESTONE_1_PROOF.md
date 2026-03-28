@@ -24,20 +24,22 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
    - `bash scripts/check-cli-contract-docs.sh`
 5. Runtime bootstrap artifact capture:
    - render `/.well-known/mbr-instance.json` into the proof bundle
-6. Public first-party catalog validation:
+6. Sandbox lifecycle artifact capture:
+   - render create, export, expiry reaping, post-expiry export, and destroy evidence into the proof bundle
+7. Public first-party catalog validation:
    - build a host `mbr`
    - run `MoveBigRocks/extensions/scripts/validate-first-party.sh`
    - archive the validator log and `public-bundles.json` snapshot
-7. Cross-platform CLI packaging evidence:
+8. Cross-platform CLI packaging evidence:
    - `bash scripts/build-cli-release.sh`
-8. CLI release artifact validation:
+9. CLI release artifact validation:
    - `bash scripts/verify-cli-release.sh dist/milestone-proof/cli-release`
 
 ## Evidence Expansion Required Before Close
 
-1. Sandbox lifecycle closure:
-   - prove auto-expiry or reaper behavior, not only manual destroy
-   - archive richer export evidence rather than only a handoff-style export manifest
+1. CLI sandbox management proof:
+   - add `mbr sandboxes create`, `show`, `extend`, `export`, and `destroy`
+   - archive one end-to-end CLI-managed sandbox lifecycle run without manual HTTP calls
 2. Public bundle publication evidence:
    - capture OCI ref, digest, and release-workflow metadata for ATS, error tracking, web analytics, `sales-pipeline` beta, and `community-feature-requests` beta
 3. ATS scenario proof:
@@ -49,15 +51,16 @@ The current proof run writes:
 
 - `dist/milestone-proof/summary.md`
 - `dist/milestone-proof/sandbox-bootstrap/`
+- `dist/milestone-proof/sandbox-lifecycle/`
 - `dist/milestone-proof/extensions-validation/`
 - `dist/milestone-proof/cli-release/`
 - `dist/milestone-proof/cli-release/verification.json`
 
 Milestone closure should expand that output set to also include:
 
-- `dist/milestone-proof/sandbox-lifecycle/`
 - `dist/milestone-proof/public-bundles/`
 - `dist/milestone-proof/ats-scenario/`
+- `dist/milestone-proof/cli-sandbox/`
 
 Those outputs together are the concrete proof bundle tying together:
 

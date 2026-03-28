@@ -155,6 +155,7 @@ func sandboxResponse(sandbox *platformdomain.Sandbox, extra gin.H) gin.H {
 		"activation_deadline_at": sandbox.ActivationDeadlineAt,
 		"verified_at":            sandbox.VerifiedAt,
 		"expires_at":             sandbox.ExpiresAt,
+		"expired_at":             sandbox.ExpiredAt,
 		"extended_at":            sandbox.ExtendedAt,
 		"destroyed_at":           sandbox.DestroyedAt,
 		"last_error":             sandbox.LastError,

@@ -15,6 +15,7 @@ const (
 	SandboxStatusPendingVerification SandboxStatus = "pending_verification"
 	SandboxStatusProvisioning        SandboxStatus = "provisioning"
 	SandboxStatusReady               SandboxStatus = "ready"
+	SandboxStatusExpired             SandboxStatus = "expired"
 	SandboxStatusFailed              SandboxStatus = "failed"
 	SandboxStatusDestroyed           SandboxStatus = "destroyed"
 )
@@ -34,6 +35,7 @@ type Sandbox struct {
 	VerifiedAt              *time.Time
 	ActivationDeadlineAt    time.Time
 	ExpiresAt               *time.Time
+	ExpiredAt               *time.Time
 	ExtendedAt              *time.Time
 	DestroyedAt             *time.Time
 	LastError               string
@@ -103,12 +105,52 @@ func (s *Sandbox) MarkFailed(message string, now time.Time) error {
 	if s == nil {
 		return errors.New("sandbox is required")
 	}
-	if s.Status == SandboxStatusDestroyed {
-		return errors.New("destroyed sandbox cannot fail")
+	if s.Status == SandboxStatusDestroyed || s.Status == SandboxStatusExpired {
+		return errors.New("expired or destroyed sandbox cannot fail")
 	}
 	s.Status = SandboxStatusFailed
 	s.LastError = strings.TrimSpace(message)
 	s.UpdatedAt = now.UTC()
+	return nil
+}
+
+func (s *Sandbox) ExpiryDue(now time.Time) (bool, string) {
+	if s == nil {
+		return false, ""
+	}
+	at := now.UTC()
+	switch s.Status {
+	case SandboxStatusReady:
+		if s.ExpiresAt != nil && !at.Before(s.ExpiresAt.UTC()) {
+			return true, "sandbox trial expired"
+		}
+	case SandboxStatusPendingVerification, SandboxStatusProvisioning, SandboxStatusFailed:
+		if !at.Before(s.ActivationDeadlineAt.UTC()) {
+			return true, "sandbox activation window expired"
+		}
+	}
+	return false, ""
+}
+
+func (s *Sandbox) MarkExpired(reason string, now time.Time) error {
+	if s == nil {
+		return errors.New("sandbox is required")
+	}
+	if s.Status == SandboxStatusDestroyed {
+		return errors.New("destroyed sandbox cannot expire")
+	}
+	if s.Status == SandboxStatusExpired {
+		return errors.New("sandbox already expired")
+	}
+	expiredAt := now.UTC()
+	message := strings.TrimSpace(reason)
+	if message == "" {
+		message = "sandbox expired"
+	}
+	s.Status = SandboxStatusExpired
+	s.ExpiredAt = &expiredAt
+	s.LastError = message
+	s.UpdatedAt = expiredAt
 	return nil
 }
 

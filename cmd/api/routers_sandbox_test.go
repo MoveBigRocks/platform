@@ -67,6 +67,16 @@ func (s *sandboxMemoryStore) GetSandboxByVerificationTokenHash(_ context.Context
 	return nil, nil
 }
 
+func (s *sandboxMemoryStore) ListReapableSandboxes(_ context.Context, now time.Time) ([]*platformdomain.Sandbox, error) {
+	reapable := make([]*platformdomain.Sandbox, 0)
+	for _, sandbox := range s.byID {
+		if due, _ := sandbox.ExpiryDue(now); due {
+			reapable = append(reapable, cloneSandbox(sandbox))
+		}
+	}
+	return reapable, nil
+}
+
 func (s *sandboxMemoryStore) UpdateSandbox(_ context.Context, sandbox *platformdomain.Sandbox) error {
 	if sandbox == nil {
 		return errors.New("sandbox is required")
@@ -130,6 +140,8 @@ func TestCreatePublicRouter_SandboxLifecycle(t *testing.T) {
 	require.Equal(t, http.StatusOK, exportW.Code)
 	assert.Contains(t, exportW.Body.String(), `"export_version":"mbr-sandbox-export-v1"`)
 	assert.Contains(t, exportW.Body.String(), `"bundle"`)
+	assert.Contains(t, exportW.Body.String(), `"runtime_configuration"`)
+	assert.Contains(t, exportW.Body.String(), `"public_bundle_catalog"`)
 }
 
 func TestCreatePublicRouter_ServesRuntimeBootstrapDocument(t *testing.T) {
@@ -202,6 +214,10 @@ func cloneSandbox(sandbox *platformdomain.Sandbox) *platformdomain.Sandbox {
 	if sandbox.ExpiresAt != nil {
 		expiresAt := *sandbox.ExpiresAt
 		clone.ExpiresAt = &expiresAt
+	}
+	if sandbox.ExpiredAt != nil {
+		expiredAt := *sandbox.ExpiredAt
+		clone.ExpiredAt = &expiredAt
 	}
 	if sandbox.ExtendedAt != nil {
 		extendedAt := *sandbox.ExtendedAt

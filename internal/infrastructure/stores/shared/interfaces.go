@@ -166,6 +166,7 @@ type SandboxStore interface {
 	GetSandbox(ctx context.Context, sandboxID string) (*platformdomain.Sandbox, error)
 	GetSandboxBySlug(ctx context.Context, slug string) (*platformdomain.Sandbox, error)
 	GetSandboxByVerificationTokenHash(ctx context.Context, tokenHash string) (*platformdomain.Sandbox, error)
+	ListReapableSandboxes(ctx context.Context, now time.Time) ([]*platformdomain.Sandbox, error)
 	UpdateSandbox(ctx context.Context, sandbox *platformdomain.Sandbox) error
 }
 
