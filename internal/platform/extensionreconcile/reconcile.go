@@ -151,6 +151,40 @@ func NewEngine(bundles BundleLoader, inventory Inventory, workspaces WorkspaceLo
 	}
 }
 
+func BuildRuntimeManifest(ctx context.Context, doc extensiondesiredstate.Document, bundles BundleLoader) (RuntimeManifest, error) {
+	if bundles == nil {
+		return RuntimeManifest{}, fmt.Errorf("bundle loader is required")
+	}
+	runtimes := make([]RuntimeManifestEntry, 0)
+	for _, entry := range doc.Extensions.Installed {
+		if entry.DesiredState() != extensiondesiredstate.StatePresent {
+			continue
+		}
+		payload, err := bundles.ReadSource(ctx, entry.Ref, "")
+		if err != nil {
+			return RuntimeManifest{}, fmt.Errorf("load desired bundle for %s: %w", entry.Slug, err)
+		}
+		manifest, err := extensionbundle.DecodeManifest(payload.Bundle.Manifest)
+		if err != nil {
+			return RuntimeManifest{}, fmt.Errorf("decode desired manifest for %s: %w", entry.Slug, err)
+		}
+		runtimeEntry, ok, err := runtimeEntryForManifest(manifest)
+		if err != nil {
+			return RuntimeManifest{}, err
+		}
+		if ok {
+			runtimes = append(runtimes, runtimeEntry)
+		}
+	}
+	sort.Slice(runtimes, func(i, j int) bool {
+		if runtimes[i].Slug == runtimes[j].Slug {
+			return runtimes[i].PackageKey < runtimes[j].PackageKey
+		}
+		return runtimes[i].Slug < runtimes[j].Slug
+	})
+	return RuntimeManifest{Runtimes: runtimes}, nil
+}
+
 func (e *Engine) Plan(ctx context.Context, doc extensiondesiredstate.Document, desiredStatePath string) (Plan, error) {
 	eval, err := e.evaluate(ctx, doc, desiredStatePath)
 	if err != nil {
