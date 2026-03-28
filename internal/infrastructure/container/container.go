@@ -138,15 +138,16 @@ func New(cfg *config.Config, opts Options) (*Container, error) {
 
 	// Initialize embedded worker manager
 	c.WorkerManager = workers.NewManager(workers.ManagerDeps{
-		EventBus:         c.EventBus,
-		Logger:           c.Logger,
-		IdempotencyStore: c.Store.Idempotency(),
-		RulesEngine:      c.Automation.Engine,
-		FormService:      c.Automation.Form,
-		CaseService:      c.Service.Case,
-		EmailService:     c.Service.Email,
-		Outbox:           c.Outbox,
-		TxRunner:         c.Store,
+		EventBus:            c.EventBus,
+		Logger:              c.Logger,
+		IdempotencyStore:    c.Store.Idempotency(),
+		RulesEngine:         c.Automation.Engine,
+		FormService:         c.Automation.Form,
+		CaseService:         c.Service.Case,
+		EmailService:        c.Service.Email,
+		NotificationService: c.Service.Notification,
+		Outbox:              c.Outbox,
+		TxRunner:            c.Store,
 	})
 
 	c.initHealth(opts)

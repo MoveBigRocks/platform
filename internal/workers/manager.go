@@ -25,11 +25,12 @@ type Manager struct {
 	idempotencyStore eventbus.IdempotencyStore
 
 	// Handlers
-	ruleEvalHandler     *automationhandlers.RuleEvaluationHandler
-	jobHandler          *automationhandlers.JobEventHandler
-	formHandler         *servicehandlers.FormEventHandler
-	emailHandler        *servicehandlers.EmailEventHandler
-	emailCommandHandler *servicehandlers.EmailCommandHandler
+	ruleEvalHandler            *automationhandlers.RuleEvaluationHandler
+	jobHandler                 *automationhandlers.JobEventHandler
+	formHandler                *servicehandlers.FormEventHandler
+	emailHandler               *servicehandlers.EmailEventHandler
+	emailCommandHandler        *servicehandlers.EmailCommandHandler
+	notificationCommandHandler *servicehandlers.NotificationCommandHandler
 	// Lifecycle
 	startOnce sync.Once
 	stopOnce  sync.Once
@@ -44,13 +45,14 @@ type ManagerDeps struct {
 	IdempotencyStore eventbus.IdempotencyStore
 
 	// Services needed by handlers
-	RulesEngine  *automationservices.RulesEngine
-	JobService   *automationservices.JobService
-	FormService  *automationservices.FormService
-	CaseService  *serviceapp.CaseService
-	EmailService *serviceapp.EmailService
-	Outbox       contracts.OutboxPublisher
-	TxRunner     contracts.TransactionRunner
+	RulesEngine         *automationservices.RulesEngine
+	JobService          *automationservices.JobService
+	FormService         *automationservices.FormService
+	CaseService         *serviceapp.CaseService
+	EmailService        *serviceapp.EmailService
+	NotificationService *serviceapp.NotificationService
+	Outbox              contracts.OutboxPublisher
+	TxRunner            contracts.TransactionRunner
 }
 
 // NewManager creates a new embedded worker manager.
@@ -100,6 +102,12 @@ func NewManager(deps ManagerDeps) *Manager {
 		)
 		m.emailCommandHandler = servicehandlers.NewEmailCommandHandler(
 			deps.EmailService,
+			deps.Logger,
+		)
+	}
+	if deps.NotificationService != nil {
+		m.notificationCommandHandler = servicehandlers.NewNotificationCommandHandler(
+			deps.NotificationService,
 			deps.Logger,
 		)
 	}
@@ -203,6 +211,13 @@ func (m *Manager) registerHandlers() error {
 			return fmt.Errorf("register email command handlers: %w", err)
 		}
 		m.logger.Info("Email command handlers registered")
+	}
+
+	if m.notificationCommandHandler != nil {
+		if err := m.notificationCommandHandler.RegisterHandlers(subscribe); err != nil {
+			return fmt.Errorf("register notification command handlers: %w", err)
+		}
+		m.logger.Info("Notification command handlers registered")
 	}
 
 	return nil

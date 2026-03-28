@@ -25,6 +25,7 @@ type ServiceContainer struct {
 	Knowledge    *knowledgeservices.KnowledgeService
 	Case         *serviceapp.CaseService
 	Email        *serviceapp.EmailService
+	Notification *serviceapp.NotificationService
 	Attachment   *serviceapp.AttachmentService
 }
 
@@ -116,6 +117,7 @@ func NewServiceContainer(deps ServiceContainerDeps) (*ServiceContainer, error) {
 		return nil, fmt.Errorf("email service: %w", err)
 	}
 	c.Email = emailService
+	c.Notification = serviceapp.NewNotificationService(deps.Store, c.Email, deps.Logger)
 
 	// AttachmentService (optional, requires S3 config)
 	if deps.Config.Storage.Attachments.Bucket != "" {

@@ -26,6 +26,7 @@ type Store struct {
 	conversationStore      *ConversationStore
 	formSpecStore          *FormSpecStore
 	emailStore             *EmailStore
+	notificationStore      *NotificationStore
 	contactStore           *ContactStore
 	ruleStore              *RuleStore
 	jobStore               *JobStore
@@ -60,6 +61,7 @@ func NewStore(db *DB) (*Store, error) {
 		conversationStore:      NewConversationStore(sqlxDB),
 		formSpecStore:          NewFormSpecStore(sqlxDB),
 		emailStore:             NewEmailStore(sqlxDB),
+		notificationStore:      NewNotificationStore(sqlxDB),
 		contactStore:           NewContactStore(sqlxDB),
 		ruleStore:              NewRuleStore(sqlxDB),
 		jobStore:               NewJobStore(sqlxDB),
@@ -150,6 +152,10 @@ func (s *Store) EmailSecurity() shared.EmailSecurityStore {
 
 func (s *Store) Contacts() shared.ContactStore {
 	return s.contactStore
+}
+
+func (s *Store) Notifications() shared.NotificationStore {
+	return s.notificationStore
 }
 
 func (s *Store) Rules() shared.RuleStore {

@@ -48,6 +48,7 @@ type Store interface {
 	Rules() RuleStore
 	Outbox() OutboxStore
 	Idempotency() IdempotencyStore
+	Notifications() NotificationStore
 
 	// WithTransaction executes a function within a transaction context.
 	// If the function returns an error, all staged operations are abandoned.
@@ -311,6 +312,13 @@ type ContactStore interface {
 	UpdateContact(ctx context.Context, contact *platformdomain.Contact) error
 	ListWorkspaceContacts(ctx context.Context, workspaceID string) ([]*platformdomain.Contact, error)
 	DeleteContact(ctx context.Context, workspaceID, contactID string) error
+}
+
+// NotificationStore handles persisted user notifications.
+type NotificationStore interface {
+	CreateNotification(ctx context.Context, notification *shareddomain.Notification) error
+	GetNotification(ctx context.Context, workspaceID, notificationID string) (*shareddomain.Notification, error)
+	ListUserNotifications(ctx context.Context, workspaceID, userID string) ([]*shareddomain.Notification, error)
 }
 
 // ServiceCatalogStore handles the operational service catalog and its bindings.
