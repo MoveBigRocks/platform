@@ -36,15 +36,20 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
 9. ATS scenario proof:
    - run `MoveBigRocks/extensions/go test ./ats/runtime ./cmd/ats-runtime ./tools/ats-scenario-proof`
    - archive the ATS scenario JSON proving create job, publish, submit, review, move stage, close, and reopen
-10. Cross-platform CLI packaging evidence:
+10. Public bundle publication planning:
+   - run `MoveBigRocks/extensions/go run ./tools/publication-evidence --mode plan`
+   - archive the generated publication-plan JSON from the public bundle catalog and current manifests
+   - when tagged publish runs exist, copy the workflow-generated `*.publication-evidence.json` files into the proof bundle
+11. Cross-platform CLI packaging evidence:
    - `bash scripts/build-cli-release.sh`
-11. CLI release artifact validation:
+12. CLI release artifact validation:
    - `bash scripts/verify-cli-release.sh dist/milestone-proof/cli-release`
 
 ## Evidence Expansion Required Before Close
 
 1. Public bundle publication evidence:
-  - capture OCI ref, digest, and release-workflow metadata for ATS, error tracking, web analytics, `sales-pipeline` beta, and `community-feature-requests` beta
+   - run tagged publishes for ATS, error tracking, web analytics, `sales-pipeline` beta, and `community-feature-requests` beta so the workflow emits `*.publication-evidence.json`
+   - archive those JSON artifacts inside the milestone proof bundle so the milestone has registry-visible proof for every public pack in scope
 
 ## Outputs
 
@@ -55,13 +60,10 @@ The current proof run writes:
 - `dist/milestone-proof/sandbox-lifecycle/`
 - `dist/milestone-proof/cli-sandbox/`
 - `dist/milestone-proof/ats-scenario/`
+- `dist/milestone-proof/public-bundle-publication/`
 - `dist/milestone-proof/extensions-validation/`
 - `dist/milestone-proof/cli-release/`
 - `dist/milestone-proof/cli-release/verification.json`
-
-Milestone closure should expand that output set to also include:
-
-- `dist/milestone-proof/public-bundles/`
 
 Those outputs together are the concrete proof bundle tying together:
 
