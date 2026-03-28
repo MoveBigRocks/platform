@@ -10,6 +10,7 @@ import (
 	"github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/pkg/id"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +39,7 @@ func TestContactService_CreateContact(t *testing.T) {
 		{
 			name: "valid contact",
 			params: CreateContactParams{
-				WorkspaceID: "ws-123",
+				WorkspaceID: id.New(),
 				Email:       "test@example.com",
 				Name:        "Test User",
 				Phone:       "+1234567890",
@@ -57,7 +58,7 @@ func TestContactService_CreateContact(t *testing.T) {
 		{
 			name: "missing email",
 			params: CreateContactParams{
-				WorkspaceID: "ws-123",
+				WorkspaceID: id.New(),
 			},
 			wantErr:   true,
 			errSubstr: "email is required",
@@ -65,7 +66,7 @@ func TestContactService_CreateContact(t *testing.T) {
 		{
 			name: "invalid email format - no @",
 			params: CreateContactParams{
-				WorkspaceID: "ws-123",
+				WorkspaceID: id.New(),
 				Email:       "invalid-email",
 			},
 			wantErr:   true,
@@ -74,7 +75,7 @@ func TestContactService_CreateContact(t *testing.T) {
 		{
 			name: "invalid email format - no domain",
 			params: CreateContactParams{
-				WorkspaceID: "ws-123",
+				WorkspaceID: id.New(),
 				Email:       "test@",
 			},
 			wantErr:   true,
@@ -83,7 +84,7 @@ func TestContactService_CreateContact(t *testing.T) {
 		{
 			name: "invalid email format - no username",
 			params: CreateContactParams{
-				WorkspaceID: "ws-123",
+				WorkspaceID: id.New(),
 				Email:       "@example.com",
 			},
 			wantErr:   true,
@@ -92,7 +93,7 @@ func TestContactService_CreateContact(t *testing.T) {
 		{
 			name: "invalid email format - no dot in domain",
 			params: CreateContactParams{
-				WorkspaceID: "ws-123",
+				WorkspaceID: id.New(),
 				Email:       "test@example",
 			},
 			wantErr:   true,
@@ -101,7 +102,7 @@ func TestContactService_CreateContact(t *testing.T) {
 		{
 			name: "email with spaces gets trimmed",
 			params: CreateContactParams{
-				WorkspaceID: "ws-456",
+				WorkspaceID: id.New(),
 				Email:       "  spaces@example.com  ",
 				Name:        "Spaces User",
 			},
@@ -110,7 +111,7 @@ func TestContactService_CreateContact(t *testing.T) {
 		{
 			name: "email case normalized",
 			params: CreateContactParams{
-				WorkspaceID: "ws-789",
+				WorkspaceID: id.New(),
 				Email:       "UPPER@EXAMPLE.COM",
 				Name:        "Upper User",
 			},
@@ -119,7 +120,7 @@ func TestContactService_CreateContact(t *testing.T) {
 		{
 			name: "contact with source",
 			params: CreateContactParams{
-				WorkspaceID: "ws-source",
+				WorkspaceID: id.New(),
 				Email:       "source@example.com",
 				Name:        "Source User",
 				Source:      "website",
@@ -129,7 +130,7 @@ func TestContactService_CreateContact(t *testing.T) {
 		{
 			name: "contact with metadata",
 			params: CreateContactParams{
-				WorkspaceID: "ws-meta",
+				WorkspaceID: id.New(),
 				Email:       "meta@example.com",
 				Name:        "Meta User",
 				Metadata: map[string]interface{}{
@@ -173,11 +174,12 @@ func TestContactService_CreateContact_DuplicateReturnsExisting(t *testing.T) {
 	store, cleanup := setupTestStore(t)
 	defer cleanup()
 	cs := NewContactService(store.Contacts())
-	createWorkspaceFixture(t, ctx, store, "ws-dup")
+	workspaceID := id.New()
+	createWorkspaceFixture(t, ctx, store, workspaceID)
 
 	// Create first contact
 	params := CreateContactParams{
-		WorkspaceID: "ws-dup",
+		WorkspaceID: workspaceID,
 		Email:       "duplicate@example.com",
 		Name:        "Original Name",
 	}
@@ -202,11 +204,12 @@ func TestContactService_GetContact(t *testing.T) {
 	store, cleanup := setupTestStore(t)
 	defer cleanup()
 	cs := NewContactService(store.Contacts())
-	createWorkspaceFixture(t, ctx, store, "ws-get")
+	workspaceID := id.New()
+	createWorkspaceFixture(t, ctx, store, workspaceID)
 
 	// Create a contact
 	params := CreateContactParams{
-		WorkspaceID: "ws-get",
+		WorkspaceID: workspaceID,
 		Email:       "get@example.com",
 		Name:        "Get User",
 	}
@@ -221,7 +224,7 @@ func TestContactService_GetContact(t *testing.T) {
 	assert.Equal(t, params.Email, contact.Email)
 
 	// Get non-existent contact
-	_, err = cs.GetContact(ctx, params.WorkspaceID, "non-existent")
+	_, err = cs.GetContact(ctx, params.WorkspaceID, id.New())
 	require.Error(t, err)
 }
 
@@ -230,11 +233,12 @@ func TestContactService_GetContactByEmail(t *testing.T) {
 	store, cleanup := setupTestStore(t)
 	defer cleanup()
 	cs := NewContactService(store.Contacts())
-	createWorkspaceFixture(t, ctx, store, "ws-email")
+	workspaceID := id.New()
+	createWorkspaceFixture(t, ctx, store, workspaceID)
 
 	// Create a contact
 	params := CreateContactParams{
-		WorkspaceID: "ws-email",
+		WorkspaceID: workspaceID,
 		Email:       "byemail@example.com",
 		Name:        "Email User",
 	}
@@ -262,11 +266,12 @@ func TestContactService_UpdateContact(t *testing.T) {
 	store, cleanup := setupTestStore(t)
 	defer cleanup()
 	cs := NewContactService(store.Contacts())
-	createWorkspaceFixture(t, ctx, store, "ws-update")
+	workspaceID := id.New()
+	createWorkspaceFixture(t, ctx, store, workspaceID)
 
 	// Create a contact
 	params := CreateContactParams{
-		WorkspaceID: "ws-update",
+		WorkspaceID: workspaceID,
 		Email:       "update@example.com",
 		Name:        "Original Name",
 	}
@@ -291,11 +296,12 @@ func TestContactService_UpdateContact_Validation(t *testing.T) {
 	store, cleanup := setupTestStore(t)
 	defer cleanup()
 	cs := NewContactService(store.Contacts())
-	createWorkspaceFixture(t, ctx, store, "ws-update-val")
+	workspaceID := id.New()
+	createWorkspaceFixture(t, ctx, store, workspaceID)
 
 	// Create a contact
 	params := CreateContactParams{
-		WorkspaceID: "ws-update-val",
+		WorkspaceID: workspaceID,
 		Email:       "updateval@example.com",
 		Name:        "Original Name",
 	}
@@ -348,7 +354,7 @@ func TestContactService_ListWorkspaceContacts(t *testing.T) {
 	cs := NewContactService(store.Contacts())
 
 	// Create multiple contacts
-	workspaceID := "ws-list"
+	workspaceID := id.New()
 	createWorkspaceFixture(t, ctx, store, workspaceID)
 	for i := 0; i < 3; i++ {
 		params := CreateContactParams{
@@ -366,7 +372,7 @@ func TestContactService_ListWorkspaceContacts(t *testing.T) {
 	assert.Len(t, contacts, 3)
 
 	// List empty workspace
-	contacts, err = cs.ListWorkspaceContacts(ctx, "ws-empty")
+	contacts, err = cs.ListWorkspaceContacts(ctx, id.New())
 	require.NoError(t, err)
 	assert.Len(t, contacts, 0)
 }
@@ -376,11 +382,12 @@ func TestContactService_DeleteContact(t *testing.T) {
 	store, cleanup := setupTestStore(t)
 	defer cleanup()
 	cs := NewContactService(store.Contacts())
-	createWorkspaceFixture(t, ctx, store, "ws-delete")
+	workspaceID := id.New()
+	createWorkspaceFixture(t, ctx, store, workspaceID)
 
 	// Create a contact
 	params := CreateContactParams{
-		WorkspaceID: "ws-delete",
+		WorkspaceID: workspaceID,
 		Email:       "delete@example.com",
 		Name:        "Delete User",
 	}
@@ -401,11 +408,12 @@ func TestContactService_BlockContact(t *testing.T) {
 	store, cleanup := setupTestStore(t)
 	defer cleanup()
 	cs := NewContactService(store.Contacts())
-	createWorkspaceFixture(t, ctx, store, "ws-block")
+	workspaceID := id.New()
+	createWorkspaceFixture(t, ctx, store, workspaceID)
 
 	// Create a contact
 	params := CreateContactParams{
-		WorkspaceID: "ws-block",
+		WorkspaceID: workspaceID,
 		Email:       "block@example.com",
 		Name:        "Block User",
 	}
@@ -431,7 +439,7 @@ func TestContactService_BlockContact_NotFound(t *testing.T) {
 	cs := NewContactService(store.Contacts())
 
 	// Try to block non-existent contact
-	err := cs.BlockContact(ctx, "ws-block", "non-existent", "reason")
+	err := cs.BlockContact(ctx, id.New(), id.New(), "reason")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "contact not found")
 }
@@ -441,11 +449,12 @@ func TestContactService_UnblockContact(t *testing.T) {
 	store, cleanup := setupTestStore(t)
 	defer cleanup()
 	cs := NewContactService(store.Contacts())
-	createWorkspaceFixture(t, ctx, store, "ws-unblock")
+	workspaceID := id.New()
+	createWorkspaceFixture(t, ctx, store, workspaceID)
 
 	// Create and block a contact
 	params := CreateContactParams{
-		WorkspaceID: "ws-unblock",
+		WorkspaceID: workspaceID,
 		Email:       "unblock@example.com",
 		Name:        "Unblock User",
 	}
@@ -473,7 +482,7 @@ func TestContactService_UnblockContact_NotFound(t *testing.T) {
 	cs := NewContactService(store.Contacts())
 
 	// Try to unblock non-existent contact
-	err := cs.UnblockContact(ctx, "ws-unblock", "non-existent")
+	err := cs.UnblockContact(ctx, id.New(), id.New())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "contact not found")
 }
