@@ -84,12 +84,20 @@ Progress on 2026-03-28:
 - Operator workflow proof now exists for manual case creation plus
   assign/unassign, reprioritization, and internal note flows via
   [`internal/service/resolvers/case_operator_workflow_integration_test.go`](../internal/service/resolvers/case_operator_workflow_integration_test.go).
+- Supported case handoff and lifecycle status transitions are now also proven
+  through the same resolver workflow proof, with archived artifacts for
+  `case-operator-handoff.json` and `case-operator-status-transition.json`.
 - The milestone-proof artifact set now includes
   `workflow-proof/case-operator-manual-create.json`,
   `workflow-proof/case-operator-work-management.json`, and
-  `workflow-proof/case-operator-reply.json`.
+  `workflow-proof/case-operator-reply.json`,
+  `workflow-proof/case-operator-handoff.json`, and
+  `workflow-proof/case-operator-status-transition.json`.
 - The case thread persistence path now durably preserves `from_agent_id` for
   agent-authored communications, which the new operator workflow proof asserts.
+- The supported assignment and handoff paths now validate real routing targets
+  instead of accepting phantom team IDs, and the supported status mutation now
+  follows real case lifecycle semantics for resolve, close, and reopen.
 
 Changes:
 
@@ -117,9 +125,8 @@ Evidence:
 
 Remaining Phase 1 work:
 
-- add workflow-proof coverage for supported case handoff and status-transition
-  loops
-- complete the attachment-bearing case loop in Phase 2
+- none inside the non-attachment operator loop; the remaining case-surface gap
+  is the attachment-bearing loop tracked in Phase 2
 
 ### Phase 2: Complete Attachment-Bearing Workflows
 
