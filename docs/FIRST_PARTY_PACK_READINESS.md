@@ -50,8 +50,9 @@ These packs are part of the standard milestone readiness run:
 
 The pack proof tests load ATS, the beta public packs, enterprise access, and
 the SDK sample pack from their canonical sibling repos instead of from
-duplicated `platform` fixtures. The milestone proof still needs to expand to
-pull in extensions-side catalog validation and publication artifacts.
+duplicated `platform` fixtures. The milestone proof now pulls in the
+extensions-side catalog validation step, and the remaining evidence gap is
+publication artifacts and digests.
 
 ## Distribution Note
 

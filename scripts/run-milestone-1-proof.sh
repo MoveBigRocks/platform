@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="$ROOT_DIR/dist/milestone-proof"
 VERSION=""
+FIRST_PARTY_EXTENSIONS_ROOT="${FIRST_PARTY_EXTENSIONS_ROOT:-$(cd "$ROOT_DIR/.." && pwd)/extensions}"
 
 usage() {
   cat <<'EOF' >&2
@@ -40,6 +41,12 @@ fi
 mkdir -p "$OUT_DIR"
 
 CLI_OUT_DIR="$OUT_DIR/cli-release"
+PROOF_BIN_DIR="$OUT_DIR/bin"
+LOCAL_MBR_BIN="$PROOF_BIN_DIR/mbr"
+EXTENSIONS_VALIDATION_DIR="$OUT_DIR/extensions-validation"
+EXTENSIONS_VALIDATION_LOG="$EXTENSIONS_VALIDATION_DIR/validate-first-party.log"
+FIRST_PARTY_VALIDATION_SCRIPT="$FIRST_PARTY_EXTENSIONS_ROOT/scripts/validate-first-party.sh"
+FIRST_PARTY_CATALOG_PATH="$FIRST_PARTY_EXTENSIONS_ROOT/catalog/public-bundles.json"
 SUMMARY_PATH="$OUT_DIR/summary.md"
 GENERATED_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 GIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD)"
@@ -70,10 +77,33 @@ run_step() {
   "$@"
 }
 
+run_step_capture() {
+  local output_path="$1"
+  shift
+  echo
+  echo "==> $*"
+  "$@" 2>&1 | tee "$output_path"
+}
+
+require_file() {
+  local path="$1"
+  if [[ ! -f "$path" ]]; then
+    echo "required file not found: $path" >&2
+    exit 1
+  fi
+}
+
 cd "$ROOT_DIR"
+
+mkdir -p "$PROOF_BIN_DIR" "$EXTENSIONS_VALIDATION_DIR"
+require_file "$FIRST_PARTY_VALIDATION_SCRIPT"
+require_file "$FIRST_PARTY_CATALOG_PATH"
 
 run_step go test -count=1 ./internal/service/services ./internal/knowledge/services ./internal/platform/services ./cmd/api ./cmd/mbr
 run_step bash scripts/check-cli-contract-docs.sh
+run_step go build -trimpath -o "$LOCAL_MBR_BIN" ./cmd/mbr
+cp "$FIRST_PARTY_CATALOG_PATH" "$EXTENSIONS_VALIDATION_DIR/public-bundles.json"
+run_step_capture "$EXTENSIONS_VALIDATION_LOG" env MBR_BIN="$LOCAL_MBR_BIN" bash "$FIRST_PARTY_VALIDATION_SCRIPT"
 run_step bash scripts/build-cli-release.sh --version "$VERSION" --out "$CLI_OUT_DIR"
 run_step bash scripts/verify-cli-release.sh "$CLI_OUT_DIR" --version "$VERSION" --git-sha "$GIT_SHA"
 
@@ -84,13 +114,17 @@ cat >"$SUMMARY_PATH" <<EOF
 - git_sha: ${GIT_SHA}
 - cli_release_dir: ${CLI_OUT_DIR}
 - cli_release_verification: ${CLI_OUT_DIR}/verification.json
+- local_mbr_bin: ${LOCAL_MBR_BIN}
+- extensions_validation_dir: ${EXTENSIONS_VALIDATION_DIR}
 
 ## Commands Run
 
 1. \`go test -count=1 ./internal/service/services ./internal/knowledge/services ./internal/platform/services ./cmd/api ./cmd/mbr\`
 2. \`bash scripts/check-cli-contract-docs.sh\`
-3. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
-4. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
+3. \`go build -trimpath -o ${LOCAL_MBR_BIN} ./cmd/mbr\`
+4. \`MBR_BIN=${LOCAL_MBR_BIN} bash ${FIRST_PARTY_VALIDATION_SCRIPT}\`
+5. \`bash scripts/build-cli-release.sh --version ${VERSION} --out ${CLI_OUT_DIR}\`
+6. \`bash scripts/verify-cli-release.sh ${CLI_OUT_DIR} --version ${VERSION} --git-sha ${GIT_SHA}\`
 
 ## Evidence Docs
 
