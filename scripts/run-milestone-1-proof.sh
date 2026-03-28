@@ -41,6 +41,7 @@ if [[ -z "$VERSION" ]]; then
 fi
 
 mkdir -p "$OUT_DIR"
+OUT_DIR="$(cd "$OUT_DIR" && pwd)"
 
 CLI_OUT_DIR="$OUT_DIR/cli-release"
 PROOF_BIN_DIR="$OUT_DIR/bin"
