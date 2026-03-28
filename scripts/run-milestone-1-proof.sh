@@ -122,6 +122,19 @@ run_step_capture() {
   "$@" 2>&1 | tee "$output_path"
 }
 
+artifact_rel() {
+  local path="$1"
+  if [[ "$path" == "$OUT_DIR" ]]; then
+    echo "."
+    return
+  fi
+  if [[ "$path" == "$OUT_DIR/"* ]]; then
+    echo "${path#$OUT_DIR/}"
+    return
+  fi
+  echo "$path"
+}
+
 require_file() {
   local path="$1"
   if [[ ! -f "$path" ]]; then
@@ -254,29 +267,29 @@ cat >"$SUMMARY_PATH" <<EOF
 
 - generated_at: ${GENERATED_AT}
 - git_sha: ${GIT_SHA}
-- cli_release_dir: ${CLI_OUT_DIR}
-- cli_release_verification: ${CLI_OUT_DIR}/verification.json
-- local_mbr_bin: ${LOCAL_MBR_BIN}
-- integration_log: ${INTEGRATION_LOG_PATH}
-- runtime_bootstrap_artifact: ${BOOTSTRAP_PROOF_PATH}
-- ats_scenario_artifact: ${ATS_SCENARIO_PATH}
-- canonical_workspace_refs_manifest: ${WORKSPACE_REFS_MANIFEST_ARCHIVE_PATH}
-- canonical_workspace_refs_verification: ${WORKSPACE_REFS_VERIFICATION_PATH}
-- workflow_proof_dir: ${WORKFLOW_PROOF_DIR}
-- go_work_path: ${GOWORK:-off}
-- workflow_case_reply_artifact: ${CASE_REPLY_PROOF_PATH}
-- workflow_email_command_failure_artifact: ${EMAIL_COMMAND_FAILURE_PROOF_PATH}
-- workflow_inbound_case_create_artifact: ${INBOUND_NEW_EMAIL_PROOF_PATH}
-- workflow_inbound_reply_threading_artifact: ${INBOUND_REPLY_THREADING_PROOF_PATH}
-- workflow_form_notification_artifact: ${FORM_NOTIFICATION_PROOF_PATH}
-- workflow_rule_email_artifact: ${RULE_EMAIL_PROOF_PATH}
-- workflow_knowledge_notification_artifact: ${KNOWLEDGE_NOTIFICATION_PROOF_PATH}
-- workflow_notification_command_failure_artifact: ${NOTIFICATION_COMMAND_FAILURE_PROOF_PATH}
-- extensions_validation_dir: ${EXTENSIONS_VALIDATION_DIR}
-- public_bundle_publication_plan: ${PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH}
-- public_bundle_publication_manifest: ${PUBLIC_BUNDLE_PUBLICATION_MANIFEST_ARCHIVE_PATH}
-- public_bundle_release_evidence_dir: ${PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR}
-- public_bundle_evidence_verification: ${PUBLIC_BUNDLE_EVIDENCE_VERIFICATION_PATH}
+- cli_release_dir: $(artifact_rel "$CLI_OUT_DIR")
+- cli_release_verification: $(artifact_rel "$CLI_OUT_DIR/verification.json")
+- local_mbr_bin: $(artifact_rel "$LOCAL_MBR_BIN")
+- integration_log: $(artifact_rel "$INTEGRATION_LOG_PATH")
+- runtime_bootstrap_artifact: $(artifact_rel "$BOOTSTRAP_PROOF_PATH")
+- ats_scenario_artifact: $(artifact_rel "$ATS_SCENARIO_PATH")
+- canonical_workspace_refs_manifest: $(artifact_rel "$WORKSPACE_REFS_MANIFEST_ARCHIVE_PATH")
+- canonical_workspace_refs_verification: $(artifact_rel "$WORKSPACE_REFS_VERIFICATION_PATH")
+- workflow_proof_dir: $(artifact_rel "$WORKFLOW_PROOF_DIR")
+- go_work_path: $(artifact_rel "${GOWORK:-off}")
+- workflow_case_reply_artifact: $(artifact_rel "$CASE_REPLY_PROOF_PATH")
+- workflow_email_command_failure_artifact: $(artifact_rel "$EMAIL_COMMAND_FAILURE_PROOF_PATH")
+- workflow_inbound_case_create_artifact: $(artifact_rel "$INBOUND_NEW_EMAIL_PROOF_PATH")
+- workflow_inbound_reply_threading_artifact: $(artifact_rel "$INBOUND_REPLY_THREADING_PROOF_PATH")
+- workflow_form_notification_artifact: $(artifact_rel "$FORM_NOTIFICATION_PROOF_PATH")
+- workflow_rule_email_artifact: $(artifact_rel "$RULE_EMAIL_PROOF_PATH")
+- workflow_knowledge_notification_artifact: $(artifact_rel "$KNOWLEDGE_NOTIFICATION_PROOF_PATH")
+- workflow_notification_command_failure_artifact: $(artifact_rel "$NOTIFICATION_COMMAND_FAILURE_PROOF_PATH")
+- extensions_validation_dir: $(artifact_rel "$EXTENSIONS_VALIDATION_DIR")
+- public_bundle_publication_plan: $(artifact_rel "$PUBLIC_BUNDLE_PUBLICATION_PLAN_PATH")
+- public_bundle_publication_manifest: $(artifact_rel "$PUBLIC_BUNDLE_PUBLICATION_MANIFEST_ARCHIVE_PATH")
+- public_bundle_release_evidence_dir: $(artifact_rel "$PUBLIC_BUNDLE_RELEASE_EVIDENCE_DIR")
+- public_bundle_evidence_verification: $(artifact_rel "$PUBLIC_BUNDLE_EVIDENCE_VERIFICATION_PATH")
 
 ## Commands Run
 
