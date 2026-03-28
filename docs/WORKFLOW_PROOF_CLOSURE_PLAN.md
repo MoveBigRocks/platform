@@ -9,9 +9,9 @@ end to end.
 
 ## Status
 
-Closed on 2026-03-28.
+Reopened on 2026-03-28 under the expanded product-complete Milestone 1 bar.
 
-The phases below were completed in order:
+The earlier command-driven closure work remains done:
 
 - entrypoint and integration fixtures were repaired so the full integration
   sweep is green
@@ -20,6 +20,9 @@ The phases below were completed in order:
 - Postmark reply threading is proven through the real webhook path
 - milestone proof archives machine-readable operational workflow artifacts
 - CI now hard-gates `go test -tags=integration ./...`
+
+That work is now treated as the foundation for the broader product-complete
+closure sequence below.
 
 ## Closure Principles
 
@@ -35,160 +38,163 @@ The phases below were completed in order:
 
 ## Workstreams
 
-The closure work breaks into three linked workstreams:
+The reopened closure work breaks into four linked workstreams:
 
 1. Runtime correctness: the missing consumers, persistence, and parser behavior.
-2. Workflow proof: end-to-end tests that exercise the real production path.
-3. Signal integrity: CI and milestone proof must report the real state of the
+2. Product surface completeness: the supported CLI, API, and admin paths must
+   expose the full operator loop.
+3. Workflow proof: end-to-end tests that exercise the real production path.
+4. Signal integrity: CI and milestone proof must report the real state of the
    repo and archive the relevant artifacts.
 
 ## Execution Order
 
-### Phase 0: Restore CI Baseline
+### Phase 0: Preserve The Honest Baseline
 
-Goal: make the current integration suite credible enough to use as a real
-signal while later workflow work is landing.
-
-Changes:
-
-- Repair broken integration fixtures in `internal/platform/services`,
-  especially tests that use non-UUID workspace IDs.
-- Keep soft-gating until the package-level integration failures are resolved,
-  but ensure summaries and workflow outputs continue to distinguish
-  hard-gated versus soft-gated checks.
-
-Acceptance criteria:
-
-- `go test -tags=integration ./internal/platform/services -count=1` passes.
-- The remaining `go test -tags=integration ./...` failures, if any, are known,
-  enumerated, and reduced to a short list rather than a broad fixture problem.
-
-Evidence:
-
-- green package-level integration test log for `./internal/platform/services`
-- updated CI summary outputs in [`.github/workflows/_test.yml`](../.github/workflows/_test.yml)
-
-### Phase 1: Close `email-commands` Runtime Gaps
-
-Goal: make outbound email workflows real instead of "published and forgotten".
+Goal: keep the already repaired integration and proof baseline honest while the
+expanded milestone target is being implemented.
 
 Changes:
 
-- Implement a production `email-commands` consumer and register it in the
-  embedded worker manager.
-- Persist an `outbound_emails` record before or as part of command handling for
-  case replies, form notifications, and rule-driven emails.
-- Correlate provider message IDs and provider status updates back to the stored
-  outbound email.
-- Ensure user-facing responses reflect queued-versus-sent truth rather than
-  implying delivery when only persistence succeeded.
+- Keep the current hard-gated integration sweep green.
+- Do not mark Milestone 1 closed while the expanded product-complete rows remain
+  open.
+- Keep readiness and proof docs aligned with the reopened target.
 
 Acceptance criteria:
 
-- A case reply results in a durable outbound email record plus a processed email
-  command.
-- A form notification results in a durable outbound email record plus a
-  processed email command.
-- A rule `send_email` action results in a durable outbound email record plus a
-  processed email command.
-- Delivery and bounce handlers can update the same outbound email record by
-  provider message ID.
+- `go test -tags=integration ./... -count=1` remains green.
+- The reopened gaps are reflected in the scope, readiness, proof, and workflow
+  matrix docs.
 
 Evidence:
 
-- consumer registration and execution tests for `email-commands`
-- end-to-end workflow tests for case reply, form notification, and rule email
-- archived workflow artifact(s) showing outbound email creation, send result,
-  and provider correlation
+- green full integration test log
+- synced milestone and workflow-proof docs
 
-### Phase 2: Fix Inbound Reply Threading
+### Phase 1: Complete The Case Operator Loop
 
-Goal: make real provider payloads thread back to the correct case.
+Goal: make case operations complete on the supported product surface rather than
+only rich in the service layer.
 
 Changes:
 
-- Update the Postmark parser to populate `InReplyTo`, `References`, canonical
-  sender email, and sender display name from real webhook payloads.
-- Add reply-thread workflow proof using the actual webhook handler plus worker.
-- Confirm case reopen/open transitions and duplicate-case avoidance.
+- Expose manual case creation, assignment, unassignment, set priority, add
+  internal note, reply, handoff, and status transitions through the supported
+  CLI and keep API/admin parity explicit.
+- Ensure the supported surfaces present the case thread and queue state
+  coherently after those actions.
+- Add workflow-proof rows and machine-readable artifacts for the operator case
+  loop.
 
 Acceptance criteria:
 
-- A Postmark reply payload with `In-Reply-To` and `References` updates the
-  correct existing case.
-- The same test proves no duplicate case is created.
-- Subject-only fallback remains covered for cases where headers are absent.
+- `mbr` exposes the full in-scope case operator loop.
+- Equivalent admin/API paths remain supported and tested.
+- The milestone proof bundle archives workflow artifacts for manual create and
+  case work-management actions, not only reply/send paths.
 
 Evidence:
 
-- webhook-to-worker end-to-end test using real Postmark-shaped payloads
-- archived workflow artifact showing inbound email record, matched case ID, and
-  resulting case status
+- CLI and API tests for the expanded case command set
+- workflow tests for case create, assignment, priority change, internal note,
+  and queue-visible follow-through
+- archived workflow artifacts for those case loops
 
-### Phase 3: Close `notification-commands` Runtime Gaps
+### Phase 2: Complete Attachment-Bearing Workflows
 
-Goal: make non-email notifications real instead of aspirational contracts.
+Goal: make attachments part of the real supported work loop instead of an
+unproven support surface.
 
 Changes:
 
-- Implement a production `notification-commands` consumer and register it in
-  the worker manager.
-- Persist a durable notification side effect or notification-delivery record
-  that the system can query after processing.
-- Route knowledge-review notifications through that consumer path.
+- Add workflow-proof rows for manual case attachment upload, inbound email
+  attachment ingest, and the ATS resume path.
+- Ensure attachment linkage is visible from the case or candidate record and is
+  represented in proof artifacts.
+- Preserve failure visibility for scanning or storage failures.
 
 Acceptance criteria:
 
-- A knowledge review action emits a notification command that is consumed and
-  results in durable notification state.
-- The resulting notification can be queried from the system of record.
+- Supported attachment uploads are visible as durable linked records.
+- Inbound email attachments survive the real webhook path with auditable success
+  and failure states.
+- ATS resume and portfolio uploads remain part of the milestone proof chain.
 
 Evidence:
 
-- consumer registration and execution tests for `notification-commands`
-- workflow proof for knowledge-review notifications
-- archived workflow artifact showing notification command consumption and stored
-  delivery state
+- workflow tests and archived artifacts for manual and inbound attachment flows
+- ATS proof artifact updated to include attachment-bearing candidate evidence
 
-### Phase 4: Replace Simulated Workflow Claims
+### Phase 3: Complete Conversation Workflows And Public Intake
 
-Goal: stop relying on tests and scenarios that manually write the final state.
+Goal: make supervised conversation a real core product loop instead of mainly a
+public promise plus isolated service behavior.
+
+Changes:
+
+- Add workflow-proof rows for conversation reply, handoff, and escalation with
+  queue parity and provenance preservation.
+- Implement and prove one supported public conversation intake surface owned by
+  core, such as the website widget or equivalent public conversation adapter.
+- Ensure the public intake path lands in a core-owned conversation record and
+  can continue through the same operator surfaces.
+
+Acceptance criteria:
+
+- A supported public conversation intake path exists and is proven.
+- Conversation reply, handoff, and escalation each have milestone-proof rows and
+  archived artifacts.
+- Escalation produces a linked case without losing conversation provenance.
+
+Evidence:
+
+- workflow tests plus archived artifacts for conversation reply, handoff, and
+  escalation
+- workflow test plus archived artifact for public conversation intake
+
+### Phase 4: Implement The Sanctioned Case Action Contract
+
+Goal: make the architectural promise about extension and agent initiated core
+case actions true.
+
+Changes:
+
+- Choose the sanctioned case-action mechanism for Milestone 1 and finish it.
+  This can be `case-commands` if that remains the preferred contract, or an
+  explicit replacement if the stream contract changes.
+- Implement a production consumer and the durable result path.
+- Add at least one real extension-or-agent initiated case-action workflow row.
+
+Acceptance criteria:
+
+- The architecture no longer promises a placeholder.
+- An extension or agent can request an in-scope case action through the
+  sanctioned contract and the repo proves it end to end.
+- `case-commands` is either proven or removed as the preferred milestone
+  mechanism.
+
+Evidence:
+
+- consumer registration, execution, and failure-path tests
+- workflow proof and archived artifact for a real producer -> consumer -> case
+  result flow
+
+### Phase 5: Replace Simulated Workflow Claims And Extend Proof
+
+Goal: make the expanded product-complete proof bundle reflect the real milestone
+surface, not just the earlier scoped subset.
 
 Changes:
 
 - Reclassify synthetic scenarios in the scenario runner as smoke-only where they
   remain useful.
-- Replace milestone-facing simulated email/form scenarios with real workflow
-  tests that drive production entrypoints and consumers.
-- Remove or downgrade any doc language that still describes simulation as
-  end-to-end proof.
-
-Acceptance criteria:
-
-- No milestone-facing workflow is marked `Proven` based only on scenario-runner
-  simulation.
-- Each row in [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md) has
-  a concrete automated test path attached to it.
-
-Evidence:
-
-- updated scenario-runner descriptions
-- workflow tests linked from the matrix for every scoped operational row
-
-### Phase 5: Extend Milestone Proof
-
-Goal: make milestone proof archive operational workflow artifacts, not just
-package tests and release evidence.
-
-Changes:
-
+- Replace any remaining milestone-facing simulated workflow claims with real
+  workflow tests.
 - Extend [`scripts/run-milestone-1-proof.sh`](../scripts/run-milestone-1-proof.sh)
-  to generate and archive machine-readable artifacts for:
-  - inbound-new-email case creation
-  - case reply send flow
-  - inbound reply threading
-  - form submission notification delivery
-  - knowledge review notification delivery
+  to generate and archive machine-readable artifacts for the expanded workflow
+  matrix, including case management, conversation operations, attachment flows,
+  and sanctioned case actions.
 - Update [`docs/MILESTONE_1_PROOF.md`](./MILESTONE_1_PROOF.md) with the new
   artifact set and rerun instructions.
 
@@ -203,24 +209,24 @@ Evidence:
 - updated proof bundle layout
 - successful local and CI proof rerun with non-empty workflow artifact outputs
 
-### Phase 6: Harden The Gate
+### Phase 6: Reclose Milestone 1 Honestly
 
-Goal: promote the full integration and workflow suite from soft signal to real
-gate once the above work is stable.
+Goal: move Milestone 1 back to closed status only after the expanded product bar
+is actually met.
 
 Changes:
 
-- Remove soft-gating from the integration sweep when the suite is consistently
-  green.
-- Add workflow tests for scoped operational flows to the merge gate.
-- Only then consider Milestone 1 closed again in readiness docs.
+- Keep the full integration gate hard.
+- Require the expanded workflow rows in the merge and milestone proof gates.
+- Only then mark the milestone closed again in readiness docs.
 
 Acceptance criteria:
 
 - `go test -tags=integration ./...` passes in CI without `continue-on-error`.
 - Affected operational workflow tests run in CI and pass.
 - [`docs/MILESTONE_1_READINESS.md`](./MILESTONE_1_READINESS.md) can move the
-  operational workflow area from `Open` to `Proven`.
+  reopened product-complete areas from `Open` or `Partially evidenced` to
+  `Proven`.
 
 Evidence:
 
@@ -229,25 +235,28 @@ Evidence:
 
 ## Dependency Notes
 
-- Phase 1 must land before Phase 2 can be considered complete, because reply
-  threading must round-trip against real outbound records and provider message
-  IDs.
-- Phase 3 can proceed in parallel with Phase 2 once the notification side
-  effect contract is chosen.
-- Phase 5 should start after Phases 1 through 3 have produced machine-readable
+- Phase 1 should land before the proof bundle is expanded, because the expanded
+  milestone bar now depends on the operator-complete case loop.
+- Phase 2 and Phase 3 can overlap, but both must finish before Milestone 1 can
+  honestly claim a mature service-desk replacement slice.
+- Phase 4 depends on the chosen sanctioned case-action mechanism.
+- Phase 5 should start after Phases 1 through 4 have produced machine-readable
   workflow outputs worth archiving.
-- Phase 6 is last on purpose; making CI stricter before runtime and workflow
-  gaps are fixed would create noise instead of confidence.
+- Phase 6 is last on purpose; the milestone should not close again until the
+  broader product loops are actually present.
 
 ## Definition Of Closed
 
-The operational workflow gap is closed only when all of the following are true:
+The expanded product-complete milestone gap is closed only when all of the
+following are true:
 
-- `email-commands` has a real registered consumer plus workflow proof.
-- `notification-commands` has a real registered consumer plus workflow proof.
-- inbound reply threading is proven through a real provider-shaped webhook path.
-- scenario-runner simulations are no longer represented as workflow proof.
-- the milestone proof archives machine-readable operational workflow artifacts.
-- the full integration suite is green enough to be hard-gated in CI.
-
-All of those conditions are now satisfied on `main`.
+- the operator-complete case loop is available through the supported CLI, API,
+  and admin surfaces and has workflow proof
+- conversation reply, handoff, escalation, and a supported public conversation
+  intake path are proven
+- attachment-bearing operational workflows are proven
+- the sanctioned extension-to-core case action contract is real and proven
+- scenario-runner simulations are not represented as workflow proof
+- the milestone proof archives machine-readable operational workflow artifacts
+  for the expanded matrix
+- the full integration suite remains green and hard-gated in CI

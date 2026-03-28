@@ -72,6 +72,7 @@ first-party sources rather than stale mirrored fixtures.
    - structurally verify the evidence bundle against both the checked-in run manifest and the generated publication plan via [`scripts/verify-publication-evidence.sh`](../scripts/verify-publication-evidence.sh)
 9. Operational workflow proof:
    - archive machine-readable JSON artifacts for inbound-new-email case creation, case reply send, inbound reply threading, public form notification delivery, rule-driven email delivery, knowledge-review notifications, and failure-visible command artifacts for `email-commands` and `notification-commands`
+   - this is the current proven subset, not the full expanded product-complete workflow set
 10. Full integration sweep:
    - run `go test -tags=integration ./...`
    - archive the integration log inside the proof bundle
@@ -100,6 +101,18 @@ outside the Milestone 1 workflow set. In particular, `case-commands` still has
 no production consumer and must not be treated as proven. External-provider
 reliability on the public internet also remains outside what the archived proof
 artifacts can establish.
+
+Under the expanded Milestone 1 bar, the proof bundle also still does not cover:
+
+- the full operator-complete case loop through supported product surfaces,
+  including manual case creation, assignment, reprioritization, internal notes,
+  and attachment-bearing flows
+- conversation reply, handoff, escalation, and queue-parity workflows as
+  product-complete operational proof rows
+- a supported public conversation intake surface such as the website widget or
+  equivalent public conversation adapter implied by the public product promise
+- a sanctioned extension-to-core case action contract with a production
+  consumer, if `case-commands` remains the chosen mechanism
 
 ## Current Live Publication Evidence
 

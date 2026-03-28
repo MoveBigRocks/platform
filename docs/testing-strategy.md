@@ -160,6 +160,16 @@ The execution order for closing current workflow gaps is tracked separately in
 No scoped workflow should be marked `Proven` until it has a row in that matrix
 with concrete automated evidence.
 
+For the expanded Milestone 1 target, that matrix must cover complete product
+loops, not only the narrowest command-driven subset. At minimum it now needs
+rows for:
+
+- the operator-complete case loop
+- conversation reply, handoff, escalation, and public intake
+- attachment-bearing operational flows
+- sanctioned extension-or-agent initiated case actions when the architecture
+  promises them
+
 ## CI And Proof Gates
 
 ### Merge Gate
