@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 
 	"github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
 	"github.com/movebigrocks/platform/internal/infrastructure/stores/sql/models"
@@ -73,6 +76,60 @@ func (s *CaseStore) ListCaseAttachments(ctx context.Context, workspaceID, caseID
 	return attachments, nil
 }
 
+func (s *CaseStore) LinkAttachmentsToCase(ctx context.Context, workspaceID, caseID string, attachmentIDs []string) error {
+	normalizedIDs := normalizeAttachmentIDs(attachmentIDs)
+	if len(normalizedIDs) == 0 {
+		return nil
+	}
+
+	selectQuery, selectArgs, err := sqlx.In(
+		`SELECT * FROM core_service.attachments
+		WHERE workspace_id = ? AND id IN (?) AND deleted_at IS NULL`,
+		workspaceID,
+		normalizedIDs,
+	)
+	if err != nil {
+		return fmt.Errorf("build attachment lookup query: %w", err)
+	}
+
+	var dbAttachments []models.Attachment
+	if err := s.db.Get(ctx).SelectContext(ctx, &dbAttachments, selectQuery, selectArgs...); err != nil {
+		return TranslateSqlxError(err, "attachments")
+	}
+	if len(dbAttachments) != len(normalizedIDs) {
+		return shared.ErrNotFound
+	}
+	for i := range dbAttachments {
+		existingCaseID := derefStringPtr(dbAttachments[i].CaseID)
+		if existingCaseID != "" && existingCaseID != caseID {
+			return fmt.Errorf("attachment %s is already linked to case %s", dbAttachments[i].ID, existingCaseID)
+		}
+	}
+
+	updateQuery, updateArgs, err := sqlx.In(
+		`UPDATE core_service.attachments
+		SET case_id = ?, updated_at = ?
+		WHERE workspace_id = ? AND id IN (?) AND deleted_at IS NULL`,
+		nullableUUIDValue(caseID),
+		time.Now().UTC(),
+		workspaceID,
+		normalizedIDs,
+	)
+	if err != nil {
+		return fmt.Errorf("build attachment link query: %w", err)
+	}
+
+	result, err := s.db.Get(ctx).ExecContext(ctx, updateQuery, updateArgs...)
+	if err != nil {
+		return TranslateSqlxError(err, "attachments")
+	}
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr == nil && int(rows) != len(normalizedIDs) {
+		return shared.ErrNotFound
+	}
+	return nil
+}
+
 func (s *CaseStore) LinkInboundEmailAttachments(ctx context.Context, workspaceID, emailID, caseID, communicationID string) error {
 	query := `UPDATE core_service.attachments
 		SET case_id = ?,
@@ -104,6 +161,26 @@ func (s *CaseStore) DeleteAttachment(ctx context.Context, workspaceID, attID str
 		return shared.ErrNotFound
 	}
 	return nil
+}
+
+func normalizeAttachmentIDs(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(values))
+	normalized := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		normalized = append(normalized, value)
+	}
+	return normalized
 }
 
 func (s *CaseStore) mapAttachmentToDomain(a *models.Attachment) *servicedomain.Attachment {

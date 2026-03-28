@@ -261,6 +261,7 @@ type CaseAttachments interface {
 	SaveAttachment(ctx context.Context, att *servicedomain.Attachment, data io.Reader) error
 	GetAttachment(ctx context.Context, workspaceID, attID string) (*servicedomain.Attachment, error)
 	ListCaseAttachments(ctx context.Context, workspaceID, caseID string) ([]*servicedomain.Attachment, error)
+	LinkAttachmentsToCase(ctx context.Context, workspaceID, caseID string, attachmentIDs []string) error
 	LinkInboundEmailAttachments(ctx context.Context, workspaceID, emailID, caseID, communicationID string) error
 	DeleteAttachment(ctx context.Context, workspaceID, attID string) error
 }
