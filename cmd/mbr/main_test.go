@@ -102,6 +102,9 @@ func TestReadBundleDirectory(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(migrationsDir, "000001_init.up.sql"), []byte("create table example ();"), 0o600); err != nil {
 		t.Fatalf("write migration: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(migrationsDir, "embed.go"), []byte("package migrations"), 0o600); err != nil {
+		t.Fatalf("write non-sql migration helper: %v", err)
+	}
 
 	bundle, err := readBundleFile(root)
 	if err != nil {
@@ -137,7 +140,7 @@ func TestFirstPartyReferenceBundlesValidateAgainstCurrentContract(t *testing.T) 
 		name             string
 		expectMigrations bool
 	}{
-		{name: "ats", expectMigrations: false},
+		{name: "ats", expectMigrations: true},
 		{name: "community-feature-requests", expectMigrations: true},
 		{name: "sales-pipeline", expectMigrations: true},
 		{name: "web-analytics", expectMigrations: true},
