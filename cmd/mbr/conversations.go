@@ -406,7 +406,7 @@ func runConversationEscalate(ctx context.Context, client *cliapi.Client, input c
 		mutationInput["description"] = input.Description
 	}
 	if input.Priority != "" {
-		mutationInput["priority"] = strings.ToUpper(input.Priority)
+		mutationInput["priority"] = strings.ToLower(input.Priority)
 	}
 	if input.Category != "" {
 		mutationInput["category"] = input.Category

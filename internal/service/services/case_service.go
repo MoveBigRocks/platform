@@ -994,6 +994,7 @@ type ReplyToCaseParams struct {
 	UserID      string
 	UserName    string
 	UserEmail   string
+	AgentID     string
 	Body        string
 	BodyHTML    string
 	ToEmails    []string
@@ -1010,11 +1011,16 @@ func (cs *CaseService) ReplyToCase(ctx context.Context, params ReplyToCaseParams
 		return nil, err // Error already wrapped by GetCase
 	}
 
-	// Create communication
-	comm := servicedomain.NewCommunication(params.CaseID, params.WorkspaceID, shareddomain.CommTypeEmail, params.Body)
+	// Create communication.
+	var comm *servicedomain.Communication
+	if strings.TrimSpace(params.AgentID) != "" {
+		comm = servicedomain.NewAgentCommunication(params.CaseID, params.WorkspaceID, strings.TrimSpace(params.AgentID), shareddomain.CommTypeEmail, params.Body)
+	} else {
+		comm = servicedomain.NewCommunication(params.CaseID, params.WorkspaceID, shareddomain.CommTypeEmail, params.Body)
+		comm.FromUserID = params.UserID
+	}
 	comm.Direction = shareddomain.DirectionOutbound
 	comm.IsInternal = false
-	comm.FromUserID = params.UserID
 	comm.FromName = params.UserName
 	comm.FromEmail = params.UserEmail
 	comm.ToEmails = params.ToEmails

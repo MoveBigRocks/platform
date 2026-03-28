@@ -1008,12 +1008,17 @@ type Case {
   caseID: String!
   workspaceID: ID!
   subject: String!
+  description: String
   status: CaseStatus!
   priority: CasePriority!
+  category: String
+  channel: String!
   teamID: ID
   queueID: ID
   queue: Queue
   contactID: ID
+  contactEmail: String
+  contactName: String
   contact: Contact
   assigneeID: ID
   assignee: User
@@ -1170,8 +1175,12 @@ union Principal = User | Agent
 
 type Mutation {
   # Case mutations
+  createCase(input: CreateCaseInput!): Case!
   addCommunication(input: AddCommunicationInput!): Communication!
+  addCaseNote(id: ID!, body: String!): Communication!
+  replyToCase(id: ID!, input: ReplyToCaseInput!): Communication!
   updateCaseStatus(id: ID!, status: CaseStatus!): Case!
+  setCasePriority(id: ID!, priority: CasePriority!): Case!
   assignCase(id: ID!, assigneeID: ID): Case!
   handoffCase(id: ID!, input: CaseHandoffInput!): Case!
   createQueue(input: CreateQueueInput!): Queue!
@@ -1228,6 +1237,26 @@ input AddCommunicationInput {
   body: String!
   bodyHTML: String
   isInternal: Boolean
+}
+
+input CreateCaseInput {
+  workspaceID: ID!
+  subject: String!
+  description: String
+  priority: CasePriority
+  category: String
+  queueID: ID
+  contactID: ID
+  contactEmail: String
+  contactName: String
+}
+
+input ReplyToCaseInput {
+  body: String!
+  bodyHTML: String
+  toEmails: [String!]
+  ccEmails: [String!]
+  subject: String
 }
 
 input MembershipConstraintsInput {

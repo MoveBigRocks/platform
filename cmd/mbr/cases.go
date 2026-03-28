@@ -15,19 +15,26 @@ id
 caseID
 workspaceID
 subject
+description
 status
 priority
+category
+channel
 teamID
 queueID
 queue {
   id
   name
 }
+contactID
+contactEmail
+contactName
 contact {
   id
   email
   name
 }
+assigneeID
 assignee {
   id
   email
@@ -53,6 +60,10 @@ direction
 channel
 subject
 body
+fromName
+fromUserID
+fromAgentID
+isInternal
 createdAt
 `
 
@@ -92,12 +103,16 @@ type caseConversationOutput struct {
 }
 
 type caseCommunicationOutput struct {
-	ID        string  `json:"id"`
-	Direction string  `json:"direction"`
-	Channel   string  `json:"channel"`
-	Subject   *string `json:"subject,omitempty"`
-	Body      string  `json:"body"`
-	CreatedAt string  `json:"createdAt"`
+	ID          string  `json:"id"`
+	Direction   string  `json:"direction"`
+	Channel     string  `json:"channel"`
+	Subject     *string `json:"subject,omitempty"`
+	Body        string  `json:"body"`
+	FromName    *string `json:"fromName,omitempty"`
+	FromUserID  *string `json:"fromUserID,omitempty"`
+	FromAgentID *string `json:"fromAgentID,omitempty"`
+	IsInternal  bool    `json:"isInternal"`
+	CreatedAt   string  `json:"createdAt"`
 }
 
 type caseWorkThreadEntryOutput struct {
@@ -120,12 +135,19 @@ type caseOutput struct {
 	CaseID                    string                      `json:"caseID"`
 	WorkspaceID               string                      `json:"workspaceID"`
 	Subject                   string                      `json:"subject"`
+	Description               *string                     `json:"description,omitempty"`
 	Status                    string                      `json:"status"`
 	Priority                  string                      `json:"priority"`
+	Category                  *string                     `json:"category,omitempty"`
+	Channel                   string                      `json:"channel"`
 	TeamID                    *string                     `json:"teamID,omitempty"`
 	QueueID                   *string                     `json:"queueID,omitempty"`
 	Queue                     *namedResource              `json:"queue,omitempty"`
+	ContactID                 *string                     `json:"contactID,omitempty"`
+	ContactEmail              *string                     `json:"contactEmail,omitempty"`
+	ContactName               *string                     `json:"contactName,omitempty"`
 	Contact                   *contactOutput              `json:"contact,omitempty"`
+	AssigneeID                *string                     `json:"assigneeID,omitempty"`
 	Assignee                  *userOutput                 `json:"assignee,omitempty"`
 	OriginatingConversationID *string                     `json:"originatingConversationID,omitempty"`
 	OriginatingConversation   *caseConversationOutput     `json:"originatingConversation,omitempty"`
@@ -147,6 +169,34 @@ type contactOutput struct {
 	Name  *string `json:"name"`
 }
 
+type createCaseInput struct {
+	WorkspaceID  string
+	Subject      string
+	Description  string
+	Priority     string
+	Category     string
+	QueueID      string
+	ContactID    string
+	ContactEmail string
+	ContactName  string
+}
+
+func parseCSVValues(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		result = append(result, part)
+	}
+	return result
+}
+
 func runCases(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		printCasesUsage(stderr)
@@ -154,6 +204,65 @@ func runCases(ctx context.Context, args []string, stdout, stderr io.Writer) int 
 	}
 
 	switch args[0] {
+	case "create":
+		fs := flag.NewFlagSet("mbr cases create", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		instanceURL := registerInstanceURLFlag(fs)
+		token := fs.String("token", "", "Bearer token")
+		workspaceID := fs.String("workspace", "", "Workspace ID")
+		subject := fs.String("subject", "", "Case subject")
+		description := fs.String("description", "", "Case description")
+		priority := fs.String("priority", "", "Case priority")
+		category := fs.String("category", "", "Case category")
+		queueID := fs.String("queue", "", "Queue ID")
+		contactID := fs.String("contact-id", "", "Contact ID")
+		contactEmail := fs.String("contact-email", "", "Contact email")
+		contactName := fs.String("contact-name", "", "Contact name")
+		jsonOutput := fs.Bool("json", false, "Emit JSON output")
+		if err := fs.Parse(args[1:]); err != nil {
+			return 2
+		}
+		if strings.TrimSpace(*subject) == "" {
+			fmt.Fprintln(stderr, "--subject is required")
+			return 2
+		}
+		stored, err := cliapi.LoadStoredConfig()
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		workspaceValue, err := requireWorkspaceID(*workspaceID, stored)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+
+		cfg, err := loadCLIConfig(*instanceURL, *token)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+		client := newCLIClient(cfg)
+		caseObj, err := runCaseCreate(ctx, client, createCaseInput{
+			WorkspaceID:  workspaceValue,
+			Subject:      strings.TrimSpace(*subject),
+			Description:  strings.TrimSpace(*description),
+			Priority:     strings.TrimSpace(*priority),
+			Category:     strings.TrimSpace(*category),
+			QueueID:      strings.TrimSpace(*queueID),
+			ContactID:    strings.TrimSpace(*contactID),
+			ContactEmail: strings.TrimSpace(*contactEmail),
+			ContactName:  strings.TrimSpace(*contactName),
+		})
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		if *jsonOutput {
+			return writeJSON(stdout, caseObj, stderr)
+		}
+		fmt.Fprintf(stdout, "%s\t%s\t%s\t%s\n", caseObj.CaseID, caseObj.Status, caseObj.Priority, caseObj.Subject)
+		return 0
 	case "list":
 		fs := flag.NewFlagSet("mbr cases list", flag.ContinueOnError)
 		fs.SetOutput(stderr)
@@ -304,8 +413,15 @@ func runCases(ctx context.Context, args []string, stdout, stderr io.Writer) int 
 		fmt.Fprintf(stdout, "caseID:\t%s\n", caseObj.CaseID)
 		fmt.Fprintf(stdout, "workspace:\t%s\n", caseObj.WorkspaceID)
 		fmt.Fprintf(stdout, "subject:\t%s\n", caseObj.Subject)
+		if caseObj.Description != nil {
+			fmt.Fprintf(stdout, "description:\t%s\n", *caseObj.Description)
+		}
 		fmt.Fprintf(stdout, "status:\t%s\n", caseObj.Status)
 		fmt.Fprintf(stdout, "priority:\t%s\n", caseObj.Priority)
+		fmt.Fprintf(stdout, "channel:\t%s\n", caseObj.Channel)
+		if caseObj.Category != nil {
+			fmt.Fprintf(stdout, "category:\t%s\n", *caseObj.Category)
+		}
 		if caseObj.TeamID != nil {
 			fmt.Fprintf(stdout, "team:\t%s\n", *caseObj.TeamID)
 		}
@@ -316,9 +432,13 @@ func runCases(ctx context.Context, args []string, stdout, stderr io.Writer) int 
 		}
 		if caseObj.Contact != nil {
 			fmt.Fprintf(stdout, "contact:\t%s <%s>\n", coalesce(caseObj.Contact.Name, "unknown"), caseObj.Contact.Email)
+		} else if caseObj.ContactEmail != nil {
+			fmt.Fprintf(stdout, "contact:\t%s <%s>\n", coalesce(caseObj.ContactName, "unknown"), *caseObj.ContactEmail)
 		}
 		if caseObj.Assignee != nil {
 			fmt.Fprintf(stdout, "assignee:\t%s <%s>\n", caseObj.Assignee.Name, caseObj.Assignee.Email)
+		} else if caseObj.AssigneeID != nil {
+			fmt.Fprintf(stdout, "assignee:\t%s\n", *caseObj.AssigneeID)
 		}
 		if caseObj.OriginatingConversation != nil {
 			fmt.Fprintf(stdout, "originatingConversation:\t%s (%s)\n", caseObj.OriginatingConversation.ID, caseObj.OriginatingConversation.Status)
@@ -354,6 +474,147 @@ func runCases(ctx context.Context, args []string, stdout, stderr io.Writer) int 
 				fmt.Fprintf(stdout, "%s\n", entry.Body)
 			}
 		}
+		return 0
+	case "assign":
+		fs := flag.NewFlagSet("mbr cases assign", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		instanceURL := registerInstanceURLFlag(fs)
+		token := fs.String("token", "", "Bearer token")
+		workspaceID := fs.String("workspace", "", "Workspace ID for human-readable case IDs")
+		assigneeID := fs.String("assignee", "", "Assignee user ID")
+		jsonOutput := fs.Bool("json", false, "Emit JSON output")
+		flagArgs, positionals := splitSinglePositionalArgs(args[1:], map[string]bool{
+			"--url":       true,
+			"--api-url":   true,
+			"--token":     true,
+			"--workspace": true,
+			"--assignee":  true,
+			"--json":      false,
+		})
+		if err := fs.Parse(flagArgs); err != nil {
+			return 2
+		}
+		if len(positionals) != 1 || strings.TrimSpace(positionals[0]) == "" {
+			fmt.Fprintln(stderr, "case identifier is required")
+			return 2
+		}
+		if strings.TrimSpace(*assigneeID) == "" {
+			fmt.Fprintln(stderr, "--assignee is required")
+			return 2
+		}
+		stored, err := cliapi.LoadStoredConfig()
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		workspaceValue := resolveStoredWorkspaceID(*workspaceID, stored)
+		cfg, err := loadCLIConfig(*instanceURL, *token)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+		client := newCLIClient(cfg)
+		caseObj, err := runCaseAssign(ctx, client, strings.TrimSpace(positionals[0]), workspaceValue, optionalString(strings.TrimSpace(*assigneeID)))
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		if *jsonOutput {
+			return writeJSON(stdout, caseObj, stderr)
+		}
+		fmt.Fprintf(stdout, "%s\t%s\t%s\n", caseObj.CaseID, coalesce(caseObj.AssigneeID, ""), caseObj.Subject)
+		return 0
+	case "unassign":
+		fs := flag.NewFlagSet("mbr cases unassign", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		instanceURL := registerInstanceURLFlag(fs)
+		token := fs.String("token", "", "Bearer token")
+		workspaceID := fs.String("workspace", "", "Workspace ID for human-readable case IDs")
+		jsonOutput := fs.Bool("json", false, "Emit JSON output")
+		flagArgs, positionals := splitSinglePositionalArgs(args[1:], map[string]bool{
+			"--url":       true,
+			"--api-url":   true,
+			"--token":     true,
+			"--workspace": true,
+			"--json":      false,
+		})
+		if err := fs.Parse(flagArgs); err != nil {
+			return 2
+		}
+		if len(positionals) != 1 || strings.TrimSpace(positionals[0]) == "" {
+			fmt.Fprintln(stderr, "case identifier is required")
+			return 2
+		}
+		stored, err := cliapi.LoadStoredConfig()
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		workspaceValue := resolveStoredWorkspaceID(*workspaceID, stored)
+		cfg, err := loadCLIConfig(*instanceURL, *token)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+		client := newCLIClient(cfg)
+		caseObj, err := runCaseAssign(ctx, client, strings.TrimSpace(positionals[0]), workspaceValue, nil)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		if *jsonOutput {
+			return writeJSON(stdout, caseObj, stderr)
+		}
+		fmt.Fprintf(stdout, "%s\t%s\n", caseObj.CaseID, caseObj.Subject)
+		return 0
+	case "set-priority":
+		fs := flag.NewFlagSet("mbr cases set-priority", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		instanceURL := registerInstanceURLFlag(fs)
+		token := fs.String("token", "", "Bearer token")
+		workspaceID := fs.String("workspace", "", "Workspace ID for human-readable case IDs")
+		priority := fs.String("priority", "", "New case priority")
+		jsonOutput := fs.Bool("json", false, "Emit JSON output")
+		flagArgs, positionals := splitSinglePositionalArgs(args[1:], map[string]bool{
+			"--url":       true,
+			"--api-url":   true,
+			"--token":     true,
+			"--workspace": true,
+			"--priority":  true,
+			"--json":      false,
+		})
+		if err := fs.Parse(flagArgs); err != nil {
+			return 2
+		}
+		if len(positionals) != 1 || strings.TrimSpace(positionals[0]) == "" {
+			fmt.Fprintln(stderr, "case identifier is required")
+			return 2
+		}
+		if strings.TrimSpace(*priority) == "" {
+			fmt.Fprintln(stderr, "--priority is required")
+			return 2
+		}
+		stored, err := cliapi.LoadStoredConfig()
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		workspaceValue := resolveStoredWorkspaceID(*workspaceID, stored)
+		cfg, err := loadCLIConfig(*instanceURL, *token)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+		client := newCLIClient(cfg)
+		caseObj, err := runCaseSetPriority(ctx, client, strings.TrimSpace(positionals[0]), workspaceValue, strings.TrimSpace(*priority))
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		if *jsonOutput {
+			return writeJSON(stdout, caseObj, stderr)
+		}
+		fmt.Fprintf(stdout, "%s\t%s\t%s\n", caseObj.CaseID, caseObj.Priority, caseObj.Subject)
 		return 0
 	case "set-status":
 		fs := flag.NewFlagSet("mbr cases set-status", flag.ContinueOnError)
@@ -461,6 +722,110 @@ func runCases(ctx context.Context, args []string, stdout, stderr io.Writer) int 
 		}
 		fmt.Fprintf(stdout, "%s\t%s\t%s\t%s\n", caseObj.CaseID, coalesce(caseObj.TeamID, ""), coalesce(caseObj.QueueID, ""), caseObj.Subject)
 		return 0
+	case "add-note":
+		fs := flag.NewFlagSet("mbr cases add-note", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		instanceURL := registerInstanceURLFlag(fs)
+		token := fs.String("token", "", "Bearer token")
+		workspaceID := fs.String("workspace", "", "Workspace ID for human-readable case IDs")
+		body := fs.String("body", "", "Internal note body")
+		jsonOutput := fs.Bool("json", false, "Emit JSON output")
+		flagArgs, positionals := splitSinglePositionalArgs(args[1:], map[string]bool{
+			"--url":       true,
+			"--api-url":   true,
+			"--token":     true,
+			"--workspace": true,
+			"--body":      true,
+			"--json":      false,
+		})
+		if err := fs.Parse(flagArgs); err != nil {
+			return 2
+		}
+		if len(positionals) != 1 || strings.TrimSpace(positionals[0]) == "" {
+			fmt.Fprintln(stderr, "case identifier is required")
+			return 2
+		}
+		if strings.TrimSpace(*body) == "" {
+			fmt.Fprintln(stderr, "--body is required")
+			return 2
+		}
+		stored, err := cliapi.LoadStoredConfig()
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		workspaceValue := resolveStoredWorkspaceID(*workspaceID, stored)
+		cfg, err := loadCLIConfig(*instanceURL, *token)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+		client := newCLIClient(cfg)
+		comm, err := runCaseAddNote(ctx, client, strings.TrimSpace(positionals[0]), workspaceValue, strings.TrimSpace(*body))
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		if *jsonOutput {
+			return writeJSON(stdout, comm, stderr)
+		}
+		fmt.Fprintf(stdout, "%s\t%s\n", comm.ID, comm.CreatedAt)
+		return 0
+	case "reply":
+		fs := flag.NewFlagSet("mbr cases reply", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		instanceURL := registerInstanceURLFlag(fs)
+		token := fs.String("token", "", "Bearer token")
+		workspaceID := fs.String("workspace", "", "Workspace ID for human-readable case IDs")
+		subject := fs.String("subject", "", "Reply subject")
+		body := fs.String("body", "", "Reply body")
+		to := fs.String("to", "", "Comma-separated recipient emails")
+		cc := fs.String("cc", "", "Comma-separated CC emails")
+		jsonOutput := fs.Bool("json", false, "Emit JSON output")
+		flagArgs, positionals := splitSinglePositionalArgs(args[1:], map[string]bool{
+			"--url":       true,
+			"--api-url":   true,
+			"--token":     true,
+			"--workspace": true,
+			"--subject":   true,
+			"--body":      true,
+			"--to":        true,
+			"--cc":        true,
+			"--json":      false,
+		})
+		if err := fs.Parse(flagArgs); err != nil {
+			return 2
+		}
+		if len(positionals) != 1 || strings.TrimSpace(positionals[0]) == "" {
+			fmt.Fprintln(stderr, "case identifier is required")
+			return 2
+		}
+		if strings.TrimSpace(*body) == "" {
+			fmt.Fprintln(stderr, "--body is required")
+			return 2
+		}
+		stored, err := cliapi.LoadStoredConfig()
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		workspaceValue := resolveStoredWorkspaceID(*workspaceID, stored)
+		cfg, err := loadCLIConfig(*instanceURL, *token)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+		client := newCLIClient(cfg)
+		comm, err := runCaseReply(ctx, client, strings.TrimSpace(positionals[0]), workspaceValue, strings.TrimSpace(*subject), strings.TrimSpace(*body), parseCSVValues(*to), parseCSVValues(*cc))
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		if *jsonOutput {
+			return writeJSON(stdout, comm, stderr)
+		}
+		fmt.Fprintf(stdout, "%s\t%s\n", comm.ID, comm.CreatedAt)
+		return 0
 	default:
 		fmt.Fprintf(stderr, "unknown cases command %q\n\n", args[0])
 		printCasesUsage(stderr)
@@ -511,6 +876,95 @@ func runCaseShow(ctx context.Context, client *cliapi.Client, identifier, workspa
 	return *payload.Case, nil
 }
 
+func optionalString(value string) *string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	copyValue := strings.TrimSpace(value)
+	return &copyValue
+}
+
+func runCaseCreate(ctx context.Context, client *cliapi.Client, input createCaseInput) (caseOutput, error) {
+	mutationInput := map[string]any{
+		"workspaceID": input.WorkspaceID,
+		"subject":     input.Subject,
+	}
+	if input.Description != "" {
+		mutationInput["description"] = input.Description
+	}
+	if input.Priority != "" {
+		mutationInput["priority"] = strings.ToLower(input.Priority)
+	}
+	if input.Category != "" {
+		mutationInput["category"] = input.Category
+	}
+	if input.QueueID != "" {
+		mutationInput["queueID"] = input.QueueID
+	}
+	if input.ContactID != "" {
+		mutationInput["contactID"] = input.ContactID
+	}
+	if input.ContactEmail != "" {
+		mutationInput["contactEmail"] = input.ContactEmail
+	}
+	if input.ContactName != "" {
+		mutationInput["contactName"] = input.ContactName
+	}
+
+	var payload struct {
+		CreateCase *caseOutput `json:"createCase"`
+	}
+	err := client.Query(ctx, `
+		mutation CLICreateCase($input: CreateCaseInput!) {
+		  createCase(input: $input) {
+		    `+caseSelection+`
+		  }
+		}
+	`, map[string]any{
+		"input": mutationInput,
+	}, &payload)
+	if err != nil {
+		return caseOutput{}, err
+	}
+	if payload.CreateCase == nil {
+		return caseOutput{}, fmt.Errorf("case creation returned no case")
+	}
+	return *payload.CreateCase, nil
+}
+
+func runCaseAssign(ctx context.Context, client *cliapi.Client, identifier, workspaceID string, assigneeID *string) (caseOutput, error) {
+	caseObj, err := runCaseShow(ctx, client, identifier, workspaceID)
+	if err != nil {
+		return caseOutput{}, err
+	}
+
+	var payload struct {
+		AssignCase *caseOutput `json:"assignCase"`
+	}
+	variables := map[string]any{
+		"id": caseObj.ID,
+	}
+	if assigneeID != nil {
+		variables["assigneeID"] = *assigneeID
+	} else {
+		variables["assigneeID"] = nil
+	}
+	err = client.Query(ctx, `
+		mutation CLIAssignCase($id: ID!, $assigneeID: ID) {
+		  assignCase(id: $id, assigneeID: $assigneeID) {
+		    `+caseSelection+`
+		  }
+		}
+	`, variables, &payload)
+	if err != nil {
+		return caseOutput{}, err
+	}
+	if payload.AssignCase == nil {
+		return caseOutput{}, fmt.Errorf("case assignment returned no case")
+	}
+	return *payload.AssignCase, nil
+}
+
 func runCaseSetStatus(ctx context.Context, client *cliapi.Client, identifier, workspaceID, status string) (caseOutput, error) {
 	caseObj, err := runCaseShow(ctx, client, identifier, workspaceID)
 	if err != nil {
@@ -527,7 +981,7 @@ func runCaseSetStatus(ctx context.Context, client *cliapi.Client, identifier, wo
 		}
 	`, map[string]any{
 		"id":     caseObj.ID,
-		"status": strings.ToUpper(status),
+		"status": strings.ToLower(status),
 	}, &payload)
 	if err != nil {
 		return caseOutput{}, err
@@ -536,6 +990,33 @@ func runCaseSetStatus(ctx context.Context, client *cliapi.Client, identifier, wo
 		return caseOutput{}, fmt.Errorf("case status update returned no case")
 	}
 	return *payload.UpdateCaseStatus, nil
+}
+
+func runCaseSetPriority(ctx context.Context, client *cliapi.Client, identifier, workspaceID, priority string) (caseOutput, error) {
+	caseObj, err := runCaseShow(ctx, client, identifier, workspaceID)
+	if err != nil {
+		return caseOutput{}, err
+	}
+	var payload struct {
+		SetCasePriority *caseOutput `json:"setCasePriority"`
+	}
+	err = client.Query(ctx, `
+		mutation CLISetCasePriority($id: ID!, $priority: CasePriority!) {
+		  setCasePriority(id: $id, priority: $priority) {
+		    `+caseSelection+`
+		  }
+		}
+	`, map[string]any{
+		"id":       caseObj.ID,
+		"priority": strings.ToLower(priority),
+	}, &payload)
+	if err != nil {
+		return caseOutput{}, err
+	}
+	if payload.SetCasePriority == nil {
+		return caseOutput{}, fmt.Errorf("case priority update returned no case")
+	}
+	return *payload.SetCasePriority, nil
 }
 
 func runCaseHandoff(ctx context.Context, client *cliapi.Client, identifier, workspaceID, teamID, queueID, assigneeID, reason string) (caseOutput, error) {
@@ -576,4 +1057,71 @@ func runCaseHandoff(ctx context.Context, client *cliapi.Client, identifier, work
 		return caseOutput{}, fmt.Errorf("case handoff returned no case")
 	}
 	return *payload.HandoffCase, nil
+}
+
+func runCaseAddNote(ctx context.Context, client *cliapi.Client, identifier, workspaceID, body string) (caseCommunicationOutput, error) {
+	caseObj, err := runCaseShow(ctx, client, identifier, workspaceID)
+	if err != nil {
+		return caseCommunicationOutput{}, err
+	}
+	var payload struct {
+		AddCaseNote *caseCommunicationOutput `json:"addCaseNote"`
+	}
+	err = client.Query(ctx, `
+		mutation CLIAddCaseNote($id: ID!, $body: String!) {
+		  addCaseNote(id: $id, body: $body) {
+		    `+caseCommunicationSelection+`
+		  }
+		}
+	`, map[string]any{
+		"id":   caseObj.ID,
+		"body": body,
+	}, &payload)
+	if err != nil {
+		return caseCommunicationOutput{}, err
+	}
+	if payload.AddCaseNote == nil {
+		return caseCommunicationOutput{}, fmt.Errorf("case note mutation returned no communication")
+	}
+	return *payload.AddCaseNote, nil
+}
+
+func runCaseReply(ctx context.Context, client *cliapi.Client, identifier, workspaceID, subject, body string, toEmails, ccEmails []string) (caseCommunicationOutput, error) {
+	caseObj, err := runCaseShow(ctx, client, identifier, workspaceID)
+	if err != nil {
+		return caseCommunicationOutput{}, err
+	}
+	input := map[string]any{
+		"body": body,
+	}
+	if subject != "" {
+		input["subject"] = subject
+	}
+	if len(toEmails) > 0 {
+		input["toEmails"] = toEmails
+	}
+	if len(ccEmails) > 0 {
+		input["ccEmails"] = ccEmails
+	}
+
+	var payload struct {
+		ReplyToCase *caseCommunicationOutput `json:"replyToCase"`
+	}
+	err = client.Query(ctx, `
+		mutation CLIReplyToCase($id: ID!, $input: ReplyToCaseInput!) {
+		  replyToCase(id: $id, input: $input) {
+		    `+caseCommunicationSelection+`
+		  }
+		}
+	`, map[string]any{
+		"id":    caseObj.ID,
+		"input": input,
+	}, &payload)
+	if err != nil {
+		return caseCommunicationOutput{}, err
+	}
+	if payload.ReplyToCase == nil {
+		return caseCommunicationOutput{}, fmt.Errorf("case reply returned no communication")
+	}
+	return *payload.ReplyToCase, nil
 }

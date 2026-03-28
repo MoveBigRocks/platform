@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -302,7 +303,13 @@ func TestRunSpecExportJSON(t *testing.T) {
 	var foundAgentMembershipsGrant bool
 	var foundQueuesList bool
 	var foundQueuesItems bool
+	var foundCasesCreate bool
+	var foundCasesAssign bool
+	var foundCasesUnassign bool
+	var foundCasesSetPriority bool
 	var foundCasesHandoff bool
+	var foundCasesAddNote bool
+	var foundCasesReply bool
 	var foundConversationsHandoff bool
 	var foundConversationsEscalate bool
 	for _, command := range spec.Commands {
@@ -354,8 +361,20 @@ func TestRunSpecExportJSON(t *testing.T) {
 			foundQueuesList = true
 		case "queues items":
 			foundQueuesItems = true
+		case "cases create":
+			foundCasesCreate = true
+		case "cases assign":
+			foundCasesAssign = true
+		case "cases unassign":
+			foundCasesUnassign = true
+		case "cases set-priority":
+			foundCasesSetPriority = true
 		case "cases handoff":
 			foundCasesHandoff = true
+		case "cases add-note":
+			foundCasesAddNote = true
+		case "cases reply":
+			foundCasesReply = true
 		case "conversations handoff":
 			foundConversationsHandoff = true
 		case "conversations escalate":
@@ -462,8 +481,26 @@ func TestRunSpecExportJSON(t *testing.T) {
 	if !foundQueuesItems {
 		t.Fatalf("expected queues items command in contract")
 	}
+	if !foundCasesCreate {
+		t.Fatalf("expected cases create command in contract")
+	}
+	if !foundCasesAssign {
+		t.Fatalf("expected cases assign command in contract")
+	}
+	if !foundCasesUnassign {
+		t.Fatalf("expected cases unassign command in contract")
+	}
+	if !foundCasesSetPriority {
+		t.Fatalf("expected cases set-priority command in contract")
+	}
 	if !foundCasesHandoff {
 		t.Fatalf("expected cases handoff command in contract")
+	}
+	if !foundCasesAddNote {
+		t.Fatalf("expected cases add-note command in contract")
+	}
+	if !foundCasesReply {
+		t.Fatalf("expected cases reply command in contract")
 	}
 	if !foundConversationsHandoff {
 		t.Fatalf("expected conversations handoff command in contract")
@@ -1701,7 +1738,7 @@ func TestRunConversationsEscalateJSON(t *testing.T) {
 		if got := input["queueID"]; got != "queue_billing" {
 			t.Fatalf("unexpected queue id %#v", got)
 		}
-		if got := input["priority"]; got != "HIGH" {
+		if got := input["priority"]; got != "high" {
 			t.Fatalf("unexpected priority %#v", got)
 		}
 		return map[string]any{
@@ -3909,6 +3946,348 @@ func TestRunAutomationRulesCreateJSON(t *testing.T) {
 	assert.Equal(t, 10, payload.Priority)
 }
 
+func TestRunCasesCreateJSON(t *testing.T) {
+	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
+		if !strings.Contains(req.Query, "mutation CLICreateCase") {
+			t.Fatalf("unexpected query: %s", req.Query)
+		}
+		input, _ := req.Variables["input"].(map[string]any)
+		if got := input["workspaceID"]; got != "ws_123" {
+			t.Fatalf("unexpected workspace %#v", got)
+		}
+		if got := input["subject"]; got != "Manual follow-up" {
+			t.Fatalf("unexpected subject %#v", got)
+		}
+		if got := input["priority"]; got != "high" {
+			t.Fatalf("unexpected priority %#v", got)
+		}
+		if got := input["queueID"]; got != "queue_triage" {
+			t.Fatalf("unexpected queue %#v", got)
+		}
+		return map[string]any{
+			"data": map[string]any{
+				"createCase": map[string]any{
+					"id":           "case_123",
+					"caseID":       "HC-42",
+					"workspaceID":  "ws_123",
+					"subject":      "Manual follow-up",
+					"description":  "Customer requested manual review",
+					"status":       "new",
+					"priority":     "high",
+					"category":     "billing",
+					"channel":      "api",
+					"queueID":      "queue_triage",
+					"queue":        map[string]any{"id": "queue_triage", "name": "Triage"},
+					"contactEmail": "customer@example.com",
+					"contactName":  "Casey Customer",
+					"contact":      nil,
+					"assignee":     nil,
+					"createdAt":    "2026-03-13T10:00:00Z",
+					"updatedAt":    "2026-03-13T10:00:00Z",
+					"resolvedAt":   nil,
+				},
+			},
+		}
+	})
+
+	t.Setenv("MBR_URL", "https://app.mbr.test")
+	t.Setenv("MBR_TOKEN", "hat_test")
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{
+		"cases", "create",
+		"--workspace", "ws_123",
+		"--subject", "Manual follow-up",
+		"--description", "Customer requested manual review",
+		"--priority", "high",
+		"--category", "billing",
+		"--queue", "queue_triage",
+		"--contact-email", "customer@example.com",
+		"--contact-name", "Casey Customer",
+		"--json",
+	}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+
+	var payload caseOutput
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("decode output: %v", err)
+	}
+	if payload.CaseID != "HC-42" || payload.Priority != "high" {
+		t.Fatalf("unexpected case payload: %#v", payload)
+	}
+}
+
+func TestRunCasesAssignAndUnassignJSON(t *testing.T) {
+	callCount := 0
+	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
+		switch {
+		case strings.Contains(req.Query, "query CLICaseByHumanID"):
+			return map[string]any{
+				"data": map[string]any{
+					"caseByHumanID": map[string]any{
+						"id":          "case_123",
+						"caseID":      "HC-42",
+						"workspaceID": "ws_123",
+						"subject":     "Review applicant packet",
+						"status":      "open",
+						"priority":    "medium",
+						"channel":     "api",
+						"queueID":     nil,
+						"queue":       nil,
+						"contact":     nil,
+						"assignee":    nil,
+						"createdAt":   "2026-03-13T10:00:00Z",
+						"updatedAt":   "2026-03-13T10:30:00Z",
+						"resolvedAt":  nil,
+					},
+				},
+			}
+		case strings.Contains(req.Query, "mutation CLIAssignCase"):
+			callCount++
+			assigneeValue, ok := req.Variables["assigneeID"]
+			if !ok {
+				t.Fatalf("expected assignee variable")
+			}
+			response := map[string]any{
+				"id":          "case_123",
+				"caseID":      "HC-42",
+				"workspaceID": "ws_123",
+				"subject":     "Review applicant packet",
+				"status":      "open",
+				"priority":    "medium",
+				"channel":     "api",
+				"queueID":     nil,
+				"queue":       nil,
+				"contact":     nil,
+				"createdAt":   "2026-03-13T10:00:00Z",
+				"updatedAt":   "2026-03-13T10:45:00Z",
+				"resolvedAt":  nil,
+			}
+			if callCount == 1 {
+				if assigneeValue != "user_456" {
+					t.Fatalf("unexpected assignee %#v", assigneeValue)
+				}
+				response["assigneeID"] = "user_456"
+			} else {
+				if assigneeValue != nil {
+					t.Fatalf("expected nil assignee on unassign, got %#v", assigneeValue)
+				}
+				response["assigneeID"] = nil
+			}
+			return map[string]any{"data": map[string]any{"assignCase": response}}
+		default:
+			t.Fatalf("unexpected query: %s", req.Query)
+			return nil
+		}
+	})
+
+	t.Setenv("MBR_URL", "https://app.mbr.test")
+	t.Setenv("MBR_TOKEN", "hat_test")
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{
+		"cases", "assign", "HC-42",
+		"--workspace", "ws_123",
+		"--assignee", "user_456",
+		"--json",
+	}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected assign exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+	stdout.Reset()
+	stderr.Reset()
+	exitCode = run(t.Context(), []string{
+		"cases", "unassign", "HC-42",
+		"--workspace", "ws_123",
+		"--json",
+	}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected unassign exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+}
+
+func TestRunCasesSetPriorityJSON(t *testing.T) {
+	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
+		switch {
+		case strings.Contains(req.Query, "query CLICaseByHumanID"):
+			return map[string]any{
+				"data": map[string]any{
+					"caseByHumanID": map[string]any{
+						"id":          "case_123",
+						"caseID":      "HC-42",
+						"workspaceID": "ws_123",
+						"subject":     "Review applicant packet",
+						"status":      "open",
+						"priority":    "medium",
+						"channel":     "api",
+						"queueID":     nil,
+						"queue":       nil,
+						"contact":     nil,
+						"assignee":    nil,
+						"createdAt":   "2026-03-13T10:00:00Z",
+						"updatedAt":   "2026-03-13T10:30:00Z",
+						"resolvedAt":  nil,
+					},
+				},
+			}
+		case strings.Contains(req.Query, "mutation CLISetCasePriority"):
+			if got := req.Variables["priority"]; got != "urgent" {
+				t.Fatalf("unexpected priority %#v", got)
+			}
+			return map[string]any{
+				"data": map[string]any{
+					"setCasePriority": map[string]any{
+						"id":          "case_123",
+						"caseID":      "HC-42",
+						"workspaceID": "ws_123",
+						"subject":     "Review applicant packet",
+						"status":      "open",
+						"priority":    "urgent",
+						"channel":     "api",
+						"queueID":     nil,
+						"queue":       nil,
+						"contact":     nil,
+						"assignee":    nil,
+						"createdAt":   "2026-03-13T10:00:00Z",
+						"updatedAt":   "2026-03-13T10:45:00Z",
+						"resolvedAt":  nil,
+					},
+				},
+			}
+		default:
+			t.Fatalf("unexpected query: %s", req.Query)
+			return nil
+		}
+	})
+
+	t.Setenv("MBR_URL", "https://app.mbr.test")
+	t.Setenv("MBR_TOKEN", "hat_test")
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{
+		"cases", "set-priority", "HC-42",
+		"--workspace", "ws_123",
+		"--priority", "urgent",
+		"--json",
+	}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+
+	var payload caseOutput
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("decode output: %v", err)
+	}
+	if payload.Priority != "urgent" {
+		t.Fatalf("unexpected case payload: %#v", payload)
+	}
+}
+
+func TestRunCasesAddNoteAndReplyJSON(t *testing.T) {
+	callCount := 0
+	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
+		switch {
+		case strings.Contains(req.Query, "query CLICaseByHumanID"):
+			return map[string]any{
+				"data": map[string]any{
+					"caseByHumanID": map[string]any{
+						"id":           "case_123",
+						"caseID":       "HC-42",
+						"workspaceID":  "ws_123",
+						"subject":      "Review applicant packet",
+						"status":       "open",
+						"priority":     "medium",
+						"channel":      "email",
+						"contactEmail": "customer@example.com",
+						"queueID":      nil,
+						"queue":        nil,
+						"contact":      nil,
+						"assignee":     nil,
+						"createdAt":    "2026-03-13T10:00:00Z",
+						"updatedAt":    "2026-03-13T10:30:00Z",
+						"resolvedAt":   nil,
+					},
+				},
+			}
+		case strings.Contains(req.Query, "mutation CLIAddCaseNote"):
+			if got := req.Variables["body"]; got != "Checking billing history." {
+				t.Fatalf("unexpected note body %#v", got)
+			}
+			callCount++
+			return map[string]any{
+				"data": map[string]any{
+					"addCaseNote": map[string]any{
+						"id":          "comm_note",
+						"direction":   "internal",
+						"channel":     "note",
+						"body":        "Checking billing history.",
+						"fromAgentID": "agent_123",
+						"isInternal":  true,
+						"createdAt":   "2026-03-13T10:31:00Z",
+					},
+				},
+			}
+		case strings.Contains(req.Query, "mutation CLIReplyToCase"):
+			input, _ := req.Variables["input"].(map[string]any)
+			if got := input["body"]; got != "Here is the latest update." {
+				t.Fatalf("unexpected reply body %#v", got)
+			}
+			if got := input["toEmails"]; !reflect.DeepEqual(got, []any{"customer@example.com", "billing@example.com"}) && !reflect.DeepEqual(got, []string{"customer@example.com", "billing@example.com"}) {
+				t.Fatalf("unexpected reply toEmails %#v", got)
+			}
+			return map[string]any{
+				"data": map[string]any{
+					"replyToCase": map[string]any{
+						"id":          "comm_reply",
+						"direction":   "outbound",
+						"channel":     "email",
+						"subject":     "Re: Review applicant packet",
+						"body":        "Here is the latest update.",
+						"fromAgentID": "agent_123",
+						"isInternal":  false,
+						"createdAt":   "2026-03-13T10:32:00Z",
+					},
+				},
+			}
+		default:
+			t.Fatalf("unexpected query: %s", req.Query)
+			return nil
+		}
+	})
+
+	t.Setenv("MBR_URL", "https://app.mbr.test")
+	t.Setenv("MBR_TOKEN", "hat_test")
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(t.Context(), []string{
+		"cases", "add-note", "HC-42",
+		"--workspace", "ws_123",
+		"--body", "Checking billing history.",
+		"--json",
+	}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected note exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+	stdout.Reset()
+	stderr.Reset()
+	exitCode = run(t.Context(), []string{
+		"cases", "reply", "HC-42",
+		"--workspace", "ws_123",
+		"--body", "Here is the latest update.",
+		"--to", "customer@example.com,billing@example.com",
+		"--json",
+	}, stdout, stderr)
+	if exitCode != 0 {
+		t.Fatalf("expected reply exit code 0, got %d stderr=%s", exitCode, stderr.String())
+	}
+}
+
 func TestRunCasesSetStatusJSON(t *testing.T) {
 	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
 		switch {
@@ -3933,7 +4312,7 @@ func TestRunCasesSetStatusJSON(t *testing.T) {
 				},
 			}
 		case strings.Contains(req.Query, "mutation CLIUpdateCaseStatus"):
-			if got := req.Variables["status"]; got != "RESOLVED" {
+			if got := req.Variables["status"]; got != "resolved" {
 				t.Fatalf("unexpected status %#v", got)
 			}
 			return map[string]any{

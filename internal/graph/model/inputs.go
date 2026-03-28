@@ -141,6 +141,28 @@ type AddCommunicationInput struct {
 	IsInternal *bool
 }
 
+// CreateCaseInput input for creating a case.
+type CreateCaseInput struct {
+	WorkspaceID  string
+	Subject      string
+	Description  *string
+	Priority     *string
+	Category     *string
+	QueueID      *string
+	ContactID    *string
+	ContactEmail *string
+	ContactName  *string
+}
+
+// ReplyToCaseInput input for sending a reply to a case contact.
+type ReplyToCaseInput struct {
+	Body     string
+	BodyHTML *string
+	ToEmails *[]string
+	CcEmails *[]string
+	Subject  *string
+}
+
 // CreateQueueInput input for creating a queue.
 type CreateQueueInput struct {
 	WorkspaceID string

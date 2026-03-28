@@ -595,6 +595,16 @@ func (r *RootResolver) AdminForm(ctx context.Context, args struct{ ID string }) 
 
 // --- Service Domain Mutations (delegated) ---
 
+// CreateCase delegates to service resolver.
+func (r *RootResolver) CreateCase(ctx context.Context, args struct {
+	Input model.CreateCaseInput
+}) (*serviceresolvers.CaseResolver, error) {
+	if r.service == nil {
+		return nil, fmt.Errorf("service resolver not configured")
+	}
+	return r.service.CreateCase(ctx, args.Input)
+}
+
 // AddCommunication delegates to service resolver
 func (r *RootResolver) AddCommunication(ctx context.Context, args struct {
 	Input model.AddCommunicationInput
@@ -603,6 +613,28 @@ func (r *RootResolver) AddCommunication(ctx context.Context, args struct {
 		return nil, fmt.Errorf("service resolver not configured")
 	}
 	return r.service.AddCommunication(ctx, args.Input)
+}
+
+// AddCaseNote delegates to service resolver.
+func (r *RootResolver) AddCaseNote(ctx context.Context, args struct {
+	ID   string
+	Body string
+}) (*serviceresolvers.CommunicationResolver, error) {
+	if r.service == nil {
+		return nil, fmt.Errorf("service resolver not configured")
+	}
+	return r.service.AddCaseNote(ctx, args.ID, args.Body)
+}
+
+// ReplyToCase delegates to service resolver.
+func (r *RootResolver) ReplyToCase(ctx context.Context, args struct {
+	ID    string
+	Input model.ReplyToCaseInput
+}) (*serviceresolvers.CommunicationResolver, error) {
+	if r.service == nil {
+		return nil, fmt.Errorf("service resolver not configured")
+	}
+	return r.service.ReplyToCase(ctx, args.ID, args.Input)
 }
 
 // UpdateCaseStatus delegates to service resolver
@@ -614,6 +646,17 @@ func (r *RootResolver) UpdateCaseStatus(ctx context.Context, args struct {
 		return nil, fmt.Errorf("service resolver not configured")
 	}
 	return r.service.UpdateCaseStatus(ctx, args.ID, args.Status)
+}
+
+// SetCasePriority delegates to service resolver.
+func (r *RootResolver) SetCasePriority(ctx context.Context, args struct {
+	ID       string
+	Priority string
+}) (*serviceresolvers.CaseResolver, error) {
+	if r.service == nil {
+		return nil, fmt.Errorf("service resolver not configured")
+	}
+	return r.service.SetCasePriority(ctx, args.ID, args.Priority)
 }
 
 // AssignCase delegates to service resolver

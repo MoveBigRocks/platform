@@ -884,6 +884,39 @@ func (r *Resolver) Cases(ctx context.Context, workspaceID string, filter *model.
 // Mutation Resolvers
 // =============================================================================
 
+// CreateCase creates a case through the supported service-domain mutation
+// surface used by the CLI and agent workflows.
+func (r *Resolver) CreateCase(ctx context.Context, input model.CreateCaseInput) (*CaseResolver, error) {
+	authCtx, err := graphshared.RequirePermission(ctx, platformdomain.PermissionCaseWrite)
+	if err != nil {
+		return nil, err
+	}
+	if err := graphshared.ValidateWorkspaceOwnership(input.WorkspaceID, authCtx); err != nil {
+		return nil, fmt.Errorf("workspace not found")
+	}
+
+	params := serviceapp.CreateCaseParams{
+		WorkspaceID:  input.WorkspaceID,
+		Subject:      strings.TrimSpace(input.Subject),
+		Description:  strings.TrimSpace(valueOrEmpty(input.Description)),
+		Category:     strings.TrimSpace(valueOrEmpty(input.Category)),
+		QueueID:      strings.TrimSpace(valueOrEmpty(input.QueueID)),
+		ContactID:    strings.TrimSpace(valueOrEmpty(input.ContactID)),
+		ContactEmail: strings.TrimSpace(valueOrEmpty(input.ContactEmail)),
+		ContactName:  strings.TrimSpace(valueOrEmpty(input.ContactName)),
+		Channel:      servicedomain.CaseChannelAPI,
+	}
+	if priority := strings.TrimSpace(valueOrEmpty(input.Priority)); priority != "" {
+		params.Priority = servicedomain.CasePriority(priority)
+	}
+
+	caseObj, err := r.caseService.CreateCase(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create case: %w", err)
+	}
+	return &CaseResolver{case_: caseObj, r: r}, nil
+}
+
 // AddCommunication adds a communication to a case
 func (r *Resolver) AddCommunication(ctx context.Context, input model.AddCommunicationInput) (*CommunicationResolver, error) {
 	authCtx, err := graphshared.RequirePermission(ctx, platformdomain.PermissionCaseWrite)
@@ -934,6 +967,91 @@ func (r *Resolver) AddCommunication(ctx context.Context, input model.AddCommunic
 	return &CommunicationResolver{comm: comm, r: r}, nil
 }
 
+// AddCaseNote adds an internal note while preserving the acting principal.
+func (r *Resolver) AddCaseNote(ctx context.Context, id, body string) (*CommunicationResolver, error) {
+	authCtx, err := graphshared.RequirePermission(ctx, platformdomain.PermissionCaseWrite)
+	if err != nil {
+		return nil, err
+	}
+
+	caseObj, err := r.caseService.GetCase(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("case not found")
+	}
+	if err := graphshared.ValidateWorkspaceOwnership(caseObj.WorkspaceID, authCtx); err != nil {
+		return nil, fmt.Errorf("case not found")
+	}
+
+	var comm *servicedomain.Communication
+	if authCtx.IsAgent() {
+		comm = servicedomain.NewAgentCommunication(id, caseObj.WorkspaceID, authCtx.Principal.GetID(), shareddomain.CommTypeNote, body)
+	} else {
+		comm = servicedomain.NewCommunication(id, caseObj.WorkspaceID, shareddomain.CommTypeNote, body)
+		comm.FromUserID = authCtx.Principal.GetID()
+	}
+	comm.FromName = authCtx.Principal.GetName()
+	comm.Direction = shareddomain.DirectionInternal
+	comm.IsInternal = true
+
+	if err := r.caseService.CreateCommunication(ctx, comm); err != nil {
+		return nil, fmt.Errorf("failed to add case note: %w", err)
+	}
+	return &CommunicationResolver{comm: comm, r: r}, nil
+}
+
+// ReplyToCase sends a case reply through the same outbox-backed runtime used in
+// production, deriving the sending identity from the authenticated principal.
+func (r *Resolver) ReplyToCase(ctx context.Context, id string, input model.ReplyToCaseInput) (*CommunicationResolver, error) {
+	authCtx, err := graphshared.RequirePermission(ctx, platformdomain.PermissionCaseWrite)
+	if err != nil {
+		return nil, err
+	}
+
+	caseObj, err := r.caseService.GetCase(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("case not found")
+	}
+	if err := graphshared.ValidateWorkspaceOwnership(caseObj.WorkspaceID, authCtx); err != nil {
+		return nil, fmt.Errorf("case not found")
+	}
+
+	actor, err := r.resolveCaseReplyActor(ctx, authCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	toEmails := stringSliceOrEmpty(input.ToEmails)
+	if len(toEmails) == 0 && strings.TrimSpace(caseObj.ContactEmail) != "" {
+		toEmails = []string{strings.TrimSpace(caseObj.ContactEmail)}
+	}
+	if len(toEmails) == 0 {
+		return nil, fmt.Errorf("failed to queue case reply: at least one recipient email is required")
+	}
+
+	subject := strings.TrimSpace(valueOrEmpty(input.Subject))
+	if subject == "" {
+		subject = "Re: " + caseObj.Subject
+	}
+
+	reply, err := r.caseService.ReplyToCase(ctx, serviceapp.ReplyToCaseParams{
+		CaseID:      id,
+		WorkspaceID: caseObj.WorkspaceID,
+		UserID:      actor.userID,
+		UserName:    actor.displayName,
+		UserEmail:   actor.userEmail,
+		AgentID:     actor.agentID,
+		Body:        input.Body,
+		BodyHTML:    strings.TrimSpace(valueOrEmpty(input.BodyHTML)),
+		ToEmails:    toEmails,
+		CCEmails:    stringSliceOrEmpty(input.CcEmails),
+		Subject:     subject,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to queue case reply: %w", err)
+	}
+	return &CommunicationResolver{comm: reply, r: r}, nil
+}
+
 // UpdateCaseStatus updates the status of a case
 func (r *Resolver) UpdateCaseStatus(ctx context.Context, id, status string) (*CaseResolver, error) {
 	authCtx, err := graphshared.RequirePermission(ctx, platformdomain.PermissionCaseWrite)
@@ -962,6 +1080,31 @@ func (r *Resolver) UpdateCaseStatus(ctx context.Context, id, status string) (*Ca
 		return nil, fmt.Errorf("case not found")
 	}
 
+	return &CaseResolver{case_: caseObj, r: r}, nil
+}
+
+// SetCasePriority updates the priority of a case.
+func (r *Resolver) SetCasePriority(ctx context.Context, id, priority string) (*CaseResolver, error) {
+	authCtx, err := graphshared.RequirePermission(ctx, platformdomain.PermissionCaseWrite)
+	if err != nil {
+		return nil, err
+	}
+
+	caseObj, err := r.caseService.GetCase(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("case not found")
+	}
+	if err := graphshared.ValidateWorkspaceOwnership(caseObj.WorkspaceID, authCtx); err != nil {
+		return nil, fmt.Errorf("case not found")
+	}
+
+	if err := r.caseService.SetCasePriority(ctx, id, servicedomain.CasePriority(priority)); err != nil {
+		return nil, fmt.Errorf("failed to update case priority: %w", err)
+	}
+	caseObj, err = r.caseService.GetCase(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("case not found")
+	}
 	return &CaseResolver{case_: caseObj, r: r}, nil
 }
 
@@ -2949,6 +3092,59 @@ func agentOwnerID(authCtx *platformdomain.AuthContext) string {
 	return strings.TrimSpace(agent.OwnerID)
 }
 
+type caseReplyActor struct {
+	userID      string
+	userEmail   string
+	displayName string
+	agentID     string
+}
+
+func (r *Resolver) resolveCaseReplyActor(ctx context.Context, authCtx *platformdomain.AuthContext) (caseReplyActor, error) {
+	if authCtx == nil || authCtx.Principal == nil {
+		return caseReplyActor{}, fmt.Errorf("not authenticated")
+	}
+
+	if authCtx.IsAgent() {
+		ownerID := agentOwnerID(authCtx)
+		if ownerID == "" {
+			return caseReplyActor{}, fmt.Errorf("agent replies require an owner user")
+		}
+		if r.userService == nil {
+			return caseReplyActor{}, fmt.Errorf("agent replies require user service access")
+		}
+		owner, err := r.userService.GetUser(ctx, ownerID)
+		if err != nil {
+			return caseReplyActor{}, fmt.Errorf("load agent owner: %w", err)
+		}
+		return caseReplyActor{
+			userID:      owner.ID,
+			userEmail:   strings.TrimSpace(owner.Email),
+			displayName: strings.TrimSpace(authCtx.Principal.GetName()),
+			agentID:     strings.TrimSpace(authCtx.Principal.GetID()),
+		}, nil
+	}
+
+	if user, ok := authCtx.Principal.(*platformdomain.User); ok {
+		return caseReplyActor{
+			userID:      user.ID,
+			userEmail:   strings.TrimSpace(user.Email),
+			displayName: strings.TrimSpace(user.Name),
+		}, nil
+	}
+	if r.userService == nil {
+		return caseReplyActor{}, fmt.Errorf("reply actor lookup requires user service access")
+	}
+	user, err := r.userService.GetUser(ctx, authCtx.Principal.GetID())
+	if err != nil {
+		return caseReplyActor{}, fmt.Errorf("load reply actor: %w", err)
+	}
+	return caseReplyActor{
+		userID:      user.ID,
+		userEmail:   strings.TrimSpace(user.Email),
+		displayName: strings.TrimSpace(user.Name),
+	}, nil
+}
+
 func validateSourceTeamAccess(authCtx *platformdomain.AuthContext, teamID string, notFoundMessage string) error {
 	teamID = strings.TrimSpace(teamID)
 	if teamID == "" {
@@ -3024,6 +3220,11 @@ func (c *CaseResolver) Subject() string {
 	return c.case_.Subject
 }
 
+// Description returns the case description when present.
+func (c *CaseResolver) Description() *string {
+	return optionalStringValue(c.case_.Description)
+}
+
 // Status returns the case status
 func (c *CaseResolver) Status() string {
 	return string(c.case_.Status)
@@ -3032,6 +3233,16 @@ func (c *CaseResolver) Status() string {
 // Priority returns the case priority
 func (c *CaseResolver) Priority() string {
 	return string(c.case_.Priority)
+}
+
+// Category returns the case category when present.
+func (c *CaseResolver) Category() *string {
+	return optionalStringValue(c.case_.Category)
+}
+
+// Channel returns the case channel.
+func (c *CaseResolver) Channel() string {
+	return string(c.case_.Channel)
 }
 
 // TeamID returns the team ID if set.
@@ -3077,6 +3288,16 @@ func (c *CaseResolver) ContactID() *model.ID {
 	}
 	id := model.ID(c.case_.ContactID)
 	return &id
+}
+
+// ContactEmail returns the case contact email when present.
+func (c *CaseResolver) ContactEmail() *string {
+	return optionalStringValue(c.case_.ContactEmail)
+}
+
+// ContactName returns the case contact name when present.
+func (c *CaseResolver) ContactName() *string {
+	return optionalStringValue(c.case_.ContactName)
 }
 
 // AssigneeID returns the assignee ID if set
