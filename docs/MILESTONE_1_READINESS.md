@@ -17,6 +17,7 @@
 - Hosted sandboxes are deferred to [`docs/RFCs/RFC-0013-hosted-sandbox-control-plane.md`](./RFCs/RFC-0013-hosted-sandbox-control-plane.md) and are not part of the current Milestone 1 CLI contract or proof loop.
 - The workflow-proof standard has now been tightened in [`docs/testing-strategy.md`](./testing-strategy.md) and [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md).
 - Command-driven operational workflows are still only partially evidenced: case replies, form-triggered notifications, rule-triggered emails, knowledge notifications, and real inbound reply threading do not yet have full workflow proof.
+- The ordered closure program for those gaps lives in [`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md).
 - Milestone 1 is therefore not yet closed against the workflow-proof standard required for these operational capabilities.
 
 ## Proof Matrix
@@ -37,6 +38,22 @@
 - Closed the remaining release-facing evidence gap by tagging and running the public bundle workflow for the full in-scope public set, then archiving the emitted publication evidence inside the milestone proof bundle.
 - Adopted a workflow-proof model for operational capabilities and added [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md) as the inventory of milestone-facing workflow evidence.
 - Reopened milestone closure for operational workflows until the command-driven email and notification paths have real consumer-backed workflow proof.
+
+## Next Closure Checkpoints
+
+The next milestone-facing checkpoints are:
+
+1. Restore the integration-suite baseline, starting with the broken
+   `internal/platform/services` fixture set.
+2. Implement and prove the `email-commands` consumer path plus durable outbound
+   email persistence.
+3. Prove real inbound reply threading from Postmark-shaped payloads.
+4. Implement and prove the `notification-commands` consumer path.
+5. Extend the milestone proof bundle with operational workflow artifacts.
+6. Harden the integration and workflow suite into a real CI gate.
+
+The full execution order and acceptance criteria for those checkpoints live in
+[`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md).
 
 ## Live Publication Evidence
 

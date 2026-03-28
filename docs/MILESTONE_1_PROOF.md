@@ -59,6 +59,9 @@ Those gaps are tracked in [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MAT
 and mean this proof bundle is strong for CLI/runtime/release/publication
 surfaces, but only partial for milestone-facing operational workflows.
 
+The phased plan for extending this proof bundle is documented in
+[`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md).
+
 ## Current Live Publication Evidence
 
 - ATS `v0.8.23`: [run 23683709259](https://github.com/MoveBigRocks/extensions/actions/runs/23683709259)
@@ -100,3 +103,4 @@ They do not yet constitute complete proof for the operational workflow set in
 - [`docs/CLI_RELEASES.md`](./CLI_RELEASES.md)
 - [`docs/testing-strategy.md`](./testing-strategy.md)
 - [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md)
+- [`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md)
