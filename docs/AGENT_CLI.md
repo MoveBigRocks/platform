@@ -148,10 +148,16 @@ mbr forms list [--workspace WORKSPACE_ID] [--status STATUS] [--limit N] [--url U
 mbr forms create [--workspace WORKSPACE_ID] --name NAME --slug SLUG [--description TEXT] [--definition-file PATH | --definition-json JSON] [--status STATUS] [--public] [--requires-captcha] [--collect-email] [--auto-create-case] [--submission-message TEXT] [--redirect-url URL] [--url URL] [--token TOKEN] [--json]
 mbr automation rules list [--workspace WORKSPACE_ID] [--limit N] [--url URL] [--token TOKEN] [--json]
 mbr automation rules create [--workspace WORKSPACE_ID] --title TITLE (--conditions-file PATH | --conditions-json JSON) (--actions-file PATH | --actions-json JSON) [--description TEXT] [--active] [--priority N] [--max-per-hour N] [--max-per-day N] [--url URL] [--token TOKEN] [--json]
+mbr cases create [--workspace WORKSPACE_ID] --subject TEXT [--description TEXT] [--priority PRIORITY] [--category TEXT] [--queue QUEUE_ID] [--contact-id CONTACT_ID] [--contact-email EMAIL] [--contact-name NAME] [--url URL] [--token TOKEN] [--json]
 mbr cases list [--workspace WORKSPACE_ID] [--status STATUS] [--priority PRIORITY] [--queue QUEUE_ID] [--assignee USER_ID] [--limit N] [--url URL] [--token TOKEN] [--json]
 mbr cases show CASE_ID [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
+mbr cases assign CASE_ID --assignee USER_ID [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
+mbr cases unassign CASE_ID [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
+mbr cases set-priority CASE_ID --priority PRIORITY [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
 mbr cases set-status CASE_ID --status STATUS [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
 mbr cases handoff CASE_ID --queue QUEUE_ID [--team TEAM_ID] [--assignee USER_ID] [--reason TEXT] [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
+mbr cases add-note CASE_ID --body TEXT [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
+mbr cases reply CASE_ID --body TEXT [--subject TEXT] [--to EMAILS] [--cc EMAILS] [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
 mbr contacts list [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
 mbr attachments upload PATH [--workspace WORKSPACE_ID] [--case CASE_ID] [--description TEXT] [--content-type MIME] [--url URL] [--token TOKEN] [--json]
 mbr health check [--url URL] [--token TOKEN] [--json]
@@ -258,10 +264,16 @@ mbr extensions uninstall --id EXTENSION_ID [--deactivate] [--reason TEXT] [--exp
 | `forms create` | Browser-backed session only | yes | write | server_managed |
 | `automation rules list` | Browser-backed session only | yes | read | read_only |
 | `automation rules create` | Browser-backed session only | yes | write | server_managed |
+| `cases create` | Bearer token or browser-backed session | yes | write | server_managed |
 | `cases list` | Bearer token or browser-backed session | yes | read | read_only |
 | `cases show` | Bearer token or browser-backed session | yes | read | read_only |
+| `cases assign` | Bearer token or browser-backed session | yes | write | server_managed |
+| `cases unassign` | Bearer token or browser-backed session | yes | write | server_managed |
+| `cases set-priority` | Bearer token or browser-backed session | yes | write | server_managed |
 | `cases set-status` | Bearer token or browser-backed session | yes | write | server_managed |
 | `cases handoff` | Bearer token or browser-backed session | yes | write | server_managed |
+| `cases add-note` | Bearer token or browser-backed session | yes | write | server_managed |
+| `cases reply` | Bearer token or browser-backed session | yes | write | server_managed |
 | `contacts list` | Bearer token or browser-backed session | yes | read | read_only |
 | `attachments upload` | Bearer token or browser-backed session | yes | write | server_managed |
 | `health check` | Bearer token or browser-backed session | yes | read | read_only |

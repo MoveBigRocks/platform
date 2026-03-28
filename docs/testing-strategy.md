@@ -164,7 +164,9 @@ For the expanded Milestone 1 target, that matrix must cover complete product
 loops, not only the narrowest command-driven subset. At minimum it now needs
 rows for:
 
-- the operator-complete case loop
+- the operator-complete case loop, broken down enough that manual create/work
+  management, handoff/status, and attachment-bearing case flows can each be
+  proved or kept honestly open
 - conversation reply, handoff, escalation, and public intake
 - attachment-bearing operational flows
 - sanctioned extension-or-agent initiated case actions when the architecture

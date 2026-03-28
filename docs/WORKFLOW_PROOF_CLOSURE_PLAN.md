@@ -77,6 +77,20 @@ Evidence:
 Goal: make case operations complete on the supported product surface rather than
 only rich in the service layer.
 
+Progress on 2026-03-28:
+
+- `mbr cases` now exposes manual create, assign, unassign, set priority,
+  add-note, and reply on the supported CLI surface.
+- Operator workflow proof now exists for manual case creation plus
+  assign/unassign, reprioritization, and internal note flows via
+  [`internal/service/resolvers/case_operator_workflow_integration_test.go`](../internal/service/resolvers/case_operator_workflow_integration_test.go).
+- The milestone-proof artifact set now includes
+  `workflow-proof/case-operator-manual-create.json`,
+  `workflow-proof/case-operator-work-management.json`, and
+  `workflow-proof/case-operator-reply.json`.
+- The case thread persistence path now durably preserves `from_agent_id` for
+  agent-authored communications, which the new operator workflow proof asserts.
+
 Changes:
 
 - Expose manual case creation, assignment, unassignment, set priority, add
@@ -100,6 +114,12 @@ Evidence:
 - workflow tests for case create, assignment, priority change, internal note,
   and queue-visible follow-through
 - archived workflow artifacts for those case loops
+
+Remaining Phase 1 work:
+
+- add workflow-proof coverage for supported case handoff and status-transition
+  loops
+- complete the attachment-bearing case loop in Phase 2
 
 ### Phase 2: Complete Attachment-Bearing Workflows
 
