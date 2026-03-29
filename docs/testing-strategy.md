@@ -15,10 +15,10 @@ A capability is only credible when the real production path completes through
 the entrypoint, parser/adapter, store, outbox, worker/consumer, and durable
 side effect that users depend on.
 
-## The Problem This Strategy Fixes
+## The Failure Mode This Strategy Prevents
 
-The current repo has several places where tests prove the shape of a feature,
-but not the user-visible workflow:
+This strategy was introduced because the repo previously had several places
+where tests proved the shape of a feature, but not the user-visible workflow:
 
 - tests prove that email or notification commands are queued, but not that a
   consumer exists and executes them
@@ -27,7 +27,9 @@ but not the user-visible workflow:
 - scenario tests often simulate success by writing final state directly instead
   of traversing the production path
 
-That gap makes milestone and readiness docs too optimistic.
+Those gaps previously made milestone and readiness docs too optimistic. The
+current workflow-proof model exists to keep the repo from regressing into that
+state.
 
 ## Capability Proof Model
 

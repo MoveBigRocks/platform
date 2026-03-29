@@ -1,15 +1,18 @@
 # Workflow Proof Closure Plan
 
-This document is the execution plan for closing the operational workflow gaps
-tracked in [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md).
+This document records the execution plan and closure sequence that closed the
+operational workflow gaps tracked in
+[`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md).
 
-It exists to answer a simple question: what must change, in what order, before
-the repo can honestly claim that milestone-facing operational workflows work
-end to end.
+It exists to answer a simple question: what had to change, in what order,
+before the repo could honestly claim that milestone-facing operational
+workflows work end to end. It now serves as the historical closure record and
+regression checklist for that work.
 
 ## Status
 
-Reopened on 2026-03-28 under the expanded product-complete Milestone 1 bar.
+Reopened on 2026-03-28 under the expanded product-complete Milestone 1 bar and
+completed on 2026-03-29.
 
 The earlier command-driven closure work remains done:
 
@@ -22,7 +25,7 @@ The earlier command-driven closure work remains done:
 - CI now hard-gates `go test -tags=integration ./...`
 
 That work is now treated as the foundation for the broader product-complete
-closure sequence below.
+closure sequence below, which is now complete for Milestone 1.
 
 ## Closure Principles
 
