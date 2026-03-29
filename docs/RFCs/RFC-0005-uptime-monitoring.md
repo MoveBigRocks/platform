@@ -20,4 +20,4 @@ Operational health should be an optional first-party extension that can monitor 
 
 - not every deployment needs it
 - it shares primitives with the rest of the platform
-- it should be purchasable and installable like other product packs
+- it should be purchasable and installable like other product extensions

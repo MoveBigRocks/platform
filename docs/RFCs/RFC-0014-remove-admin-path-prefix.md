@@ -34,7 +34,7 @@ Routes already at root (login, dashboard, metrics, grafana) are unchanged.
 ### Changes Required
 
 1. **`cmd/api/routers.go`** — Route group prefixes: `/admin/extensions` → `/extensions`, `/admin/actions` → `/actions`, `/admin/graphql` → `/graphql`
-2. **`packs/*/manifest.json`** — Extension mountPaths: `/admin/extensions/...` → `/extensions/...`
+2. **`extensions/*/manifest.json`** — Extension mountPaths: `/admin/extensions/...` → `/extensions/...`
 3. **`web/admin-panel/templates/`** — Template hrefs and form actions
 4. **`internal/platform/services/extension_runtime.go`** — Reserved path validation and mount namespace rules
 5. **Production DB** — Update `manifest_json` in `installed_extensions` rows

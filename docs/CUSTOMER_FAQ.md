@@ -176,7 +176,7 @@ The intended model is:
 - the extension can seed team-owned knowledge, queues, routes, and workflows
 - the runtime install scope still stays `workspace` or `instance`
 
-That gives teams room to build their own operational packs without inventing a
+That gives teams room to build their own operational extensions without inventing a
 separate trust model for every team.
 
 ## What about always-on agent runtimes beyond OpenClaw?
@@ -247,7 +247,7 @@ one.
 ## What about enterprise SSO?
 
 That remains the first-party `enterprise-access` identity extension. It is a
-privileged pack and is not part of the free public bundle set.
+privileged extension and is not part of the free public bundle set.
 
 ## Can I sell Move Big Rocks or sell extensions for it?
 
@@ -285,7 +285,7 @@ build it as an extension. If it is really its own service, keep it in a
 separate repo and integrate with Move Big Rocks.
 
 This is meant to be a real choice, not a fallback. You should be able to use
-an off-the-shelf pack when one exists, or build your own private extension on
+an off-the-shelf extension when one exists, or build your own private extension on
 the same primitives when you want something custom. That includes team-owned
 private extensions.
 

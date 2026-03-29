@@ -53,7 +53,7 @@ The public core repo is not the live deployment control plane.
 
 ## Extension Standard
 
-Optional packs such as ATS, analytics, error tracking, enterprise access, and
+Optional extensions such as ATS, analytics, error tracking, enterprise access, and
 connector integrations must all read as extensions, not disguised core
 features.
 

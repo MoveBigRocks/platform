@@ -227,7 +227,7 @@ Rules:
 
 - standard-risk extensions can publish workspace-scoped knowledge and form specs
 - core owns permissions, audit, workspace isolation, and write execution
-- privileged connectors and identity packs remain separate concerns
+- privileged connectors and identity extensions remain separate concerns
 
 ## API Contract
 

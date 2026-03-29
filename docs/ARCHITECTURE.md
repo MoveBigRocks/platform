@@ -11,8 +11,8 @@ is intentionally split into a small free core and optional extensions.
 - GraphQL is the canonical machine API.
 - The CLI is a thin client over GraphQL and a few purpose-built HTTP endpoints.
 - Extensions run out of process and integrate through events, GraphQL, and routed HTTP surfaces.
-- Customer-facing product packs are optional unless they provide a cross-cutting primitive.
-- The free core is the support and operations foundation; off-the-shelf and customer-built functionality sits in installable packs and services.
+- Customer-facing product extensions are optional unless they provide a cross-cutting primitive.
+- The free core is the support and operations foundation; off-the-shelf and customer-built functionality sits in installable extensions and services.
 - Conversations are live interaction surfaces; cases are durable work items.
 - Knowledge is Markdown-first and designed for deliberate sharing between humans and agents.
 - Concept specs define structured knowledge concepts and are versioned independently from their instances.
@@ -193,15 +193,15 @@ Move Big Rocks treats extensions as one runtime with multiple classes:
 - `connector`: Slack, WhatsApp, email transport adapters, and user-local agent bridges such as OpenClaw
 - `operational`: probes, diagnostics, operational health
 
-Identity and connector packs need stricter review and stronger permission
-boundaries than ordinary product packs.
+Identity and connector extensions need stricter review and stronger permission
+boundaries than ordinary product extensions.
 
 Move Big Rocks supports two runtime classes:
 
-- `bundle` extensions for bundle-first product packs such as ATS, where the
+- `bundle` extensions for bundle-first product extensions such as ATS, where the
   extension owns product vocabulary, assets, and workflows while still running
   on shared primitives
-- `service-backed` extensions for dynamic packs such as analytics, error tracking, enterprise access, and connector packs
+- `service-backed` extensions for dynamic extensions such as analytics, error tracking, enterprise access, and connector extensions
 
 The core service is responsible for:
 

@@ -41,7 +41,7 @@ Examples:
 - custom forms portal
 - internal operations dashboard
 - branded careers-site customisation
-- workflow pack for a single client
+- workflow extension for a single client
 
 Rules:
 
@@ -60,7 +60,7 @@ Rules:
 - publication is optional
 - source can be public or private
 - bundle review is mandatory
-- privileged categories need stronger review than ordinary product packs
+- privileged categories need stronger review than ordinary product extensions
 
 ## Repo Ownership Matrix
 
@@ -72,8 +72,8 @@ Use this split consistently:
   Desired state for one live installation.
 - **Private or public extension repo**
   Source code for a custom extension.
-- **Private first-party extension repo**
-  Source code for commercial first-party packs.
+- **First-party extensions repo**
+  Source code for official first-party extensions.
 
 Do not put customer extension source code into the private instance repo unless it is a tiny local-only override.
 
@@ -96,7 +96,7 @@ The generic runtime does **not** currently install:
 
 Reason:
 
-- identity and connector packs touch authentication, external credentials, or transport boundaries
+- identity and connector extensions touch authentication, external credentials, or transport boundaries
 - those categories need stronger review, richer isolation, and more explicit lifecycle controls than the current generic slice provides
 
 This means:
@@ -164,7 +164,7 @@ The current core implementation already enforces some structural checks:
 
 The remaining checks should live in the extension authoring workflow and instance repo policy until the CLI automates them.
 
-Extensions should also use the same outbox and event-bus pattern as core whenever they publish or consume domain events. That keeps retries, auditability, and operational visibility consistent across first-party and customer-built packs.
+Extensions should also use the same outbox and event-bus pattern as core whenever they publish or consume domain events. That keeps retries, auditability, and operational visibility consistent across first-party and customer-built extensions.
 
 ## Recommended Agent Workflow for Custom Extensions
 
@@ -187,7 +187,7 @@ The value proposition for a semi-technical or non-technical user is:
 
 - Move Big Rocks gives them a secure host and a clear runtime model
 - the instance repo gives the agent one predictable place to manage deployment and policy
-- the extension runtime gives the agent one predictable way to install and configure custom product packs
+- the extension runtime gives the agent one predictable way to install and configure custom product extensions
 - the trust rules tell them what can be self-built safely and what still needs first-party review
 
 That is the missing layer between "I can generate code" and "I can safely run this in production."

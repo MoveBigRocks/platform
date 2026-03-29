@@ -138,7 +138,7 @@ and extension runtime substrate:
 - tenancy helpers, RLS helpers, and shared operational roles and grants
 
 Core baseline migrations do not become a dumping ground for optional product
-packs.
+extensions.
 
 ## Extension-Owned Migrations
 

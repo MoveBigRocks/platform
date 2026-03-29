@@ -113,7 +113,7 @@ The reconciler supports:
 - `check`
 
 It runs under database-backed admin context on the host, so it can reconcile
-both workspace-scoped and instance-scoped packs without relying on browser
+both workspace-scoped and instance-scoped extensions without relying on browser
 sessions or workspace agent tokens.
 
 ### 6. Reconciliation is part of deploy and verify

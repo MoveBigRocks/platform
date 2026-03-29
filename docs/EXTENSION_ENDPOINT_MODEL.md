@@ -16,12 +16,12 @@ Current implemented slice:
 - `publicRoutes` and `adminRoutes` are resolved through the same runtime
 - service-backed public routes can now resolve installed `public-asset`, `public-page`, and `public-ingest` endpoints through the shared target registry
 - admin-side service-backed routes under `/admin/extensions/*` can now resolve installed `admin-page` and `admin-action` endpoints through the same target registry
-- parameterized service endpoints such as `/api/:projectNumber/envelope` are now supported for compatibility-sensitive first-party packs
+- parameterized service endpoints such as `/api/:projectNumber/envelope` are now supported for compatibility-sensitive first-party extensions
 - service-backed runtime health can now be checked through internal manifest-declared `health` endpoints during activation and `mbr extensions monitor`
 - service-backed scheduled jobs and event consumers now run through the same service-target runtime registry
 - supervised process management and full external `extension-api` extraction are still pending
 
-This is required for packs such as `web-analytics`, `error-tracking`, and future connector or product extensions that need public ingest routes, admin pages, or machine APIs.
+This is required for extensions such as `web-analytics`, `error-tracking`, and future connector or product extensions that need public ingest routes, admin pages, or machine APIs.
 
 ## Design Goals
 
@@ -78,14 +78,14 @@ Compatible aliases can be added where needed for product continuity, but they sh
 - `web-analytics` may register `/js/analytics.js` as an alias to its standard asset route
 - `error-tracking` may register Sentry-compatible ingest aliases
 
-Aliases should be explicit, reviewed, and reserved to first-party or privileged packs when they affect public product contracts.
+Aliases should be explicit, reviewed, and reserved to first-party or privileged extensions when they affect public product contracts.
 
 The currently implemented asset-backed runtime supports:
 
 - public routes on their declared mount paths, except reserved core paths such as `/auth`, `/health`, `/metrics`, `/pricing`, and `/signup`
 - admin routes on their declared mount paths only when they live under `/admin/extensions/*`
 
-That narrower contract is deliberate. It keeps asset-backed packs predictable while the richer service-backed runtime is still being completed.
+That narrower contract is deliberate. It keeps asset-backed extensions predictable while the richer service-backed runtime is still being completed.
 
 ## Manifest Contract
 
@@ -271,7 +271,7 @@ Milestone 1 should standardize on these rules:
 
 - bundle extensions can define `public-page`, `public-asset`, and simple `admin-page` surfaces backed by packaged assets
 - service-backed extensions can additionally define `public-ingest`, `webhook`, `admin-action`, and richer `extension-api` surfaces
-- privileged identity and connector packs can only use the service-backed runtime
+- privileged identity and connector extensions can only use the service-backed runtime
 - first-party-only aliases are allowed where compatibility matters, such as analytics scripts or Sentry-compatible endpoints
 - every endpoint declaration must be visible to the CLI, admin diagnostics, and security review flow
 

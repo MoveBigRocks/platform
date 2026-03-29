@@ -292,13 +292,13 @@ These are intentionally not part of the core PostgreSQL baseline:
 
 ## First-Party Extension Canonical Baselines
 
-These are the target schema baselines for first-party service-backed packs:
+These are the target schema baselines for first-party service-backed extensions:
 
 ### `web-analytics`
 
 Canonical location:
 
-- the `web-analytics` pack source outside this repo
+- the `web-analytics` extension source outside this repo
 
 Owns:
 
@@ -313,7 +313,7 @@ Owns:
 
 Canonical location:
 
-- the `error-tracking` pack source outside this repo
+- the `error-tracking` extension source outside this repo
 
 Owns:
 
@@ -329,7 +329,7 @@ Owns:
 
 Canonical location:
 
-- the `enterprise-access` pack source outside this repo
+- the `enterprise-access` extension source outside this repo
 
 Owns:
 

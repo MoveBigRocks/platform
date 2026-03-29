@@ -3,12 +3,12 @@
     "extensions": {
       "repository": "MoveBigRocks/extensions",
       "path": "extensions",
-      "ref": "37f1c80b5eb6f14701c00344d38d9bf2dcf607db"
+      "ref": "a0aa6945763ad1559834a3639658f31b7fe25ea6"
     },
     "extension-sdk": {
       "repository": "MoveBigRocks/extension-sdk",
       "path": "extension-sdk",
-      "ref": "0ad9bb76cd50cf55568901e3e14a1c4472f3cd20"
+      "ref": "ad7a24ff6577bbe2a861b528f8e8f7b57892ceca"
     }
   }
 }

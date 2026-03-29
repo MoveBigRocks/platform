@@ -13,7 +13,7 @@ product silos.
 ## Goals
 
 - keep core small
-- make optional capability packs installable
+- make optional capability extensions installable
 - enable agent-driven installation and operation
 - support a commercial bundle-and-license model
 - make ATS the canonical first-party extension
@@ -87,8 +87,8 @@ An activation flow may either:
 - attach the extension to an existing workspace
 - provision a dedicated workspace if the extension declares that as an allowed install mode
 
-Identity and connector packs use stricter review and signing policy than
-ordinary product packs.
+Identity and connector extensions use stricter review and signing policy than
+ordinary product extensions.
 
 ## Runtime Classes
 
@@ -98,7 +98,7 @@ Move Big Rocks supports two extension runtime classes:
 
 Used for:
 
-- bundle-first product packs that own workflow vocabulary, assets, and
+- bundle-first product extensions that own workflow vocabulary, assets, and
   extension-defined behavior while still running on shared primitives
 - seeded collections
 - knowledge and forms assets
@@ -109,7 +109,7 @@ Used for:
 
 Used for:
 
-- dynamic product packs with custom handlers
+- dynamic product extensions with custom handlers
 - ingest endpoints
 - scheduled jobs and event consumers
 - rich admin UI
@@ -170,7 +170,7 @@ debugging.
 ## CLI Extensibility
 
 The core `mbr` CLI stays generic. Extension-specific verbs do not get
-compiled into core on a per-pack basis.
+compiled into core on a per-extension basis.
 
 Instead, an installed extension may declare:
 
@@ -251,9 +251,9 @@ The ATS flow is:
 - labels used as flexible metadata
 - pipeline stage stored as extension-owned state rather than as a core case status
 
-## First-Party Packs
+## First-Party Extensions
 
-This RFC establishes these first-party packs:
+This RFC establishes these first-party extensions:
 
 - `ats` as a product extension
 - `enterprise-access` as an identity extension

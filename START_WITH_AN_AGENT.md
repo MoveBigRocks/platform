@@ -198,7 +198,7 @@ Open this Move Big Rocks repo and help me connect my local OpenClaw setup, Perpl
 ### Prompt: Build me an ATS setup
 
 ```text
-Open this Move Big Rocks repo and help me deploy a Move Big Rocks instance, then set up an ATS workflow with a careers site, application forms, case routing, and a review workflow. Use the existing Move Big Rocks primitives and extension model. If a first-party ATS pack is available, use it. If not, help me build the required custom extension safely.
+Open this Move Big Rocks repo and help me deploy a Move Big Rocks instance, then set up an ATS workflow with a careers site, application forms, case routing, and a review workflow. Use the existing Move Big Rocks primitives and extension model. If a first-party ATS extension is available, use it. If not, help me build the required custom extension safely.
 ```
 
 ## What the Agent Should Read First

@@ -79,10 +79,10 @@ For many teams, that core is already enough.
 
 ## Extensions You Can Install
 
-Move Big Rocks ships off-the-shelf extension packs. Some replace standalone
+Move Big Rocks ships off-the-shelf extensions. Some replace standalone
 products:
 
-| Pack | What it does |
+| Extension | What it does |
 |------|-------------|
 | **ATS** | Applicant tracking with careers site, candidate workflows, and interview kits on the same operational base |
 | **Community feature requests** | Public idea board and voting with internal triage on the same operational base |
@@ -111,10 +111,10 @@ Other available extensions include:
 - **Enterprise access** — a simple SSO extension that lets your Move Big Rocks
   instance delegate authentication to your company's existing IdP
 
-`enterprise-access` is a separately controlled first-party privileged identity
-pack rather than part of the free public bundle set.
+`enterprise-access` lives in the same first-party extensions repo and installs
+through the same extension model as the rest of the first-party set.
 
-Each pack runs on the same core primitives — same teams, same queues, same
+Each extension runs on the same core primitives — same teams, same queues, same
 knowledge, same agent contract. That means your ATS candidates, your error
 tracking issues, your sales pipeline deals, your public feature requests, and
 your support cases can all live in one system instead of five disconnected
@@ -147,10 +147,10 @@ See [`LICENSE`](LICENSE) for the governing text.
 
 Move Big Rocks is not just a product — it is a platform you can build on:
 
-- Use the same extension model as the first-party packs
+- Use the same extension model as the first-party extensions
 - Own structured state in your own `ext_*` PostgreSQL schema
 - Use Git-backed artifact surfaces for websites, templates, and published docs
-- Register concept specs and agent skills so your pack is discoverable
+- Register concept specs and agent skills so your extension is discoverable
 - Test in a preview workspace, validate, then promote to production
 - Keep your extensions private or publish them
 
@@ -292,7 +292,7 @@ like that path to become real.
   local technical setup if you prefer
 - **Your instance, your control** — one private instance repo, one Linux host,
   pinned releases, no vendor lock-in
-- **Buy or build on the same base** — use first-party packs or ship your own
+- **Buy or build on the same base** — use first-party extensions or ship your own
   private or team-authored extensions against the same runtime model
 
 ## Why Move Big Rocks
@@ -361,7 +361,7 @@ Move Big Rocks core stays small and composable:
 - **Public first-party extensions**: ATS, community feature requests, error
   tracking, sales pipeline, and web analytics in the public first-party
   extensions repo at `MoveBigRocks/extensions`
-- **Optional first-party packs**: enterprise access, operational health,
+- **Optional first-party extensions**: enterprise access, operational health,
   agent-runtime connectors
 
 ## Delivery Model

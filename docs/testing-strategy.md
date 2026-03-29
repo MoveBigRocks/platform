@@ -209,7 +209,7 @@ Current reality:
 - reusable CI outputs and summaries now report the integration sweep as part of
   the required gate instead of a soft signal
 - the reusable `Test` workflow now materializes the same canonical sibling repos
-  (`extensions` and `extension-sdk`) that public first-party source tests
+  (`extensions` and `extension-sdk`) that first-party source tests
   depend on, verifies those checkouts against
   [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json),
   and sets `MBR_REQUIRE_WORKSPACE_REFS=true` so those tests fail closed in
@@ -218,11 +218,8 @@ Current reality:
   (`extensions` and `extension-sdk`) before running proof, and proof mode sets
   `MBR_REQUIRE_WORKSPACE_REFS=true` so canonical-source tests fail closed
   instead of silently skipping
-- the controlled `enterprise-access` pack is proven from a pinned in-repo
-  reference fixture under
-  [`testdata/first-party-packs/enterprise-access/`](../testdata/first-party-packs/enterprise-access/)
-  so the public proof path does not depend on direct checkout access to the
-  private `MoveBigRocks/packs` repository
+- `enterprise-access` now validates from the same canonical `extensions`
+  checkout as the rest of the first-party extension set
 - those sibling repos are pinned by
   [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
   and verified by the proof script before milestone-critical tests run

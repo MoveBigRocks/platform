@@ -39,7 +39,7 @@ Use when the user wants:
 - ATS
 - web analytics
 - error tracking
-- another first-party pack
+- another first-party extension
 
 Agent steps:
 
@@ -99,7 +99,7 @@ Use when the user wants:
 Agent steps:
 
 1. Deploy Move Big Rocks core if it is not already live.
-2. Check whether the first-party ATS pack is available.
+2. Check whether the first-party ATS extension is available.
 3. If available, install and configure it.
 4. If not, build the required custom extension on top of:
    - form specs

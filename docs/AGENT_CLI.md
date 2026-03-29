@@ -411,7 +411,8 @@ When a bundle manifest declares
 using browser/session-backed auth.
 
 When a bundle manifest is `scope = instance`, the CLI can omit `--workspace`
-and install the pack as an instance-scoped extension. Instance-scoped packs can
+and install the extension as an instance-scoped extension. Instance-scoped
+extensions can
 be listed with `mbr extensions list --instance`.
 
 Resolver inputs:

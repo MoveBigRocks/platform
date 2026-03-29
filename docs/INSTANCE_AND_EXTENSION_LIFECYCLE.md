@@ -428,7 +428,7 @@ That is the right product model.
 
 The remaining friction points are now smaller and mostly about polish:
 
-- some first-party packs are still intentionally narrower than the long-term
+- some first-party extensions are still intentionally narrower than the long-term
   product vision
 - preview and security review policy still spans the instance repo plus the
   extension repo, even though the supported command path is now explicit

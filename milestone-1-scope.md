@@ -7,8 +7,9 @@
 
 Milestone 1 ships the full first marketable shape of Move Big Rocks: a
 self-hosted, agent-operable operations core, a shared CLI and GraphQL contract,
-an installable extension runtime, four core first-party packs, two in-scope
-beta first-party packs, and a self-hosted evaluation path that proves the model
+an installable extension runtime, four core first-party extensions, two
+in-scope beta first-party extensions, and a self-hosted evaluation path that
+proves the model
 end to end. Hosted sandboxes are deferred to
 [`docs/RFCs/RFC-0013-hosted-sandbox-control-plane.md`](docs/RFCs/RFC-0013-hosted-sandbox-control-plane.md).
 
@@ -54,7 +55,7 @@ the product thesis works as one coherent system:
   contract
 - extensions must be the real delivery mechanism for product depth and the
   commercial layer
-- first-party packs must prove that the extension model is credible in real
+- first-party extensions must prove that the extension model is credible in real
   product categories
 - evaluation must stay fast without weakening the self-hosted production thesis
 
@@ -97,7 +98,7 @@ together, not a partial platform slice.
   behavior that everything else depends on
 - `Repository and Delivery Model` and `Agent Surface` define how operators and
   agents get to first value and then run the product
-- `Extension Model`, `First-Party Bundle Flow`, and the first-party pack sections
+- `Extension Model`, `First-Party Bundle Flow`, and the first-party extension sections
   define how Move Big Rocks delivers product depth without bloating core
 
 ## Current Proof Synthesis
@@ -140,17 +141,20 @@ The public distribution model is:
 - free public first-party standard-risk bundles for ATS, error tracking, and
   web analytics, plus beta public bundles for sales-pipeline and
   community-feature-requests
-- separately controlled privileged first-party packs such as enterprise access
+- first-party extensions such as enterprise access that stay privileged at the
+  runtime-policy level even while living in the shared first-party extensions
+  repo
 - internal company use, modification, and private extensions allowed under the
   public license, but no selling or licensing of the platform, derivative
   works of it, extensions, or access to them, and no hosted-service offering,
   without separate written permission from Move Big Rocks BV
 
-The four core packs remain the launch-grade baseline. The two beta packs are
+The four core extensions remain the launch-grade baseline. The two beta
+extensions are
 intentionally in scope for Milestone 1 as public beta products: present,
 installable, documented, and published through the same bundle path, but
 explicitly labeled beta and allowed a narrower workflow-depth bar than the four
-core launch packs.
+core launch extensions.
 
 That base is already the initial product. The free core is valuable on its own
 because it provides:
@@ -606,10 +610,10 @@ agents through the same CLI and GraphQL contract.
 
 Milestone 1 supports two runtime classes:
 
-- `bundle` extensions for bundle-first product packs such as ATS, where the
+- `bundle` extensions for bundle-first product extensions such as ATS, where the
   extension owns its workflow vocabulary and published assets while still
   building on shared primitives
-- `service-backed` extensions for dynamic packs such as web analytics, error
+- `service-backed` extensions for dynamic extensions such as web analytics, error
   tracking, enterprise access, sales-pipeline,
   community-feature-requests, and connector integrations
 
@@ -711,7 +715,7 @@ Required workflows:
 
 ## Additional Initial Extensions
 
-Milestone 1 defines three additional core first-party packs beyond ATS:
+Milestone 1 defines three additional core first-party extensions beyond ATS:
 
 - `enterprise-access`
   OIDC, SAML, and directory sync. This is an identity extension. Core owns sessions, users, memberships, and authorization.
@@ -720,28 +724,28 @@ Milestone 1 defines three additional core first-party packs beyond ATS:
 - `web-analytics`
   Cookie-free analytics for simple websites and extension-hosted sites. This is a product extension.
 
-These packs use the same extension-aware admin navigation, route mounting,
+These extensions use the same extension-aware admin navigation, route mounting,
 event consumers, and service-backed runtime model.
 
-## In-Scope Beta Packs
+## In-Scope Beta Extensions
 
-Milestone 1 also includes two public beta first-party packs on the same
+Milestone 1 also includes two public beta first-party extensions on the same
 runtime and bundle pipeline:
 
 - `sales-pipeline`
-  A workspace-scoped revenue-operations pack for opportunity intake, stage
+  A workspace-scoped revenue-operations extension for opportunity intake, stage
   movement, dedicated sales workspace provisioning, and operator review.
 - `community-feature-requests`
-  A workspace-scoped community-feedback pack for public idea capture, voting,
+  A workspace-scoped community-feedback extension for public idea capture, voting,
   triage, and roadmap review.
 
-Beta packs are in scope for Milestone 1 when they have:
+Beta extensions are in scope for Milestone 1 when they have:
 
 - canonical checked-in source and public catalog entries
 - install, validation, activation, and health proof on the shared runtime
 - clear beta labeling in docs, bundle metadata, and publication guidance
 - public bundle publication evidence in the same release pipeline as the other
-  public first-party packs
+  public first-party extensions
 
 ## Modular Capability Packaging
 

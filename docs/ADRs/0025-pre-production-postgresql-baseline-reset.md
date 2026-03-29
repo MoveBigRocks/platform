@@ -20,7 +20,7 @@ the canonical starting point.
 For a baseline reset:
 
 - core baseline migrations create the owned table, column, index, and policy shapes directly
-- extension-owned baselines create the pack-owned schema directly
+- extension-owned baselines create the extension-owned schema directly
 - placeholder slots and one-field follow-up migrations are removed
 
 ### 2. Ownership-Aligned Files Absorb Their Own Schema Shape
@@ -43,7 +43,7 @@ Because the baseline itself is being rewritten:
 Once the new baseline is established:
 
 - core migration files under `migrations/postgres/` are immutable
-- extension-owned migration files are immutable once applied for a published pack version
+- extension-owned migration files are immutable once applied for a published extension version
 - schema changes land as new numbered migrations
 
 ## Consequences

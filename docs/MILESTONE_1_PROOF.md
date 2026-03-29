@@ -14,10 +14,10 @@ This document is the rerun guide for the Milestone 1 launch-proof loop.
 
 ## Workspace Contract
 
-The milestone proof is intentionally a multi-repo proof for the public
+The milestone proof is intentionally a multi-repo proof for the canonical
 first-party sources, because part of the Milestone 1 contract is that
-`platform` validates and exercises the canonical public pack sources rather
-than floating copies.
+`platform` validates and exercises the source tree in
+`MoveBigRocks/extensions` rather than floating copies.
 
 - CI now checks out `platform`, `extensions`, and `extension-sdk` into one
   workspace before it runs the proof script.
@@ -35,12 +35,8 @@ than floating copies.
 - The proof script exports `MBR_REQUIRE_WORKSPACE_REFS=true`, so first-party
   tests fail closed when those canonical sibling repos are missing instead of
   silently skipping.
-- The controlled `enterprise-access` pack no longer requires direct access to
-  the private `MoveBigRocks/packs` repository during proof. The repo now owns a
-  pinned reference fixture under
-  [`testdata/first-party-packs/enterprise-access/`](../testdata/first-party-packs/enterprise-access/)
-  with source provenance recorded in
-  [`SOURCE.json`](../testdata/first-party-packs/enterprise-access/SOURCE.json).
+- The proof script validates `enterprise-access` from the same canonical
+  `extensions` checkout as the rest of the first-party extension set.
 - If the workspace does not already provide a top-level `go.work`, or if the
   available `go.work` does not actually include the `platform` checkout being
   proven, the proof script bootstraps a temporary one inside the proof bundle
@@ -54,7 +50,7 @@ than floating copies.
 1. Core operational behavior:
    - `./internal/service/services`
    - `./internal/knowledge/services`
-2. Sandbox lifecycle, extension lifecycle, and first-party pack behavior:
+2. Sandbox lifecycle, extension lifecycle, and first-party extension behavior:
    - `./internal/platform/services`
    - `./cmd/api`
 3. Agent and operator CLI behavior:
@@ -161,7 +157,7 @@ The current proof run writes:
 Those outputs currently provide the concrete proof bundle for:
 
 - milestone readiness status
-- first-party pack readiness
+- first-party extension readiness
 - runtime discovery, extension lifecycle, and publication evidence
 - durable publication evidence archiving plus manifest/plan verification
 - archived input manifests for canonical workspace refs and publication evidence
@@ -175,7 +171,7 @@ Those outputs currently provide the concrete proof bundle for:
 ## Related Evidence
 
 - [`docs/MILESTONE_1_READINESS.md`](./MILESTONE_1_READINESS.md)
-- [`docs/FIRST_PARTY_PACK_READINESS.md`](./FIRST_PARTY_PACK_READINESS.md)
+- [`docs/FIRST_PARTY_EXTENSION_READINESS.md`](./FIRST_PARTY_EXTENSION_READINESS.md)
 - [`docs/CLI_RELEASES.md`](./CLI_RELEASES.md)
 - [`docs/testing-strategy.md`](./testing-strategy.md)
 - [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md)

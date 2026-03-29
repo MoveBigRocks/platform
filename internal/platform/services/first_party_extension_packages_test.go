@@ -297,7 +297,7 @@ func TestExtensionSDKTemplateInstallsAndActivates(t *testing.T) {
 	workspace := testutil.NewIsolatedWorkspace(t)
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
-	manifest, assets := loadTestExtensionBundle(t, "sample-ops-pack")
+	manifest, assets := loadTestExtensionBundle(t, "sample-ops-extension")
 	service := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
 
 	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
@@ -308,7 +308,7 @@ func TestExtensionSDKTemplateInstallsAndActivates(t *testing.T) {
 		Assets:        assets,
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "sample-ops-pack", installed.Slug)
+	assert.Equal(t, "sample-ops-extension", installed.Slug)
 
 	activated, err := service.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
@@ -318,7 +318,7 @@ func TestExtensionSDKTemplateInstallsAndActivates(t *testing.T) {
 	nav, err := service.ListWorkspaceAdminNavigation(ctx, workspace.ID)
 	require.NoError(t, err)
 	require.Len(t, nav, 1)
-	assert.Equal(t, "/extensions/sample-ops-pack", nav[0].Href)
+	assert.Equal(t, "/extensions/sample-ops-extension", nav[0].Href)
 }
 
 func TestEnterpriseAccessPackInstallsAsInstanceScopedPrivilegedPack(t *testing.T) {
@@ -460,24 +460,13 @@ func canonicalExtensionSourceDir(t *testing.T, slug string) string {
 	repoRoot := platformRepoRoot(t)
 
 	var rel string
-	useWorkspaceRef := true
 	switch slug {
-	case "ats", "community-feature-requests", "error-tracking", "sales-pipeline", "web-analytics":
+	case "ats", "community-feature-requests", "enterprise-access", "error-tracking", "sales-pipeline", "web-analytics":
 		rel = filepath.Join("extensions", slug)
-	case "enterprise-access":
-		useWorkspaceRef = false
-		rel = filepath.Join("testdata", "first-party-packs", slug)
-	case "sample-ops-pack":
+	case "sample-ops-extension":
 		rel = "extension-sdk"
 	default:
 		t.Fatalf("unknown canonical extension source %q", slug)
-	}
-
-	if !useWorkspaceRef {
-		dir := filepath.Join(repoRoot, rel)
-		_, err := os.Stat(dir)
-		require.NoError(t, err)
-		return dir
 	}
 
 	dir, err := testutil.ResolveWorkspaceSiblingDir(repoRoot, rel)

@@ -15,16 +15,15 @@ func ResolveWorkspaceSiblingDir(repoRoot, rel string) (string, error) {
 	repoRoot = filepath.Clean(repoRoot)
 	rel = filepath.Clean(rel)
 
-	candidates := make([]string, 0, 3)
+	configuredCandidates := make([]string, 0, 2)
 	if root := strings.TrimSpace(os.Getenv("MBR_WORKSPACE_ROOT")); root != "" {
-		candidates = append(candidates, filepath.Join(root, rel))
+		configuredCandidates = append(configuredCandidates, filepath.Join(root, rel))
 	}
 	if root := strings.TrimSpace(os.Getenv("MOVEBIGROCKS_WORKSPACE_ROOT")); root != "" {
-		candidates = append(candidates, filepath.Join(root, rel))
+		configuredCandidates = append(configuredCandidates, filepath.Join(root, rel))
 	}
-	candidates = append(candidates, filepath.Join(filepath.Dir(repoRoot), rel))
 
-	for _, candidate := range candidates {
+	for _, candidate := range configuredCandidates {
 		info, err := os.Stat(candidate)
 		if err == nil && info.IsDir() {
 			return filepath.Clean(candidate), nil
@@ -32,6 +31,19 @@ func ResolveWorkspaceSiblingDir(repoRoot, rel string) (string, error) {
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return "", err
 		}
+	}
+
+	if len(configuredCandidates) > 0 && RequireWorkspaceRefs() {
+		return "", fmt.Errorf("required workspace sibling checkout not available under configured workspace root for %s", rel)
+	}
+
+	fallbackCandidate := filepath.Join(filepath.Dir(repoRoot), rel)
+	info, err := os.Stat(fallbackCandidate)
+	if err == nil && info.IsDir() {
+		return filepath.Clean(fallbackCandidate), nil
+	}
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return "", err
 	}
 
 	if RequireWorkspaceRefs() {

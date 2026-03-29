@@ -282,13 +282,13 @@ Use a dedicated preview workspace on the live instance for this preview pass.
 Current repo baseline:
 
 - local development can install from a bundle file, an extension source directory with `manifest.json` plus `assets/`, or an HTTPS bundle URL
-- the free public first-party bundle sources should come from the public first-party extensions repo at `MoveBigRocks/extensions`, not from the public core repo
+- all first-party extension source lives in `MoveBigRocks/extensions`, not in the public core repo
 - the intended free public first-party OCI refs are:
   - `ghcr.io/movebigrocks/mbr-ext-ats:<version>`
   - `ghcr.io/movebigrocks/mbr-ext-error-tracking:<version>`
   - `ghcr.io/movebigrocks/mbr-ext-web-analytics:<version>`
 - those public signed bundles can install without an instance-bound token
-- `enterprise-access` remains a separately controlled privileged first-party pack
+- `enterprise-access` source lives in the same first-party extensions repo and installs as an instance-scoped extension
 
 ## Step 7: Build a Custom Extension Only If You Need One
 
@@ -314,7 +314,7 @@ Do not put substantial custom extension source code into the instance repo.
 This is not only for niche custom workflows. If you want your own version of
 something like analytics, an internal dashboard, or another operational
 workflow, you should be able to build it as an extension instead of waiting
-for a marketplace pack.
+for a marketplace extension.
 
 Simple customizations that should stay in the instance repo:
 

@@ -2,7 +2,7 @@
 
 Move Big Rocks is a team-aware operations platform and context engineering
 infrastructure for self-hosted businesses that want one system of record and a
-thin layer of installable product packs.
+thin layer of installable product extensions.
 
 ## Thesis
 
@@ -24,7 +24,7 @@ The winning shape is:
 - a hosted sandbox you can spin up quickly for evaluation and agent-led setup
 - extensions that reuse shared primitives
 - self-hosted economics instead of permanent per-seat SaaS rent
-- optional commercial packs sold on top of a strong free core
+- optional commercial extensions sold on top of a strong free core
 
 That does not mean another disconnected planning suite. It means one system
 that can replace meaningful slices of Confluence and Jira for operations-heavy
@@ -33,7 +33,7 @@ queues, conversations, and cases.
 
 The base product is free to self-host for support operations and adjacent
 operational workflows. The commercial layer sits above core in first-party
-extensions, curated marketplace packs, and professional services.
+extensions, curated marketplace extensions, and professional services.
 
 The evaluation model should be simple too:
 
@@ -229,7 +229,7 @@ Move Big Rocks uses a three-layer delivery model:
 
 - a public core repo for the shared runtime and releases
 - a private deployment repo per customer installation
-- separate extension repos for first-party and customer-built packs
+- separate extension repos for first-party and customer-built extensions
 
 The private deployment repo is not a fork of core. It is a control-plane repo
 that stores the desired state for one live installation: pinned versions,
@@ -443,7 +443,7 @@ This supports the current public model:
   derivative works of it, extensions, or access to them, or to offer them as
   a hosted service
 
-That means a customer who does not want the first-party analytics pack can
+That means a customer who does not want the first-party analytics extension can
 build their own analytics extension or use another free extension without
 changing the core architecture.
 
@@ -456,9 +456,9 @@ Packaging follows a clear structure:
 - free public first-party standard-risk bundles ship as signed OCI bundles
 - customer-built extensions are private by default and can stay private or be given away for free
 - marketplace publication follows real adoption later rather than being a Milestone 1 dependency
-- privileged identity and connector packs remain separately controlled first-party packs unless their trust model is explicitly expanded
+- privileged identity and connector extensions remain separately controlled first-party extensions unless their trust model is explicitly expanded
 
-## Optional First-Party Packs
+## Optional First-Party Extensions
 
 Not every Move Big Rocks install needs everything. These remain optional:
 

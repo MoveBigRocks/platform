@@ -162,10 +162,10 @@ Today that means:
 
 - core-owned runtime metadata stays in `migrations/postgres/`
 - canonical `enterprise-access` schema SQL lives with the
-  `enterprise-access` pack source outside this repo
-- canonical `web-analytics` schema SQL lives with the `web-analytics` pack
+  `enterprise-access` extension source outside this repo
+- canonical `web-analytics` schema SQL lives with the `web-analytics` extension
   source outside this repo
-- canonical `error-tracking` schema SQL lives with the `error-tracking` pack
+- canonical `error-tracking` schema SQL lives with the `error-tracking` extension
   source outside this repo
 - extension-applied versions are recorded in
   `core_extension_runtime.schema_migration_history`

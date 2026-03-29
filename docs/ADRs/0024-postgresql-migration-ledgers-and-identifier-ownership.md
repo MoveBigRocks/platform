@@ -40,8 +40,8 @@ For service-backed extensions with owned PostgreSQL schemas:
 
 Examples:
 
-- the `error-tracking` pack migration directory outside this repo
-- the `web-analytics` pack migration directory outside this repo
+- the `error-tracking` extension migration directory outside this repo
+- the `web-analytics` extension migration directory outside this repo
 
 ### 3. Extension-Applied Versions Are Tracked in `core_extension_runtime`
 
