@@ -262,14 +262,17 @@ The recommended activation flow is:
 7. Monitor the extension in that preview workspace.
 8. Activate it in the target production workspace only after the preview pass is clean.
 
-Known control-plane gap today:
+Current control-plane model:
 
-- the instance repo deploy workflow still does not automatically reconcile
-  `extensions/desired-state.yaml` into the live installed extension rows
-- service-backed runtime artifacts are deployed separately from bundle installs
+- the instance repo deploy workflow now treats
+  `extensions/desired-state.yaml` as the declarative source of truth for
+  installed extension state
+- service-backed runtime artifacts are generated and deployed from desired
+  state through the packaged `tools/reconcile-extensions` flow
+- deploy and verify archive reconciliation artifacts so drift is visible
+  without manual database inspection
 
-So until the reconciler lands, desired-state changes still require an explicit
-supported reconcile action after deploy. The full closure plan is tracked in
+The shipped model is documented in
 [Extension Desired-State Reconciliation Plan](./EXTENSION_DESIRED_STATE_RECONCILIATION_PLAN.md).
 
 Do not activate privileged auth or connector extensions through the generic custom-extension path.

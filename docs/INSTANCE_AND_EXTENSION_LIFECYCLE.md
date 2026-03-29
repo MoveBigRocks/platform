@@ -259,6 +259,50 @@ Milestone 1 should make this review path explicit and agent-friendly, not implic
 
 The extension repo should produce a signed bundle.
 
+## One Supported Private-Extension Path
+
+Milestone 1 now has one explicit end-to-end path for private extension work.
+
+1. Create a private repo from
+   [MoveBigRocks/extension-sdk](https://github.com/MoveBigRocks/extension-sdk).
+2. Implement the extension in that repo, keeping deployment policy and desired
+   state in the private instance repo.
+3. Run the offline contract pass from the extension repo:
+
+   ```bash
+   mbr extensions lint . --write-contract --json
+   ```
+
+4. Run the online verification pass against a safe workspace on a real or
+   local Move Big Rocks instance:
+
+   ```bash
+   mbr extensions verify . --workspace ws_preview --json
+   ```
+
+5. During source-first development, install from the source directory and
+   exercise the supported lifecycle:
+
+   ```bash
+   mbr extensions install . --workspace ws_preview --json
+   mbr extensions validate --id ext_123 --json
+   mbr extensions activate --id ext_123 --json
+   mbr extensions monitor --id ext_123 --json
+   ```
+
+6. If the extension is service-backed, verify runtime startup, migrations,
+   health, and event-consumer behavior as part of that preview pass.
+7. Package and sign the bundle when the preview pass is clean.
+8. Add the bundle ref plus config to the instance repo
+   `extensions/desired-state.yaml`.
+9. Push the instance repo so deploy and verify can reconcile the desired state
+   automatically on the target host.
+10. Inspect the uploaded reconciliation artifacts if deploy or verify reports
+    drift.
+
+That is the supported path agents and humans should be able to follow without
+inventing extra glue.
+
 That means:
 
 - validate the manifest
@@ -382,12 +426,13 @@ That is the right product model.
 
 ## Where the UX Is Still Not Good Enough
 
-The remaining friction points are:
+The remaining friction points are now smaller and mostly about polish:
 
-- the service-backed extension lifecycle is still incomplete
-- analytics and error-tracking are still early first-party packs
-- extension authoring and testing flow is not yet documented as one clear end-to-end path
-- sandbox activation and extension review flow are still spread across multiple files
+- some first-party packs are still intentionally narrower than the long-term
+  product vision
+- preview and security review policy still spans the instance repo plus the
+  extension repo, even though the supported command path is now explicit
+- sandbox activation and extension review guidance still spans multiple files
 
 Those are the remaining experience gaps to close.
 

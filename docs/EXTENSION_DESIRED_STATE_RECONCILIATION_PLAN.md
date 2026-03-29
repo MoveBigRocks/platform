@@ -205,5 +205,6 @@ Still true:
 - preview-first rollout is a policy choice the instance repo can layer on top
 - custom extension authoring and review still require the documented security
   gates
-- GitHub Actions currently emits Node 20 deprecation warnings, but those are
-  CI maintenance items, not desired-state reconciliation blockers
+- GitHub Actions workflow-action maintenance remains normal CI upkeep, but it
+  is no longer a blocker or open warning against the shipped reconciliation
+  path
