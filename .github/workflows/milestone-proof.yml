@@ -46,7 +46,7 @@ jobs:
 
     steps:
       - name: Checkout platform
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: platform
 
@@ -59,21 +59,21 @@ jobs:
           echo "extension_sdk_ref=$(jq -r '.repositories["extension-sdk"].ref' "$manifest")" >> "$GITHUB_OUTPUT"
 
       - name: Checkout extensions
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: MoveBigRocks/extensions
           path: extensions
           ref: ${{ steps.workspace_refs.outputs.extensions_ref }}
 
       - name: Checkout extension-sdk
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: MoveBigRocks/extension-sdk
           path: extension-sdk
           ref: ${{ steps.workspace_refs.outputs.extension_sdk_ref }}
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.26.0'
           cache-dependency-path: |
@@ -96,7 +96,7 @@ jobs:
             --out dist/milestone-proof
 
       - name: Upload proof bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: milestone-1-proof-${{ github.sha }}
           path: platform/dist/milestone-proof
