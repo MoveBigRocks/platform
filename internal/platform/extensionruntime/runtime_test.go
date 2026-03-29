@@ -339,6 +339,16 @@ func TestRuntimeEnsureInstalledExtensionRuntimeRegistersEventConsumersAndJobs(t 
 	assert.Equal(t, "healthy", diagnostics.EventConsumers[0].Status)
 	assert.NotNil(t, diagnostics.EventConsumers[0].RegisteredAt)
 	assert.NotNil(t, diagnostics.EventConsumers[0].LastSuccessAt)
+
+	require.Eventually(t, func() bool {
+		diagnostics, err = runtime.GetInstalledExtensionRuntimeDiagnostics(ctx, installed)
+		require.NoError(t, err)
+		require.Len(t, diagnostics.ScheduledJobs, 1)
+		return diagnostics.ScheduledJobs[0].LastSuccessAt != nil &&
+			diagnostics.ScheduledJobs[0].LastStartedAt != nil &&
+			diagnostics.ScheduledJobs[0].RegisteredAt != nil
+	}, 2*time.Second, 25*time.Millisecond)
+
 	assert.Equal(t, "maintenance", diagnostics.ScheduledJobs[0].Name)
 	assert.NotNil(t, diagnostics.ScheduledJobs[0].RegisteredAt)
 	assert.NotNil(t, diagnostics.ScheduledJobs[0].LastStartedAt)
