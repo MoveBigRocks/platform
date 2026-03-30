@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/movebigrocks/platform/internal/platform/extensionbundle"
 )
@@ -33,7 +34,7 @@ func readBundleSource(ctx context.Context, source, licenseToken string) (bundleF
 }
 
 func readBundleSourcePayload(ctx context.Context, source, licenseToken string) (bundleSourcePayload, error) {
-	return extensionbundle.ReadSource(ctx, source, licenseToken, bundleResolverConfig())
+	return extensionbundle.ReadSource(ctx, source, licenseToken, bundleResolverConfig(ctx))
 }
 
 //nolint:unused // pending extension install CLI
@@ -46,11 +47,13 @@ func readBundleURLWithHeaders(ctx context.Context, rawURL string, headers map[st
 }
 
 func readBundleURLPayloadWithHeaders(ctx context.Context, rawURL string, headers map[string]string, kind bundleSourceKind) (bundleSourcePayload, error) {
-	return extensionbundle.ReadURLPayloadWithHeaders(ctx, rawURL, headers, kind, bundleResolverConfig())
+	return extensionbundle.ReadURLPayloadWithHeaders(ctx, rawURL, headers, kind, bundleResolverConfig(ctx))
 }
 
-func bundleResolverConfig() extensionbundle.ResolverConfig {
+func bundleResolverConfig(ctx context.Context) extensionbundle.ResolverConfig {
 	cfg := extensionbundle.DefaultResolverConfigFromEnv()
-	cfg.HTTPClient = newHTTPClient
+	cfg.HTTPClient = func() *http.Client {
+		return httpClientFromContext(ctx)
+	}
 	return cfg
 }

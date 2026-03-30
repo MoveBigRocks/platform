@@ -29,8 +29,7 @@ const sampleExtensionBundle = `{
 }`
 
 func TestReadBundleSourceOCIReference(t *testing.T) {
-	previousHTTPClient := newHTTPClient
-	newHTTPClient = func() *http.Client {
+	ctx := contextWithHTTPClientFactory(t.Context(), func() *http.Client {
 		return &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				switch r.URL.Path {
@@ -67,20 +66,16 @@ func TestReadBundleSourceOCIReference(t *testing.T) {
 				}
 			}),
 		}
-	}
-	defer func() {
-		newHTTPClient = previousHTTPClient
-	}()
+	})
 
 	ref := "oci+http://registry.test/movebigrocks/mbr-ext-ats:1.0.0"
-	bundle, err := readBundleSource(t.Context(), ref, "")
+	bundle, err := readBundleSource(ctx, ref, "")
 	require.NoError(t, err)
 	assert.Equal(t, "ats", bundle.Manifest["slug"])
 }
 
 func TestReadBundleSourceMarketplaceAlias(t *testing.T) {
-	previousHTTPClient := newHTTPClient
-	newHTTPClient = func() *http.Client {
+	ctx := contextWithHTTPClientFactory(t.Context(), func() *http.Client {
 		return &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				switch {
@@ -116,14 +111,11 @@ func TestReadBundleSourceMarketplaceAlias(t *testing.T) {
 				}
 			}),
 		}
-	}
-	defer func() {
-		newHTTPClient = previousHTTPClient
-	}()
+	})
 
 	t.Setenv(envMarketplaceURL, "https://marketplace.test")
 
-	bundle, err := readBundleSource(t.Context(), "demandops/ats@1.0.0", "lic_123")
+	bundle, err := readBundleSource(ctx, "demandops/ats@1.0.0", "lic_123")
 	require.NoError(t, err)
 	assert.Equal(t, "ats", bundle.Manifest["slug"])
 }
@@ -151,8 +143,7 @@ func TestRunExtensionsInstallMarketplaceAliasJSON(t *testing.T) {
 	t.Setenv("MBR_URL", "https://app.mbr.test")
 	t.Setenv("MBR_TOKEN", "hat_test")
 
-	previousHTTPClient := newHTTPClient
-	newHTTPClient = func() *http.Client {
+	ctx := contextWithHTTPClientFactory(t.Context(), func() *http.Client {
 		return &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				switch {
@@ -186,10 +177,7 @@ func TestRunExtensionsInstallMarketplaceAliasJSON(t *testing.T) {
 				}
 			}),
 		}
-	}
-	defer func() {
-		newHTTPClient = previousHTTPClient
-	}()
+	})
 	t.Setenv(envMarketplaceURL, "https://marketplace.test")
 
 	withMockCLIClient(t, func(r *http.Request, req testGraphQLRequest) map[string]any {
@@ -240,7 +228,7 @@ func TestRunExtensionsInstallMarketplaceAliasJSON(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	exitCode := run(t.Context(), []string{
+	exitCode := run(ctx, []string{
 		"extensions", "install", "demandops/ats@1.0.0",
 		"--workspace", "ws_123",
 		"--license-token", "lic_123",

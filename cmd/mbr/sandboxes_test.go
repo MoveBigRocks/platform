@@ -14,8 +14,7 @@ import (
 )
 
 func TestRunSandboxesCreateJSON(t *testing.T) {
-	previousHTTPClient := newHTTPClient
-	newHTTPClient = func() *http.Client {
+	ctx := contextWithHTTPClientFactory(t.Context(), func() *http.Client {
 		return &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				if r.Method != http.MethodPost {
@@ -59,14 +58,11 @@ func TestRunSandboxesCreateJSON(t *testing.T) {
 				}, nil
 			}),
 		}
-	}
-	t.Cleanup(func() {
-		newHTTPClient = previousHTTPClient
 	})
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	exitCode := runSandboxes(t.Context(), []string{
+	exitCode := runSandboxes(ctx, []string{
 		"create",
 		"--url", "https://api.app.mbr.test",
 		"--email", "ops@example.com",
@@ -90,8 +86,7 @@ func TestRunSandboxesCreateJSON(t *testing.T) {
 }
 
 func TestRunSandboxesLifecycleAndExportFile(t *testing.T) {
-	previousHTTPClient := newHTTPClient
-	newHTTPClient = func() *http.Client {
+	ctx := contextWithHTTPClientFactory(t.Context(), func() *http.Client {
 		return &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				if got := r.Header.Get("Authorization"); got != "Bearer sbm_123" {
@@ -139,9 +134,6 @@ func TestRunSandboxesLifecycleAndExportFile(t *testing.T) {
 				}
 			}),
 		}
-	}
-	t.Cleanup(func() {
-		newHTTPClient = previousHTTPClient
 	})
 
 	configPath := filepath.Join(t.TempDir(), "mbr-config.json")
@@ -152,7 +144,7 @@ func TestRunSandboxesLifecycleAndExportFile(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	exitCode := runSandboxes(t.Context(), []string{
+	exitCode := runSandboxes(ctx, []string{
 		"show", "sbx_123",
 		"--manage-token", "sbm_123",
 	}, stdout, stderr)
@@ -165,7 +157,7 @@ func TestRunSandboxesLifecycleAndExportFile(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	exitCode = runSandboxes(t.Context(), []string{
+	exitCode = runSandboxes(ctx, []string{
 		"extend", "sbx_123",
 		"--manage-token", "sbm_123",
 	}, stdout, stderr)
@@ -179,7 +171,7 @@ func TestRunSandboxesLifecycleAndExportFile(t *testing.T) {
 	exportPath := filepath.Join(t.TempDir(), "sandbox-export.json")
 	stdout.Reset()
 	stderr.Reset()
-	exitCode = runSandboxes(t.Context(), []string{
+	exitCode = runSandboxes(ctx, []string{
 		"export", "sbx_123",
 		"--manage-token", "sbm_123",
 		"--out", exportPath,
@@ -200,7 +192,7 @@ func TestRunSandboxesLifecycleAndExportFile(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	exitCode = runSandboxes(t.Context(), []string{
+	exitCode = runSandboxes(ctx, []string{
 		"destroy", "sbx_123",
 		"--manage-token", "sbm_123",
 		"--reason", "proof complete",

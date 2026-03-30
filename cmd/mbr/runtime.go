@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -18,3 +19,25 @@ var (
 	}
 	openBrowserURL = openBrowser
 )
+
+type httpClientFactoryContextKey struct{}
+
+func contextWithHTTPClientFactory(ctx context.Context, factory func() *http.Client) context.Context {
+	if factory == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, httpClientFactoryContextKey{}, factory)
+}
+
+func httpClientFactoryFromContext(ctx context.Context) func() *http.Client {
+	if ctx != nil {
+		if factory, ok := ctx.Value(httpClientFactoryContextKey{}).(func() *http.Client); ok && factory != nil {
+			return factory
+		}
+	}
+	return newHTTPClient
+}
+
+func httpClientFromContext(ctx context.Context) *http.Client {
+	return httpClientFactoryFromContext(ctx)()
+}

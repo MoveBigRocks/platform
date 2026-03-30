@@ -371,7 +371,7 @@ func sandboxAPIRawRequest(ctx context.Context, method, baseURL, path, manageToke
 		req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(manageToken))
 	}
 
-	resp, err := newHTTPClient().Do(req)
+	resp, err := httpClientFromContext(ctx).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("perform sandbox request: %w", err)
 	}

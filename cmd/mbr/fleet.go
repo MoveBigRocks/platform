@@ -323,7 +323,7 @@ func runFleetRegister(ctx context.Context, registerURL string, input fleetRegist
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := newHTTPClient().Do(req)
+	resp, err := httpClientFromContext(ctx).Do(req)
 	if err != nil {
 		return fleetRegisterResponse{}, fmt.Errorf("perform fleet register request: %w", err)
 	}

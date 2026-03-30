@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -59,16 +58,12 @@ spec:
 	}))
 	t.Cleanup(server.Close)
 
-	previousClient := newHTTPClient
-	newHTTPClient = func() *http.Client { return server.Client() }
-	t.Cleanup(func() {
-		newHTTPClient = previousClient
-	})
+	ctx := contextWithHTTPClientFactory(t.Context(), func() *http.Client { return server.Client() })
 
 	secretPath := filepath.Join(t.TempDir(), "fleet-secret.txt")
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	exitCode := run(context.Background(), []string{
+	exitCode := run(ctx, []string{
 		"fleet", "register",
 		"--config", configPath,
 		"--fleet-url", server.URL,
@@ -136,15 +131,11 @@ func TestRunFleetRegisterAcceptsExistingTrackingSecretFile(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	previousClient := newHTTPClient
-	newHTTPClient = func() *http.Client { return server.Client() }
-	t.Cleanup(func() {
-		newHTTPClient = previousClient
-	})
+	ctx := contextWithHTTPClientFactory(t.Context(), func() *http.Client { return server.Client() })
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	exitCode := run(context.Background(), []string{
+	exitCode := run(ctx, []string{
 		"fleet", "register",
 		"--fleet-url", server.URL,
 		"--instance-id", "inst_existing",

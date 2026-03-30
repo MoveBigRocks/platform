@@ -91,7 +91,7 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         continue-on-error: true
         with:
-          version: latest
+          version: v1.64.8
           working-directory: platform
           args: --timeout=5m
           install-mode: goinstall

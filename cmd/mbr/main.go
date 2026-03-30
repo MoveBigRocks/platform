@@ -3079,8 +3079,20 @@ func readBundleFile(path string) (bundleFile, error) {
 }
 
 func readBundleFilePayload(path string) (bundleSourcePayload, error) {
+	return readBundleFilePayloadWithContext(context.Background(), path)
+}
+
+func readBundleFileWithContext(ctx context.Context, path string) (bundleFile, error) {
+	payload, err := readBundleFilePayloadWithContext(ctx, path)
+	if err != nil {
+		return bundleFile{}, err
+	}
+	return payload.Bundle, nil
+}
+
+func readBundleFilePayloadWithContext(ctx context.Context, path string) (bundleSourcePayload, error) {
 	if remoteURL, ok := bundleSourceURL(path); ok {
-		return readBundleURLPayloadWithHeaders(context.Background(), remoteURL, nil, bundleSourceKindHTTP)
+		return readBundleURLPayloadWithHeaders(ctx, remoteURL, nil, bundleSourceKindHTTP)
 	}
 	return extensionbundle.ReadFilePayload(path)
 }

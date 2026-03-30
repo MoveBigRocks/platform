@@ -228,8 +228,7 @@ func bundleMigrationVersion(path string) string {
 func TestReadBundleURL(t *testing.T) {
 	t.Parallel()
 
-	previous := newHTTPClient
-	newHTTPClient = func() *http.Client {
+	ctx := contextWithHTTPClientFactory(t.Context(), func() *http.Client {
 		return &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				return &http.Response{
@@ -241,12 +240,9 @@ func TestReadBundleURL(t *testing.T) {
 				}, nil
 			}),
 		}
-	}
-	defer func() {
-		newHTTPClient = previous
-	}()
+	})
 
-	bundle, err := readBundleFile("https://example.test/ats.hext")
+	bundle, err := readBundleFileWithContext(ctx, "https://example.test/ats.hext")
 	if err != nil {
 		t.Fatalf("readBundleFile returned error: %v", err)
 	}
@@ -1080,8 +1076,7 @@ func TestRunAuthLoginBrowserStoresSessionConfig(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "mbr-config.json")
 	t.Setenv("MBR_CONFIG_PATH", configPath)
 
-	previousHTTPClient := newHTTPClient
-	newHTTPClient = func() *http.Client {
+	ctx := contextWithHTTPClientFactory(t.Context(), func() *http.Client {
 		return &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				switch r.URL.Path {
@@ -1105,9 +1100,6 @@ func TestRunAuthLoginBrowserStoresSessionConfig(t *testing.T) {
 				}
 			}),
 		}
-	}
-	t.Cleanup(func() {
-		newHTTPClient = previousHTTPClient
 	})
 
 	previousOpenBrowser := openBrowserURL
@@ -1154,7 +1146,7 @@ func TestRunAuthLoginBrowserStoresSessionConfig(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	exitCode := run(t.Context(), []string{
+	exitCode := run(ctx, []string{
 		"auth", "login",
 		"--url", "https://app.mbr.test",
 		"--json",
@@ -4471,8 +4463,7 @@ func TestRunCasesHandoffJSON(t *testing.T) {
 }
 
 func TestRunWorkspacesCreateJSON(t *testing.T) {
-	previousHTTPClient := newHTTPClient
-	newHTTPClient = func() *http.Client {
+	ctx := contextWithHTTPClientFactory(t.Context(), func() *http.Client {
 		return &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				if r.URL.Path != "/actions/workspaces" {
@@ -4513,9 +4504,6 @@ func TestRunWorkspacesCreateJSON(t *testing.T) {
 				}, nil
 			}),
 		}
-	}
-	t.Cleanup(func() {
-		newHTTPClient = previousHTTPClient
 	})
 
 	configPath := filepath.Join(t.TempDir(), "mbr-config.json")
@@ -4526,7 +4514,7 @@ func TestRunWorkspacesCreateJSON(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	exitCode := run(t.Context(), []string{
+	exitCode := run(ctx, []string{
 		"workspaces", "create",
 		"--url", "https://app.mbr.test",
 		"--name", "Hiring",
@@ -4562,8 +4550,7 @@ func TestRunHealthCheckJSON(t *testing.T) {
 		}
 	})
 
-	previousHTTPClient := newHTTPClient
-	newHTTPClient = func() *http.Client {
+	ctx := contextWithHTTPClientFactory(t.Context(), func() *http.Client {
 		return &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				if r.URL.Path != "/health" {
@@ -4582,9 +4569,6 @@ func TestRunHealthCheckJSON(t *testing.T) {
 				}, nil
 			}),
 		}
-	}
-	t.Cleanup(func() {
-		newHTTPClient = previousHTTPClient
 	})
 
 	t.Setenv("MBR_URL", "https://app.mbr.test")
@@ -4592,7 +4576,7 @@ func TestRunHealthCheckJSON(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	exitCode := run(t.Context(), []string{
+	exitCode := run(ctx, []string{
 		"health", "check",
 		"--json",
 	}, stdout, stderr)
@@ -5275,8 +5259,7 @@ func TestRunExtensionsInstallProvisionedWorkspaceJSON(t *testing.T) {
 		newCLIClient = previousCLIClient
 	})
 
-	previousHTTPClient := newHTTPClient
-	newHTTPClient = func() *http.Client {
+	ctx := contextWithHTTPClientFactory(t.Context(), func() *http.Client {
 		return &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				if r.URL.Path != "/actions/workspaces" {
@@ -5303,9 +5286,6 @@ func TestRunExtensionsInstallProvisionedWorkspaceJSON(t *testing.T) {
 				}, nil
 			}),
 		}
-	}
-	t.Cleanup(func() {
-		newHTTPClient = previousHTTPClient
 	})
 
 	configPath := filepath.Join(t.TempDir(), "mbr-config.json")
@@ -5336,7 +5316,7 @@ func TestRunExtensionsInstallProvisionedWorkspaceJSON(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	exitCode := run(t.Context(), []string{
+	exitCode := run(ctx, []string{
 		"extensions", "install",
 		root,
 		"--license-token", "lic_ats",

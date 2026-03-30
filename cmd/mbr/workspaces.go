@@ -131,7 +131,7 @@ func createWorkspace(ctx context.Context, cfg cliapi.Config, input workspaceCrea
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := newHTTPClient().Do(req)
+	resp, err := httpClientFromContext(ctx).Do(req)
 	if err != nil {
 		return workspaceOutput{}, fmt.Errorf("perform workspace request: %w", err)
 	}

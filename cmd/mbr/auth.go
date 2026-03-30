@@ -274,7 +274,7 @@ func startBrowserLogin(ctx context.Context, instanceURL string) (browserLoginSta
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := newHTTPClient().Do(req)
+	resp, err := httpClientFromContext(ctx).Do(req)
 	if err != nil {
 		return browserLoginStartResponse{}, fmt.Errorf("start browser login: %w", err)
 	}
@@ -314,7 +314,7 @@ func pollBrowserLogin(ctx context.Context, instanceURL, pollToken string) (brows
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := newHTTPClient().Do(req)
+	resp, err := httpClientFromContext(ctx).Do(req)
 	if err != nil {
 		return browserLoginPollResponse{}, fmt.Errorf("poll browser login: %w", err)
 	}

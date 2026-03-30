@@ -107,7 +107,7 @@ func runHealthCheck(ctx context.Context, healthURL string) (healthCheckResult, e
 	}
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := newHTTPClient().Do(req)
+	resp, err := httpClientFromContext(ctx).Do(req)
 	if err != nil {
 		return healthCheckResult{}, fmt.Errorf("perform health request: %w", err)
 	}
