@@ -14,7 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 	publicruntime "github.com/movebigrocks/platform/pkg/extensionsruntime"
 )
 

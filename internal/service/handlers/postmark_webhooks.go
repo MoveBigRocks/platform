@@ -12,11 +12,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/middleware"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/middleware"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
 	"github.com/movebigrocks/platform/pkg/logger"
 	"github.com/movebigrocks/platform/pkg/util"
 )

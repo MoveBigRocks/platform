@@ -18,8 +18,8 @@ import (
 
 	"github.com/movebigrocks/platform/internal/cliapi"
 	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	"github.com/movebigrocks/platform/internal/platform/extensionbundle"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 
 	"gopkg.in/yaml.v3"
 )

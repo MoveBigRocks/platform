@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
-	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 )
 
 func TestIntegration_Transaction(t *testing.T) {

@@ -102,8 +102,8 @@ func isForbiddenAppLayerImport(importPath string) bool {
 	if importPath == "database/sql" || importPath == "github.com/jmoiron/sqlx" {
 		return true
 	}
-	return importPath == "github.com/movebigrocks/platform/internal/infrastructure/stores/sql" ||
-		strings.HasPrefix(importPath, "github.com/movebigrocks/platform/internal/infrastructure/stores/sql/") ||
+	return importPath == "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/sql" ||
+		strings.HasPrefix(importPath, "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/sql/") ||
 		strings.Contains(importPath, "/resolvers/")
 }
 
@@ -111,8 +111,8 @@ func isForbiddenResolverImport(importPath string) bool {
 	if isForbiddenAppLayerImport(importPath) {
 		return true
 	}
-	return importPath == "github.com/movebigrocks/platform/internal/infrastructure/stores/shared" ||
-		strings.HasPrefix(importPath, "github.com/movebigrocks/platform/internal/infrastructure/stores/shared/")
+	return importPath == "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared" ||
+		strings.HasPrefix(importPath, "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared/")
 }
 
 func TestDomainExportedTypesHaveNoTransportTags(t *testing.T) {

@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	"github.com/movebigrocks/platform/internal/testutil"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 )
 
 func TestRegistryDispatchAndProbe(t *testing.T) {

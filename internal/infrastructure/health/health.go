@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/stores"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

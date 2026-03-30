@@ -11,11 +11,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	automationservices "github.com/movebigrocks/platform/internal/automation/services"
-	"github.com/movebigrocks/platform/internal/infrastructure/middleware"
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
-	"github.com/movebigrocks/platform/internal/shared/contracts"
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+	automationservices "github.com/movebigrocks/platform/pkg/extensionhost/automation/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/middleware"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
+	"github.com/movebigrocks/platform/pkg/extensionhost/shared/contracts"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

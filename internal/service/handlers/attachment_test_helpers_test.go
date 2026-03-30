@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

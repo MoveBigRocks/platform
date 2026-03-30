@@ -12,13 +12,13 @@ import (
 	"unicode"
 
 	artifactservices "github.com/movebigrocks/platform/internal/artifacts/services"
-	apierrors "github.com/movebigrocks/platform/internal/infrastructure/errors"
-	"github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
 	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
-	"github.com/movebigrocks/platform/internal/shared/contracts"
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	apierrors "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/errors"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared"
+	"github.com/movebigrocks/platform/pkg/extensionhost/shared/contracts"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 	"github.com/movebigrocks/platform/pkg/id"
 )
 

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 )
 
 func TestPrepareExtensionSourceReferencePacksPassLintContract(t *testing.T) {

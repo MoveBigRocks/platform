@@ -9,8 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/container"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/container"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 )
 
 type Registry struct {

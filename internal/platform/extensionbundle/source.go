@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 )
 
 const (

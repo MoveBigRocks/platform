@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	automationservices "github.com/movebigrocks/platform/internal/automation/services"
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	"github.com/movebigrocks/platform/internal/shared/contracts"
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	automationservices "github.com/movebigrocks/platform/pkg/extensionhost/automation/services"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/shared/contracts"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/stores"
-	"github.com/movebigrocks/platform/internal/testutil/synth"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil/synth"
 )
 
 func main() {

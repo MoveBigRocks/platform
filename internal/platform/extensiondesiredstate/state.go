@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 	"gopkg.in/yaml.v3"
 )
 

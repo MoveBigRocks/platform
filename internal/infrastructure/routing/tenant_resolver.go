@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/stores"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

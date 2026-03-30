@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
-	"github.com/movebigrocks/platform/internal/testutil"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 )
 
 func TestCreatePublicRouter_ServesExtensionAssetBackedPage(t *testing.T) {

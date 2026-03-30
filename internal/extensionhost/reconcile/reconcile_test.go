@@ -9,11 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	domain "github.com/movebigrocks/platform/internal/platform/domain"
 	"github.com/movebigrocks/platform/internal/platform/extensionbundle"
 	"github.com/movebigrocks/platform/internal/platform/extensiondesiredstate"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+	domain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 )
 
 type fakeBundleLoader struct {

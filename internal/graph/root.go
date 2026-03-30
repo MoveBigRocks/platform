@@ -17,10 +17,10 @@ import (
 	"github.com/graph-gophers/graphql-go"
 
 	"github.com/movebigrocks/platform/internal/graph/model"
-	"github.com/movebigrocks/platform/internal/graph/shared"
-	apierrors "github.com/movebigrocks/platform/internal/infrastructure/errors"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/graph/shared"
+	apierrors "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/errors"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
 
 	// Domain resolvers - each domain owns its API surface
 	automationresolvers "github.com/movebigrocks/platform/internal/automation/resolvers"

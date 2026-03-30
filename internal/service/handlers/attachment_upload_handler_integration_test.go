@@ -16,12 +16,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	graphshared "github.com/movebigrocks/platform/internal/graph/shared"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	serviceresolvers "github.com/movebigrocks/platform/internal/service/resolvers"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	"github.com/movebigrocks/platform/internal/testutil"
-	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
+	graphshared "github.com/movebigrocks/platform/pkg/extensionhost/graph/shared"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil/workflowproof"
 )
 
 func TestAttachmentUploadHandler_UploadVisibleInCaseSurface(t *testing.T) {

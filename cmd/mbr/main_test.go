@@ -20,8 +20,8 @@ import (
 	"github.com/movebigrocks/platform/internal/cliapi"
 	"github.com/movebigrocks/platform/internal/clispec"
 	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	"github.com/movebigrocks/platform/internal/testutil"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 )
 
 func TestMain(m *testing.M) {

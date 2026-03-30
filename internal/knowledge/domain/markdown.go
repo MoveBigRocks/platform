@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 
 	"gopkg.in/yaml.v3"
 )

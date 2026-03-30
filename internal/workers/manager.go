@@ -8,11 +8,11 @@ import (
 	"time"
 
 	automationhandlers "github.com/movebigrocks/platform/internal/automation/handlers"
-	automationservices "github.com/movebigrocks/platform/internal/automation/services"
 	servicehandlers "github.com/movebigrocks/platform/internal/service/handlers"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	"github.com/movebigrocks/platform/internal/shared/contracts"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	automationservices "github.com/movebigrocks/platform/pkg/extensionhost/automation/services"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/shared/contracts"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

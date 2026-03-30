@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 )
 
 func TestResolvedAdminRouteWorkspaceIDUsesCurrentContextBeforeQuery(t *testing.T) {

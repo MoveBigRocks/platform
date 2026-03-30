@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	sqlstore "github.com/movebigrocks/platform/internal/infrastructure/stores/sql"
-	domain "github.com/movebigrocks/platform/internal/platform/domain"
 	"github.com/movebigrocks/platform/internal/platform/extensionbundle"
 	"github.com/movebigrocks/platform/internal/platform/extensiondesiredstate"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
-	"github.com/movebigrocks/platform/internal/testutil"
+	sqlstore "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/sql"
+	domain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 )
 
 func TestApplyAndCheckWorkspaceExtensionLifecycle(t *testing.T) {

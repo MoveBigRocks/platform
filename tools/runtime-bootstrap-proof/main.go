@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	platformhandlers "github.com/movebigrocks/platform/internal/platform/handlers"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
+	platformhandlers "github.com/movebigrocks/platform/pkg/extensionhost/platform/handlers"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
 )
 
 func main() {

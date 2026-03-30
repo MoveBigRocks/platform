@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/movebigrocks/platform/internal/graph/shared"
-	"github.com/movebigrocks/platform/internal/infrastructure/middleware"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	"github.com/movebigrocks/platform/pkg/extensionhost/graph/shared"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/middleware"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 )
 
 // GinHandler wraps the GraphQL server for use with gin, bridging gin context to GraphQL context.

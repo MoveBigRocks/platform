@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/movebigrocks/platform/internal/cliapi"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 )
 
 func runExtensions(ctx context.Context, args []string, stdout, stderr io.Writer) int {

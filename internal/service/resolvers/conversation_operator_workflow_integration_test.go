@@ -12,13 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	graphmodel "github.com/movebigrocks/platform/internal/graph/model"
-	graphshared "github.com/movebigrocks/platform/internal/graph/shared"
-	"github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	"github.com/movebigrocks/platform/internal/testutil"
-	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
+	graphshared "github.com/movebigrocks/platform/pkg/extensionhost/graph/shared"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil/workflowproof"
 )
 
 func TestConversationOperatorWorkflow_ReplyHandoffAndEscalate(t *testing.T) {
@@ -187,14 +187,14 @@ func TestConversationOperatorWorkflow_ReplyHandoffAndEscalate(t *testing.T) {
 	assert.Equal(t, handoffReason, outcomes[0].ResultRef.GetString("reason"))
 
 	workflowproof.WriteJSON(t, "conversation-operator-handoff", map[string]any{
-		"workspace_id":     workspace.ID,
-		"session_id":       sessionID,
-		"target_queue_id":  handoffQueueItem.QueueID,
-		"target_team_id":   outcomes[0].ResultRef.GetString("team_id"),
-		"target_user_id":   outcomes[0].ResultRef.GetString("operator_user_id"),
-		"performed_by_id":  outcomes[0].ResultRef.GetString("performed_by_id"),
+		"workspace_id":      workspace.ID,
+		"session_id":        sessionID,
+		"target_queue_id":   handoffQueueItem.QueueID,
+		"target_team_id":    outcomes[0].ResultRef.GetString("team_id"),
+		"target_user_id":    outcomes[0].ResultRef.GetString("operator_user_id"),
+		"performed_by_id":   outcomes[0].ResultRef.GetString("performed_by_id"),
 		"performed_by_type": outcomes[0].ResultRef.GetString("performed_by_type"),
-		"reason":           outcomes[0].ResultRef.GetString("reason"),
+		"reason":            outcomes[0].ResultRef.GetString("reason"),
 	})
 
 	escalationReason := "customer needs manual refund review"

@@ -11,14 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	"github.com/movebigrocks/platform/internal/shared/contracts"
 	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
-	"github.com/movebigrocks/platform/internal/testutil"
-	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
-	"github.com/movebigrocks/platform/internal/testutil/workflowruntime"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/shared/contracts"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil/workflowproof"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil/workflowruntime"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

@@ -6,7 +6,7 @@ import (
 	"time"
 	"unicode"
 
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 )
 
 type KnowledgeResourceKind string

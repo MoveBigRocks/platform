@@ -18,10 +18,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/config"
-	"github.com/movebigrocks/platform/internal/infrastructure/container"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/config"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/container"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 )
 
 var enterpriseAccessHTTPClient = func() *http.Client {

@@ -31,7 +31,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/config"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/config"
 )
 
 // ShutdownFunc is a function that shuts down the tracing provider

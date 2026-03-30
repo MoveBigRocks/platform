@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
 )
 
 type stubAttachmentUploader struct {

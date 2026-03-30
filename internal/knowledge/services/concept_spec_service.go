@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	artifactservices "github.com/movebigrocks/platform/internal/artifacts/services"
-	apierrors "github.com/movebigrocks/platform/internal/infrastructure/errors"
-	"github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
 	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+	apierrors "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/errors"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 	"github.com/movebigrocks/platform/pkg/id"
 
 	"gopkg.in/yaml.v3"

@@ -6,11 +6,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/middleware"
-	"github.com/movebigrocks/platform/internal/infrastructure/stores"
-	platformhandlers "github.com/movebigrocks/platform/internal/platform/handlers"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/middleware"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
+	platformhandlers "github.com/movebigrocks/platform/pkg/extensionhost/platform/handlers"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

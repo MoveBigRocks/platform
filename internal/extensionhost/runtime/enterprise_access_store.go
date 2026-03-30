@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	sqlstore "github.com/movebigrocks/platform/internal/infrastructure/stores/sql"
+	sqlstore "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/sql"
 )
 
 const enterpriseAccessSchemaName = "ext_demandops_enterprise_access"

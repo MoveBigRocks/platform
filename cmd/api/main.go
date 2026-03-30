@@ -11,12 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	extensionruntime "github.com/movebigrocks/platform/internal/extensionhost/runtime"
-	"github.com/movebigrocks/platform/internal/infrastructure/config"
-	"github.com/movebigrocks/platform/internal/infrastructure/container"
-	internal_metrics "github.com/movebigrocks/platform/internal/infrastructure/metrics"
-	internal_middleware "github.com/movebigrocks/platform/internal/infrastructure/middleware"
 	"github.com/movebigrocks/platform/internal/infrastructure/routing"
-	"github.com/movebigrocks/platform/internal/infrastructure/stores"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/config"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/container"
+	internal_metrics "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/metrics"
+	internal_middleware "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/middleware"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
 
 	servicehandlers "github.com/movebigrocks/platform/internal/service/handlers"
 

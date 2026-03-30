@@ -3,7 +3,7 @@ package resolvers
 import (
 	"testing"
 
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 )
 
 func TestValidateDelegatedRouting(t *testing.T) {

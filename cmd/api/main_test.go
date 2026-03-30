@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/config"
-	"github.com/movebigrocks/platform/internal/infrastructure/container"
-	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/config"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/container"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 )
 
 func TestConfigLoad(t *testing.T) {

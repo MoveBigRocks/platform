@@ -10,13 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	automationdomain "github.com/movebigrocks/platform/internal/automation/domain"
-	automationservices "github.com/movebigrocks/platform/internal/automation/services"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	"github.com/movebigrocks/platform/internal/shared/contracts"
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
-	"github.com/movebigrocks/platform/internal/testutil"
+	automationdomain "github.com/movebigrocks/platform/pkg/extensionhost/automation/domain"
+	automationservices "github.com/movebigrocks/platform/pkg/extensionhost/automation/services"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/shared/contracts"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

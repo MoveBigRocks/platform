@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"os"
 
-	platformhandlers "github.com/movebigrocks/platform/internal/platform/handlers"
+	platformhandlers "github.com/movebigrocks/platform/pkg/extensionhost/platform/handlers"
 )
 
 func main() {

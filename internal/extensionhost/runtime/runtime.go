@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/stores/shared"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	extensionruntime "github.com/movebigrocks/platform/internal/extensionhost/runtime"
-	"github.com/movebigrocks/platform/internal/infrastructure/container"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
-	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/container"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 )
 
 func TestCreateAPIRouter_ServesErrorTrackingEnvelopeFromInstalledExtension(t *testing.T) {

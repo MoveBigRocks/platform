@@ -10,11 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/stores"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 )
 
 // =============================================================================

@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/movebigrocks/platform/internal/cliapi"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
 )
 
 const (

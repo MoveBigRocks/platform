@@ -3,7 +3,7 @@ package eventbus
 import (
 	"context"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/metrics"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/metrics"
 )
 
 // IdempotencyStore interface for database-backed idempotency.

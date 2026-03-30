@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 )
 
 func (r *Runtime) ensureBackgroundRuntime(ctx context.Context, extension *platformdomain.InstalledExtension) error {

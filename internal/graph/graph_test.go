@@ -8,11 +8,11 @@ import (
 	automationresolvers "github.com/movebigrocks/platform/internal/automation/resolvers"
 	"github.com/movebigrocks/platform/internal/graph"
 	"github.com/movebigrocks/platform/internal/graph/model"
-	"github.com/movebigrocks/platform/internal/graph/shared"
 	schema "github.com/movebigrocks/platform/internal/graphql/schema"
 	platformresolvers "github.com/movebigrocks/platform/internal/platform/resolvers"
 	serviceresolvers "github.com/movebigrocks/platform/internal/service/resolvers"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/graph/shared"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
 )
 
 func TestRootResolverCreation(t *testing.T) {

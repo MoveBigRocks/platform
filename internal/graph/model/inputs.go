@@ -1,7 +1,7 @@
 package model
 
 import (
-	graphshared "github.com/movebigrocks/platform/internal/graph/shared"
+	graphshared "github.com/movebigrocks/platform/pkg/extensionhost/graph/shared"
 )
 
 // =============================================================================

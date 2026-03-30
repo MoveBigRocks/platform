@@ -13,13 +13,13 @@ import (
 
 	artifactservices "github.com/movebigrocks/platform/internal/artifacts/services"
 	"github.com/movebigrocks/platform/internal/graph/model"
-	graphshared "github.com/movebigrocks/platform/internal/graph/shared"
-	apierrors "github.com/movebigrocks/platform/internal/infrastructure/errors"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
 	serviceresolvers "github.com/movebigrocks/platform/internal/service/resolvers"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	"github.com/movebigrocks/platform/internal/shared/contracts"
+	graphshared "github.com/movebigrocks/platform/pkg/extensionhost/graph/shared"
+	apierrors "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/errors"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/shared/contracts"
 )
 
 // Config holds the dependencies for platform domain resolvers

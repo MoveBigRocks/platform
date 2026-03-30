@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"os"
 
-	automationservices "github.com/movebigrocks/platform/internal/automation/services"
-	"github.com/movebigrocks/platform/internal/infrastructure/config"
-	"github.com/movebigrocks/platform/internal/infrastructure/stores"
+	automationservices "github.com/movebigrocks/platform/pkg/extensionhost/automation/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/config"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

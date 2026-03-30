@@ -10,10 +10,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	apierrors "github.com/movebigrocks/platform/internal/infrastructure/errors"
-	"github.com/movebigrocks/platform/internal/infrastructure/middleware"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+	apierrors "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/errors"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/middleware"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

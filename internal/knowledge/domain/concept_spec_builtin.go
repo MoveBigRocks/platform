@@ -1,6 +1,6 @@
 package knowledgedomain
 
-import shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+import shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 
 var builtInConceptSpecs = []*ConceptSpec{
 	newBuiltInConcept("core/purpose", "1", "Purpose", "Why the team or workspace exists beyond immediate delivery work.", KnowledgeResourceKindContext, []string{"summary", "purpose", "beneficiaries"}),

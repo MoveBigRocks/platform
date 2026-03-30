@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	domain "github.com/movebigrocks/platform/internal/platform/domain"
 	"github.com/movebigrocks/platform/internal/platform/extensionbundle"
 	"github.com/movebigrocks/platform/internal/platform/extensiondesiredstate"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
+	domain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
 	publicruntime "github.com/movebigrocks/platform/pkg/extensionsruntime"
 )
 

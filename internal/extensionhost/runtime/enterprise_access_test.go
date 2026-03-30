@@ -22,13 +22,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/config"
-	appcontainer "github.com/movebigrocks/platform/internal/infrastructure/container"
-	"github.com/movebigrocks/platform/internal/infrastructure/stores"
-	sqlstore "github.com/movebigrocks/platform/internal/infrastructure/stores/sql"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
-	"github.com/movebigrocks/platform/internal/testutil"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/config"
+	appcontainer "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/container"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
+	sqlstore "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/sql"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 )
 
 func TestEnterpriseAccessProviderUpsertSettingsAndHealth(t *testing.T) {

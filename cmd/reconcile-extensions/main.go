@@ -12,10 +12,10 @@ import (
 
 	reconcile "github.com/movebigrocks/platform/internal/extensionhost/reconcile"
 	extensionruntime "github.com/movebigrocks/platform/internal/extensionhost/runtime"
-	"github.com/movebigrocks/platform/internal/infrastructure/config"
-	"github.com/movebigrocks/platform/internal/infrastructure/container"
 	"github.com/movebigrocks/platform/internal/platform/extensionbundle"
 	"github.com/movebigrocks/platform/internal/platform/extensiondesiredstate"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/config"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/container"
 )
 
 func main() {

@@ -16,7 +16,7 @@ import (
 
 	"github.com/movebigrocks/platform/internal/cliapi"
 	knowledgedomain "github.com/movebigrocks/platform/internal/knowledge/domain"
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 )
 
 const (

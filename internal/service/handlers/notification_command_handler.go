@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
 	sharedevents "github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

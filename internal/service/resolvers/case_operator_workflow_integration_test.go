@@ -11,15 +11,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	graphmodel "github.com/movebigrocks/platform/internal/graph/model"
-	graphshared "github.com/movebigrocks/platform/internal/graph/shared"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
 	servicehandlers "github.com/movebigrocks/platform/internal/service/handlers"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	"github.com/movebigrocks/platform/internal/testutil"
-	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
-	"github.com/movebigrocks/platform/internal/testutil/workflowruntime"
+	graphshared "github.com/movebigrocks/platform/pkg/extensionhost/graph/shared"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil/workflowproof"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil/workflowruntime"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

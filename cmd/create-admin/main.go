@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/movebigrocks/platform/internal/infrastructure/config"
-	"github.com/movebigrocks/platform/internal/infrastructure/stores"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/config"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

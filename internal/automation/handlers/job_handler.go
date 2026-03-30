@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	automationdomain "github.com/movebigrocks/platform/internal/automation/domain"
-	automationservices "github.com/movebigrocks/platform/internal/automation/services"
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
 	"github.com/movebigrocks/platform/pkg/eventbus"
+	automationdomain "github.com/movebigrocks/platform/pkg/extensionhost/automation/domain"
+	automationservices "github.com/movebigrocks/platform/pkg/extensionhost/automation/services"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

@@ -11,9 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/movebigrocks/platform/internal/infrastructure/antivirus"
-	"github.com/movebigrocks/platform/internal/infrastructure/middleware"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/middleware"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	shareddomain "github.com/movebigrocks/platform/internal/shared/domain"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 	publicruntime "github.com/movebigrocks/platform/pkg/extensionsruntime"
 )
 

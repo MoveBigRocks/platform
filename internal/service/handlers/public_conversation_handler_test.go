@@ -15,13 +15,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	graphmodel "github.com/movebigrocks/platform/internal/graph/model"
-	graphshared "github.com/movebigrocks/platform/internal/graph/shared"
-	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
 	"github.com/movebigrocks/platform/internal/service/resolvers"
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
-	serviceapp "github.com/movebigrocks/platform/internal/service/services"
-	"github.com/movebigrocks/platform/internal/testutil"
-	"github.com/movebigrocks/platform/internal/testutil/workflowproof"
+	graphshared "github.com/movebigrocks/platform/pkg/extensionhost/graph/shared"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
+	"github.com/movebigrocks/platform/pkg/extensionhost/testutil/workflowproof"
 )
 
 func setupPublicConversationRouter(handler *PublicConversationHandler) *gin.Engine {

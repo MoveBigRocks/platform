@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"time"
 
-	automationdomain "github.com/movebigrocks/platform/internal/automation/domain"
-	automationservices "github.com/movebigrocks/platform/internal/automation/services"
 	"github.com/movebigrocks/platform/internal/graph/model"
-	graphshared "github.com/movebigrocks/platform/internal/graph/shared"
-	platformservices "github.com/movebigrocks/platform/internal/platform/services"
-	servicedomain "github.com/movebigrocks/platform/internal/service/domain"
+	automationdomain "github.com/movebigrocks/platform/pkg/extensionhost/automation/domain"
+	automationservices "github.com/movebigrocks/platform/pkg/extensionhost/automation/services"
+	graphshared "github.com/movebigrocks/platform/pkg/extensionhost/graph/shared"
+	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
 	"github.com/movebigrocks/platform/pkg/id"
 )
 
