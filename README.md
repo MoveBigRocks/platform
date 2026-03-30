@@ -90,25 +90,29 @@ tool it replaces:
   own extensions against the same runtime model, or install off-the-shelf
   extensions that replace entire standalone SaaS products
 
-The core platform is free. Extensions cost 60-200 EUR per year. A typical
-setup replacing five standalone tools runs under 1,000 EUR per year total.
+The core platform is free. All first-party extensions are currently free
+too. When we introduce paid extensions, pricing will be per instance, not
+per user, and an order of magnitude below what the standalone SaaS tool
+charges. Every installation made before that date will be grandfathered at
+no cost.
 
 ## Extensions You Can Install
 
-Each extension replaces a standalone SaaS product at a fraction of the cost,
-running on the same operational core:
+Each extension replaces a standalone SaaS product, running on the same
+operational core:
 
-| Extension | What it replaces | They charge | We charge |
-|-----------|-----------------|-------------|-----------|
-| **ATS** | Homerun, Greenhouse, Lever | 1,200-6,000 EUR/yr | 120-200 EUR/yr |
-| **Error tracking** | Sentry, Bugsnag, Rollbar | 3,600-7,200 EUR/yr | 100-150 EUR/yr |
-| **Web analytics** | Plausible, Mixpanel, GA | 1,200-3,600 EUR/yr | 60-100 EUR/yr |
-| **Sales pipeline** | Pipedrive, HubSpot | 2,160-6,000 EUR/yr | 100-150 EUR/yr |
-| **Community feature requests** | Canny, UserVoice | 4,800-8,400 EUR/yr | 60-100 EUR/yr |
-| **Enterprise access** | SSO tax on every SaaS tool | 2,000-5,000 EUR/yr | 150-200 EUR/yr |
+| Extension | What it replaces | They charge (per user/month) |
+|-----------|-----------------|-------------|
+| **ATS** | Homerun, Greenhouse, Lever | $100-500/mo |
+| **Error tracking** | Sentry, Bugsnag, Rollbar | $30-600/mo |
+| **Web analytics** | Plausible, Mixpanel, GA | $100-300/mo |
+| **Sales pipeline** | Pipedrive, HubSpot | $180-500/mo |
+| **Community feature requests** | Canny, UserVoice | $400-700/mo |
+| **Enterprise access** | SSO tax on every SaaS tool | $2,000-5,000/yr |
 
-Buy once at the same price and keep the version you have, or subscribe
-annually for continuous upgrades.
+All of the above are currently free to install. When paid tiers are
+introduced, pricing will be per instance with no per-seat tax — a fraction
+of what these tools charge today.
 
 Every extension runs on the same core primitives — same teams, same queues,
 same knowledge, same agent contract. Your ATS candidates, error tracking
