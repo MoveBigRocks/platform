@@ -10,12 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	extensionruntime "github.com/movebigrocks/platform/internal/extensionhost/runtime"
 	"github.com/movebigrocks/platform/internal/infrastructure/config"
 	"github.com/movebigrocks/platform/internal/infrastructure/container"
 	"github.com/movebigrocks/platform/internal/platform/extensionbundle"
 	"github.com/movebigrocks/platform/internal/platform/extensiondesiredstate"
 	"github.com/movebigrocks/platform/internal/platform/extensionreconcile"
-	"github.com/movebigrocks/platform/internal/platform/extensionruntime"
 )
 
 func main() {

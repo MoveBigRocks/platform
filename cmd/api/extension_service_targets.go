@@ -15,10 +15,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	extensionruntime "github.com/movebigrocks/platform/internal/extensionhost/runtime"
 	"github.com/movebigrocks/platform/internal/infrastructure/config"
 	"github.com/movebigrocks/platform/internal/infrastructure/middleware"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	"github.com/movebigrocks/platform/internal/platform/extensionruntime"
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
 )
 

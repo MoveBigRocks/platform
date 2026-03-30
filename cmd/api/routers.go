@@ -9,6 +9,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	automationresolvers "github.com/movebigrocks/platform/internal/automation/resolvers"
+	extensionruntime "github.com/movebigrocks/platform/internal/extensionhost/runtime"
 	"github.com/movebigrocks/platform/internal/graph"
 	"github.com/movebigrocks/platform/internal/infrastructure/config"
 	"github.com/movebigrocks/platform/internal/infrastructure/container"
@@ -16,7 +17,6 @@ import (
 	v1routes "github.com/movebigrocks/platform/internal/infrastructure/routes/v1"
 	"github.com/movebigrocks/platform/internal/infrastructure/tracing"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	"github.com/movebigrocks/platform/internal/platform/extensionruntime"
 	platformhandlers "github.com/movebigrocks/platform/internal/platform/handlers"
 	platformresolvers "github.com/movebigrocks/platform/internal/platform/resolvers"
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"

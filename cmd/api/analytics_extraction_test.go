@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	extensionruntime "github.com/movebigrocks/platform/internal/extensionhost/runtime"
 	"github.com/movebigrocks/platform/internal/infrastructure/container"
 	platformdomain "github.com/movebigrocks/platform/internal/platform/domain"
-	"github.com/movebigrocks/platform/internal/platform/extensionruntime"
 	platformservices "github.com/movebigrocks/platform/internal/platform/services"
 	"github.com/movebigrocks/platform/internal/testutil"
 )
