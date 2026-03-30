@@ -1,6 +1,6 @@
 # ADR 0026: Extension Host Lifecycle and Public Extension SDK Boundary
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-03-30
 
 ## Context
