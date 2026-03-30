@@ -1,6 +1,6 @@
 # Move Big Rocks
 
-**Replace SaaS tool sprawl with one self-hosted operations platform. Move Big Rocks is free to use with source code available, gives you a growing set of free off-the-shelf extensions, and lets you build your own with Claude Code, Codex, or other tools. Manage operational knowledge in structured Markdown with real versioning, team ownership, and agent-native workflows.**
+**The SaaS-replacement platform. Move Big Rocks is free to use with source code available, gives you a growing set of free off-the-shelf extensions, and lets you build your own with Claude Code, Codex, or other tools. Manage operational knowledge in structured Markdown with real versioning, team ownership, and agent-native workflows.**
 
 This repository is the source of truth for Move Big Rocks core.
 
@@ -67,9 +67,9 @@ Move Big Rocks is not a speculative blank-sheet project.
 
 ## What Move Big Rocks Does About It
 
-Move Big Rocks replaces your SaaS sprawl with one self-hosted operational
-core and a set of extensions, each an order of magnitude cheaper than the
-tool it replaces:
+Move Big Rocks replaces your SaaS sprawl with one self-hosted
+SaaS-replacement platform and a set of extensions, each an order of
+magnitude cheaper than the tool it replaces:
 
 - **Service catalog and forms** — define what work exists and what information
   must be collected before work is accepted, routed, or acted on

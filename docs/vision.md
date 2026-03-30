@@ -1,8 +1,9 @@
 # Vision
 
-Move Big Rocks is a team-aware operations platform and context engineering
+Move Big Rocks is the SaaS-replacement platform: context engineering
 infrastructure for self-hosted businesses that want one system of record and a
-thin layer of installable product extensions.
+thin layer of installable product extensions instead of dozens of disconnected
+SaaS tools.
 
 ## Thesis
 
