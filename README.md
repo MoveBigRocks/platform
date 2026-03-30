@@ -10,36 +10,30 @@ Public site: [movebigrocks.com](https://movebigrocks.com)
 
 ## The Problem
 
-Most organisations now have two overlapping problems.
+Most organisations run their operations across a sprawl of SaaS tools that
+each charge per seat, model work differently, and silo the context that
+matters. A mid-market company easily spends tens of thousands a year on
+recruiting tools, ticketing systems, error trackers, analytics platforms,
+CRMs, knowledge bases, and the glue that holds them together. None of these
+tools were designed to work with each other. The result is fragmented
+operations, fragmented knowledge, and a permanent tax on every person who
+needs to understand what is actually happening.
 
-First, operational work is fragmented across support tools, forms tools,
-analytics tools, recruiting tools, ticketing systems, inboxes, and internal
-glue. Each system charges money, models work differently, and creates another
-place where context can drift away from the real work.
+This was already expensive and inefficient for humans. For agents, it is
+unworkable. Claude Code, Codex, and other agent tools are becoming part of how
+teams operate. But an agent cannot reason coherently across seven disconnected
+systems with seven different data models, seven authentication schemes, and
+seven ways of representing the same work. SaaS sprawl was never designed for
+this, and layering AI on top of it makes the mess worse, not better.
 
-Second, the important context is fragmented too. Strategy, goals, plans,
-constraints, prompts, runbooks, and working knowledge are spread across slide
-decks, local Markdown files, chats, tickets, and personal folders. That makes
-them hard for humans to understand consistently and hard for agents to use
-safely.
+The time has come for an alternative that is an order of magnitude cheaper,
+an order of magnitude more coherent, and built from the ground up for both
+humans and agents. One operational core where work, knowledge, strategic
+context, and agent activity live in the same system. Extensions you can
+install for a fraction of what the standalone tool costs, or build your own
+with an agent in an afternoon.
 
-This problem existed before agentic work. But work is changing much
-faster now. Claude Code, Codex, and other agent tools are becoming part of how
-teams actually operate. Agentic flows are becoming normal. More people can
-build useful software and automation faster than ever, but they still need
-somewhere coherent to deploy, operate, govern, and share that work.
-
-Without that substrate, agents do not reduce organisational chaos. They amplify
-it. The likely result is even more busy work, even more SaaS sprawl, more
-Slack, more meetings, more alignment sessions, more local prompt systems, and
-more work happening outside any deliberate system of record.
-
-Companies that actually want durable value from AI need a new operating system
-for work, not just more models layered on top of the old mess.
-
-Move Big Rocks exists to solve that combined problem: one operational core
-where work, knowledge, strategic context, and agent activity live in the same
-legible system.
+That is what Move Big Rocks is.
 
 ## Provenance
 
@@ -56,70 +50,58 @@ Move Big Rocks is not a speculative blank-sheet project.
 
 ## What Move Big Rocks Does About It
 
-Move Big Rocks gives your organisation one operational core instead of a pile
-of adjacent tools:
+Move Big Rocks replaces your SaaS sprawl with one self-hosted operational
+core and a set of extensions, each an order of magnitude cheaper than the
+tool it replaces:
 
 - **Service catalog and forms** — define what work exists and what information
   must be collected before work is accepted, routed, or acted on
-- **Queues, conversations, and cases** — handle live interactions in queues,
-  keep conversations conversational when possible, and create durable cases
-  only when real follow-through is needed
-- **Structured Markdown knowledge** — keep RFCs, templates, runbooks,
-  constraints, prompts, and team-specific models in one versioned system with
-  explicit audience control, not scattered across laptops and wikis
-- **Strategic context and delivery** — purpose, goals, strategy, bets, OKRs,
-  milestone goals, and workstreams as real concept types so agents and humans
-  can reason from the same context instead of shallow tickets
+- **Queues, conversations, and cases** — handle live interactions, keep
+  conversations conversational when possible, and create durable cases only
+  when real follow-through is needed
+- **Structured Markdown knowledge** — RFCs, templates, runbooks, constraints,
+  prompts, and team-specific models in one versioned system with explicit
+  audience control instead of scattered wikis and slide decks
+- **Strategic context and delivery** — goals, strategy, bets, OKRs, milestone
+  goals, and workstreams as real concept types so agents and humans reason
+  from the same context instead of shallow tickets
 - **Automation and events** — trigger actions when operational events happen
-  without building the whole product around hidden glue
+  without hidden glue
 - **Agent access built in** — one CLI and one GraphQL API for humans and
   agents, not parallel shadow workflows
+- **Extensions you can vibe-code** — use the SDK and an agent to build your
+  own extensions against the same runtime model, or install off-the-shelf
+  extensions that replace entire standalone SaaS products
 
-For many teams, that core is already enough.
+The core platform is free. Extensions cost 60-200 EUR per year. A typical
+setup replacing five standalone tools runs under 1,000 EUR per year total.
 
 ## Extensions You Can Install
 
-Move Big Rocks ships off-the-shelf extensions. Some replace standalone
-products:
+Each extension replaces a standalone SaaS product at a fraction of the cost,
+running on the same operational core:
 
-| Extension | What it does |
-|------|-------------|
-| **ATS** | Applicant tracking with careers site, candidate workflows, and interview kits on the same operational base |
-| **Community feature requests** | Public idea board and voting with internal triage on the same operational base |
-| **Error tracking** | Sentry-compatible ingestion and issue workflows connected to the same queues, cases, and knowledge |
-| **Sales pipeline** | Lightweight CRM and opportunity pipeline tracking inside the same workspace runtime |
-| **Web analytics** | Cookie-free, privacy-first analytics without pushing operational context into another silo |
+| Extension | What it replaces | They charge | We charge |
+|-----------|-----------------|-------------|-----------|
+| **ATS** | Homerun, Greenhouse, Lever | 1,200-6,000 EUR/yr | 120-200 EUR/yr |
+| **Error tracking** | Sentry, Bugsnag, Rollbar | 3,600-7,200 EUR/yr | 100-150 EUR/yr |
+| **Web analytics** | Plausible, Mixpanel, GA | 1,200-3,600 EUR/yr | 60-100 EUR/yr |
+| **Sales pipeline** | Pipedrive, HubSpot | 2,160-6,000 EUR/yr | 100-150 EUR/yr |
+| **Community feature requests** | Canny, UserVoice | 4,800-8,400 EUR/yr | 60-100 EUR/yr |
+| **Enterprise access** | SSO tax on every SaaS tool | 2,000-5,000 EUR/yr | 150-200 EUR/yr |
 
-The current first-party public bundle set is:
+Buy once at the same price and keep the version you have, or subscribe
+annually for continuous upgrades.
 
-- **ATS**
-- **Community feature requests**
-- **Error tracking**
-- **Sales pipeline**
-- **Web analytics**
+Every extension runs on the same core primitives — same teams, same queues,
+same knowledge, same agent contract. Your ATS candidates, error tracking
+issues, sales pipeline deals, feature requests, and support cases live in one
+system instead of six disconnected tools with six logins and six bills.
 
-Those standard-risk first-party bundles are intended to be freely available as
-signed public bundles published from the public first-party extensions repo at
-[MoveBigRocks/extensions](https://github.com/MoveBigRocks/extensions).
-Public install guidance lives in
+Install guidance:
 [`docs/CUSTOMER_INSTANCE_SETUP.md`](docs/CUSTOMER_INSTANCE_SETUP.md),
-[`docs/AGENT_CLI.md`](docs/AGENT_CLI.md), and on the public site at
+[`docs/AGENT_CLI.md`](docs/AGENT_CLI.md), and
 [movebigrocks.com/extensions](https://movebigrocks.com/extensions).
-
-Other available extensions include:
-
-- **Enterprise access** — a simple SSO extension that lets your Move Big Rocks
-  instance delegate authentication to your company's existing IdP
-
-`enterprise-access` lives in the same first-party extensions repo and installs
-through the same extension model as the rest of the first-party set.
-
-Each extension runs on the same core primitives — same teams, same queues, same
-knowledge, same agent contract. That means your ATS candidates, your error
-tracking issues, your sales pipeline deals, your public feature requests, and
-your support cases can all live in one system instead of five disconnected
-tools, while adjacent capabilities such as enterprise access can plug into the
-same runtime model too.
 
 ## License Model
 
@@ -145,7 +127,9 @@ See [`LICENSE`](LICENSE) for the governing text.
 
 ## Build Your Own Extensions
 
-Move Big Rocks is not just a product — it is a platform you can build on:
+Move Big Rocks is a platform you can build on. Give an agent the extension
+SDK and describe what you want. It scaffolds, implements, tests, and deploys
+a working extension through the same CLI and lifecycle as the first-party set.
 
 - Use the same extension model as the first-party extensions
 - Own structured state in your own `ext_*` PostgreSQL schema
@@ -156,10 +140,8 @@ Move Big Rocks is not just a product — it is a platform you can build on:
 
 The extension model is closer to Shopify app extensions than to WordPress
 plugins: explicit manifests, explicit permissions, lifecycle hooks, and
-out-of-process execution.
-
-An agent like Claude Code or Codex can scaffold, implement, and deploy an
-extension through the same CLI and lifecycle as everything else.
+out-of-process execution. The difference is that anyone with an agent can
+build one.
 
 ## Knowledge For Agentic Operations
 
