@@ -45,7 +45,8 @@ The ideal Milestone 1 customer journey is:
 5. Tell the agent to follow `START_HERE.md`.
 6. Give the agent SSH access, DNS, email, and storage credentials.
 7. End with a working Move Big Rocks installation.
-8. Later:
+8. If the instance should be registered with Move Big Rocks for support or grandfathering, run the explicit fleet-registration flow from the instance repo.
+9. Later:
    - install first-party extensions
    - customize branding and content
    - optionally create a private custom extension repo
@@ -95,6 +96,7 @@ Purpose:
 
 - desired state for one installation
 - deployment workflows
+- explicit fleet registration and disclosed heartbeat policy
 - extension desired state
 - branding overrides
 - operational policy

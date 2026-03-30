@@ -129,6 +129,10 @@ At minimum, set:
 - `spec.deployment.release.core.migrationsArtifact`
 - `spec.deployment.release.core.manifestArtifact`
 - `spec.auth.breakGlassAdminEmail`
+- `spec.fleet.endpoint`
+- `spec.fleet.registration.operatorEmail`
+- `spec.fleet.registration.useCase`
+- `spec.fleet.heartbeat.enabled`
 - `spec.email.outbound.provider`
 - `spec.email.outbound.fromEmail`
 - `spec.storage.provider`
@@ -159,6 +163,39 @@ Validate it with:
 ```bash
 scripts/read-instance-config.sh mbr.instance.yaml
 ```
+
+## Fleet Registration And Disclosure
+
+The private instance repo also carries the explicit control-plane settings for
+Move Big Rocks fleet registration:
+
+- `spec.fleet.endpoint`
+- `spec.fleet.registration.operatorEmail`
+- `spec.fleet.registration.useCase`
+- `spec.fleet.registration.source`
+- `spec.fleet.heartbeat.enabled`
+
+The model is deliberate:
+
+- registration is explicit and human-triggered from the instance repo
+- the core runtime keeps working if the fleet control plane is unavailable
+- the heartbeat is coarse and optional
+- the callback must be disclosed in the instance repo, setup docs, and public docs
+
+The intended heartbeat payload is limited to:
+
+- instance identity
+- platform version
+- installed extension slugs and versions
+- workspace count
+- a coarse 30-day activity bucket
+
+It must not include case content, conversation content, end-user identities, or
+customer records.
+
+After the first successful core deploy, run the manual `Register Fleet`
+workflow from the private instance repo if you want the instance registered for
+support, grandfathering, or future commercial transitions.
 
 ## Step 3: Add Secrets to the Instance Repo
 
@@ -238,9 +275,10 @@ The bootstrap run should:
 5. Pull the pinned Move Big Rocks artifacts for the declared version.
 6. Render the environment file from `mbr.instance.yaml` plus repo secrets.
 7. Deploy the core release.
-8. Create the first admin user.
-9. Verify health for the app, admin, and API domains.
-10. Configure outbound email.
+8. Run the explicit fleet registration workflow when `spec.fleet` is enabled.
+9. Create the first admin user.
+10. Verify health for the app, admin, and API domains.
+11. Configure outbound email.
 
 The agent should not modify the public core repo to do this.
 
