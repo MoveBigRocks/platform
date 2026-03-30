@@ -88,6 +88,7 @@ jobs:
       - name: Build admin tools
         run: |
           mkdir -p build/tools
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o build/tools/mbr ./cmd/mbr
           CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o build/tools/create-admin ./cmd/create-admin
           CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o build/tools/create-agent ./cmd/create-agent
           CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o build/tools/reconcile-extensions ./cmd/reconcile-extensions

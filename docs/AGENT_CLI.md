@@ -161,6 +161,7 @@ mbr cases reply CASE_ID --body TEXT [--subject TEXT] [--to EMAILS] [--cc EMAILS]
 mbr contacts list [--workspace WORKSPACE_ID] [--url URL] [--token TOKEN] [--json]
 mbr attachments upload PATH [--workspace WORKSPACE_ID] [--case CASE_ID] [--description TEXT] [--content-type MIME] [--url URL] [--token TOKEN] [--json]
 mbr health check [--url URL] [--token TOKEN] [--json]
+mbr fleet register [--config PATH] [--fleet-url URL] [--instance-id ID] [--instance-name NAME] [--operator-email ADDRESS] [--use-case internal_ops|startup|client_deployment|personal|other] [--registration-source self_hosted|managed] [--platform-version VERSION] [--tracking-secret SECRET | --tracking-secret-file PATH] [--tracking-secret-out PATH] [--json]
 mbr extensions list ([--workspace WORKSPACE_ID] | --instance) [--url URL] [--token TOKEN] [--json]
 mbr extensions lint SOURCE_DIR [--contract PATH] [--write-contract] [--json]
 mbr extensions verify SOURCE_DIR [--workspace WORKSPACE_ID] [--license-token TOKEN] [--contract PATH] [--url URL] [--token TOKEN] [--json]
@@ -277,6 +278,7 @@ mbr extensions uninstall --id EXTENSION_ID [--deactivate] [--reason TEXT] [--exp
 | `contacts list` | Bearer token or browser-backed session | yes | read | read_only |
 | `attachments upload` | Bearer token or browser-backed session | yes | write | server_managed |
 | `health check` | Bearer token or browser-backed session | yes | read | read_only |
+| `fleet register` | No remote auth required | yes | write | server_managed |
 | `extensions list` | Bearer token or browser-backed session | yes | read | read_only |
 | `extensions lint` | No remote auth required | yes | local | local_state |
 | `extensions verify` | Bearer token or browser-backed session | yes | write | server_managed |

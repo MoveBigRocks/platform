@@ -27,6 +27,7 @@ var rootCommandHandlers = map[string]rootCommandHandler{
 	"contacts":          runContacts,
 	"attachments":       runAttachments,
 	"health":            runHealth,
+	"fleet":             runFleet,
 	"extensions":        runExtensions,
 	"extensions-skills": runExtensionSkill,
 	"extensions-events": runExtensionEvents,

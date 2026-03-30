@@ -312,6 +312,7 @@ func TestRunSpecExportJSON(t *testing.T) {
 	var foundCasesReply bool
 	var foundConversationsHandoff bool
 	var foundConversationsEscalate bool
+	var foundFleetRegister bool
 	for _, command := range spec.Commands {
 		if len(command.Path) > 0 && command.Path[0] == "sandboxes" {
 			t.Fatalf("expected sandbox commands to be hidden from the CLI contract, got %q", strings.Join(command.Path, " "))
@@ -379,6 +380,11 @@ func TestRunSpecExportJSON(t *testing.T) {
 			foundConversationsHandoff = true
 		case "conversations escalate":
 			foundConversationsEscalate = true
+		case "fleet register":
+			foundFleetRegister = true
+			if command.AuthMode != clispec.AuthModeNone {
+				t.Fatalf("expected fleet register auth mode %q, got %q", clispec.AuthModeNone, command.AuthMode)
+			}
 		case "extensions install":
 			foundInstall = true
 			if command.AuthMode != clispec.AuthModeBearerOrSession {
@@ -507,6 +513,9 @@ func TestRunSpecExportJSON(t *testing.T) {
 	}
 	if !foundConversationsEscalate {
 		t.Fatalf("expected conversations escalate command in contract")
+	}
+	if !foundFleetRegister {
+		t.Fatalf("expected fleet register command in contract")
 	}
 	if !foundInstall {
 		t.Fatalf("expected extensions install command in contract")

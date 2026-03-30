@@ -125,6 +125,10 @@ func printHealthUsage(w io.Writer) {
 	printUsageSection(w, "health")
 }
 
+func printFleetUsage(w io.Writer) {
+	printUsageSection(w, "fleet")
+}
+
 func printExtensionsUsage(w io.Writer) {
 	printUsageSection(w, "extensions")
 }

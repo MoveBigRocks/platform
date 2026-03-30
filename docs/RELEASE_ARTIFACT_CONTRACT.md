@@ -30,6 +30,7 @@ not published as a separate core artifact.
 `servicesArtifact` should expand to:
 
 - `mbr-server`
+- `tools/mbr`
 - `tools/create-admin`
 - `tools/create-agent`
 - `tools/reconcile-extensions`
@@ -37,6 +38,10 @@ not published as a separate core artifact.
 `tools/reconcile-extensions` is the host-safe admin tool that private instance
 repos use to render runtime manifests and reconcile extension desired state
 during deploy and verify.
+
+`tools/mbr` is the packaged operator CLI surface that host automation may use
+for explicit control-plane actions such as instance fleet registration, without
+requiring the host to rebuild the public core repo locally.
 
 `migrationsArtifact` should expand to:
 
