@@ -215,6 +215,11 @@ on the Move Big Rocks platform surface.
 Custom extension repos should depend on public SDK packages and ordinary
 libraries only. They should not import `platform/internal/...`.
 
+For service-backed routes, the host forwards extension identity, effective
+extension config, session context, and admin navigation/widget context into the
+runtime request. Extension runtimes should consume that via the SDK instead of
+querying core stores for their own installation metadata.
+
 Publishing to a marketplace should be optional.
 
 ## Stage 3: Run the Extension Locally

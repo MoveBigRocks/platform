@@ -393,7 +393,9 @@ upgraded without managing a permanent core fork.
 The platform remains the extension host. Packaging, validation, activation,
 monitoring, and rollback stay on the `mbr extensions ...` surface. Custom
 extension repos should build against the public extension SDK, not against
-`platform/internal/...`.
+`platform/internal/...`. Service-backed runtimes should receive their
+extension identity and effective config from the host-forwarded runtime
+context, not by reaching back into core stores.
 
 ## Production Setup
 
