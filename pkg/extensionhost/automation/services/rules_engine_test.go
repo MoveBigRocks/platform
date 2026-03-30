@@ -205,9 +205,8 @@ func TestRulesEngine_EvaluateRulesForCase(t *testing.T) {
 		require.NoError(t, store.Rules().CreateRule(ctx, rule))
 
 		// Evaluate rules with changes
-		changes := map[string]interface{}{
-			"status": "open",
-		}
+		changes := NewFieldChanges()
+		changes.Set("status", "open")
 		err := engine.EvaluateRulesForCase(ctx, caseObj, "case_updated", changes)
 		assert.NoError(t, err)
 	})

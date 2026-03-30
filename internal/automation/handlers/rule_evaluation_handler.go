@@ -69,7 +69,7 @@ func (h *RuleEvaluationHandler) HandleCaseCreated(ctx context.Context, eventData
 	}
 
 	// Evaluate rules for case creation — return error so event bus can retry
-	if err := h.rulesEngine.EvaluateRulesForCaseTyped(ctx, caseObj, "case_created", nil); err != nil {
+	if err := h.rulesEngine.EvaluateRulesForCase(ctx, caseObj, "case_created", nil); err != nil {
 		h.logger.WithError(err).WithField("case_id", event.CaseID).Error("Rule evaluation failed")
 		return fmt.Errorf("rule evaluation failed for case %s: %w", event.CaseID, err)
 	}
@@ -110,7 +110,7 @@ func (h *RuleEvaluationHandler) HandleCaseAssigned(ctx context.Context, eventDat
 	changes.Set("team_id", event.TeamID)
 
 	// Evaluate rules — return error so event bus can retry
-	if err := h.rulesEngine.EvaluateRulesForCaseTyped(ctx, caseObj, "case_assigned", changes); err != nil {
+	if err := h.rulesEngine.EvaluateRulesForCase(ctx, caseObj, "case_assigned", changes); err != nil {
 		h.logger.WithError(err).WithField("case_id", event.CaseID).Error("Rule evaluation failed")
 		return fmt.Errorf("rule evaluation failed for case %s: %w", event.CaseID, err)
 	}
@@ -152,7 +152,7 @@ func (h *RuleEvaluationHandler) HandleCaseStatusChanged(ctx context.Context, eve
 	changes.Set("status", event.NewStatus)
 
 	// Evaluate rules — return error so event bus can retry
-	if err := h.rulesEngine.EvaluateRulesForCaseTyped(ctx, caseObj, "case_status_changed", changes); err != nil {
+	if err := h.rulesEngine.EvaluateRulesForCase(ctx, caseObj, "case_status_changed", changes); err != nil {
 		h.logger.WithError(err).WithField("case_id", event.CaseID).Error("Rule evaluation failed")
 		return fmt.Errorf("rule evaluation failed for case %s: %w", event.CaseID, err)
 	}
@@ -193,7 +193,7 @@ func (h *RuleEvaluationHandler) HandleCaseResolved(ctx context.Context, eventDat
 	changes.Set("time_to_resolve", event.TimeToResolve)
 
 	// Evaluate rules — return error so event bus can retry
-	if err := h.rulesEngine.EvaluateRulesForCaseTyped(ctx, caseObj, "case_resolved", changes); err != nil {
+	if err := h.rulesEngine.EvaluateRulesForCase(ctx, caseObj, "case_resolved", changes); err != nil {
 		h.logger.WithError(err).WithField("case_id", event.CaseID).Error("Rule evaluation failed")
 		return fmt.Errorf("rule evaluation failed for case %s: %w", event.CaseID, err)
 	}

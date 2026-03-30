@@ -36,7 +36,6 @@ type Service struct {
 }
 
 // NewService creates a new Outbox service with default configuration.
-// Deprecated: Use NewServiceWithConfig for configurable settings.
 func NewService(store stores.Store, eventBus eventbus.Bus, log *logger.Logger) *Service {
 	return NewServiceWithConfig(store, eventBus, log, config.OutboxConfig{
 		PollInterval:     5 * time.Second,

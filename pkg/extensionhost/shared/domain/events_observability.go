@@ -50,8 +50,6 @@ type IssueUpdated struct {
 	ProjectID   string
 	WorkspaceID string
 	NewEventID  string
-	EventCount  int  // Deprecated: use atomic increment instead
-	UserCount   int  // Deprecated: use HasNewUser for atomic increment
 	HasNewUser  bool // Whether to atomically increment user_count
 	LastSeen    time.Time
 	UpdatedAt   time.Time

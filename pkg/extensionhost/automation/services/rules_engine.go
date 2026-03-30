@@ -99,26 +99,8 @@ func (re *RulesEngine) Stop() {
 	}
 }
 
-// EvaluateRulesForCase evaluates all active rules for a case.
-//
-// Deprecated: Use EvaluateRulesForCaseTyped with *FieldChanges for compile-time type safety.
-// This method will be removed in a future version.
-func (re *RulesEngine) EvaluateRulesForCase(ctx context.Context, caseObj *servicedomain.Case, event string, changes map[string]interface{}) error {
-	// Convert changes to typed FieldChanges
-	var fc *FieldChanges
-	if changes != nil {
-		fc = NewFieldChanges()
-		for k, v := range changes {
-			fc.Set(k, v)
-		}
-	}
-
-	return re.EvaluateRulesForCaseTyped(ctx, caseObj, event, fc)
-}
-
-// EvaluateRulesForCaseTyped evaluates all active rules for a case with type-safe changes.
-// This is the preferred method for rule evaluation - provides compile-time type safety.
-func (re *RulesEngine) EvaluateRulesForCaseTyped(ctx context.Context, caseObj *servicedomain.Case, event string, changes *FieldChanges) error {
+// EvaluateRulesForCase evaluates all active rules for a case with type-safe changes.
+func (re *RulesEngine) EvaluateRulesForCase(ctx context.Context, caseObj *servicedomain.Case, event string, changes *FieldChanges) error {
 	// Use RuleService to fetch active rules
 	rules, err := re.ruleService.ListActiveRules(ctx, caseObj.WorkspaceID)
 	if err != nil {

@@ -23,8 +23,6 @@ func TestIssueUpdatedValidation(t *testing.T) {
 				IssueID:    "issue_123",
 				ProjectID:  "project_456",
 				NewEventID: "event_789",
-				EventCount: 10,
-				UserCount:  5,
 				LastSeen:   time.Now(),
 				UpdatedAt:  time.Now(),
 			},
