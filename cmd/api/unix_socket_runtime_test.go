@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/movebigrocks/extension-sdk/runtimeproto"
 	"github.com/stretchr/testify/require"
-
-	publicruntime "github.com/movebigrocks/platform/pkg/extensionsruntime"
 )
 
 func newShortRuntimeDir(t *testing.T) string {
@@ -28,7 +27,7 @@ func newShortRuntimeDir(t *testing.T) string {
 func startUnixSocketTestServer(t *testing.T, runtimeDir, packageKey string, handler http.Handler) func() {
 	t.Helper()
 
-	socketPath := publicruntime.SocketPath(runtimeDir, packageKey)
+	socketPath := runtimeproto.SocketPath(runtimeDir, packageKey)
 	require.NoError(t, os.MkdirAll(filepath.Dir(socketPath), 0o755))
 	_ = os.Remove(socketPath)
 

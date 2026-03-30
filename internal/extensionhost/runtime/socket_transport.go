@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/movebigrocks/extension-sdk/runtimeproto"
 
 	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
-	publicruntime "github.com/movebigrocks/platform/pkg/extensionsruntime"
 )
 
 const unixSocketHTTPTimeout = 15 * time.Second
@@ -51,7 +51,7 @@ func (r *Registry) ProbeEndpoint(extension *platformdomain.InstalledExtension, e
 			endpoint.MountPath,
 			nil,
 			http.Header{
-				publicruntime.HeaderInternalRequest: []string{"true"},
+				runtimeproto.HeaderInternalRequest: []string{"true"},
 			},
 		)
 		if err != nil {
@@ -75,9 +75,9 @@ func (r *Registry) ConsumeExtension(extension *platformdomain.InstalledExtension
 	switch strings.TrimSpace(extension.Manifest.Runtime.Protocol) {
 	case platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP:
 		headers := http.Header{
-			publicruntime.HeaderInternalRequest: []string{"true"},
+			runtimeproto.HeaderInternalRequest: []string{"true"},
 		}
-		resp, err := r.doUnixSocketRequest(ctx, extension, http.MethodPost, publicruntime.InternalConsumerPath(consumer.ServiceTarget), data, headers)
+		resp, err := r.doUnixSocketRequest(ctx, extension, http.MethodPost, runtimeproto.InternalConsumerPath(consumer.ServiceTarget), data, headers)
 		if err != nil {
 			return err
 		}
@@ -99,9 +99,9 @@ func (r *Registry) RunExtensionJob(extension *platformdomain.InstalledExtension,
 	switch strings.TrimSpace(extension.Manifest.Runtime.Protocol) {
 	case platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP:
 		headers := http.Header{
-			publicruntime.HeaderInternalRequest: []string{"true"},
+			runtimeproto.HeaderInternalRequest: []string{"true"},
 		}
-		resp, err := r.doUnixSocketRequest(ctx, extension, http.MethodPost, publicruntime.InternalJobPath(job.ServiceTarget), nil, headers)
+		resp, err := r.doUnixSocketRequest(ctx, extension, http.MethodPost, runtimeproto.InternalJobPath(job.ServiceTarget), nil, headers)
 		if err != nil {
 			return err
 		}
@@ -165,7 +165,7 @@ func (r *Registry) doUnixSocketRequest(
 	if extension == nil {
 		return nil, fmt.Errorf("extension is required")
 	}
-	socketPath := publicruntime.SocketPath(r.runtimeDir, extension.Manifest.PackageKey())
+	socketPath := runtimeproto.SocketPath(r.runtimeDir, extension.Manifest.PackageKey())
 	if _, err := os.Stat(socketPath); err != nil {
 		return nil, fmt.Errorf("extension runtime socket unavailable for %s: %w", extension.Manifest.PackageKey(), err)
 	}
@@ -203,15 +203,15 @@ func applyRuntimeIdentityHeaders(headers http.Header, extension *platformdomain.
 	if headers == nil || extension == nil {
 		return
 	}
-	headers.Set(publicruntime.HeaderInternalRequest, "true")
-	headers.Set(publicruntime.HeaderExtensionID, strings.TrimSpace(extension.ID))
-	headers.Set(publicruntime.HeaderExtensionSlug, strings.TrimSpace(extension.Slug))
-	headers.Set(publicruntime.HeaderExtensionPackageKey, strings.TrimSpace(extension.Manifest.PackageKey()))
+	headers.Set(runtimeproto.HeaderInternalRequest, "true")
+	headers.Set(runtimeproto.HeaderExtensionID, strings.TrimSpace(extension.ID))
+	headers.Set(runtimeproto.HeaderExtensionSlug, strings.TrimSpace(extension.Slug))
+	headers.Set(runtimeproto.HeaderExtensionPackageKey, strings.TrimSpace(extension.Manifest.PackageKey()))
 	if raw, ok := marshalHeaderValue(extension.EffectiveConfig().ToMap()); ok {
-		headers.Set(publicruntime.HeaderExtensionConfigJSON, raw)
+		headers.Set(runtimeproto.HeaderExtensionConfigJSON, raw)
 	}
 	if workspaceID := strings.TrimSpace(extension.WorkspaceID); workspaceID != "" {
-		headers.Set(publicruntime.HeaderWorkspaceID, workspaceID)
+		headers.Set(runtimeproto.HeaderWorkspaceID, workspaceID)
 	}
 }
 
@@ -221,36 +221,36 @@ func applyForwardedHeaders(headers http.Header, extension *platformdomain.Instal
 		return
 	}
 	if workspaceID := strings.TrimSpace(ctx.GetString("workspace_id")); workspaceID != "" {
-		headers.Set(publicruntime.HeaderWorkspaceID, workspaceID)
+		headers.Set(runtimeproto.HeaderWorkspaceID, workspaceID)
 	}
 	if userID := strings.TrimSpace(ctx.GetString("user_id")); userID != "" {
-		headers.Set(publicruntime.HeaderUserID, userID)
+		headers.Set(runtimeproto.HeaderUserID, userID)
 	}
 	if name, ok := ctx.Get("name"); ok {
-		headers.Set(publicruntime.HeaderUserName, fmt.Sprint(name))
+		headers.Set(runtimeproto.HeaderUserName, fmt.Sprint(name))
 	}
 	if email, ok := ctx.Get("email"); ok {
-		headers.Set(publicruntime.HeaderUserEmail, fmt.Sprint(email))
+		headers.Set(runtimeproto.HeaderUserEmail, fmt.Sprint(email))
 	}
 	if session, ok := ctx.Get("session"); ok {
 		if raw, ok := marshalSessionContext(session); ok {
-			headers.Set(publicruntime.HeaderSessionContextJSON, raw)
+			headers.Set(runtimeproto.HeaderSessionContextJSON, raw)
 		}
 	}
 	if raw, ok := marshalHeaderValue(paramsToMap(ctx.Params)); ok {
-		headers.Set(publicruntime.HeaderRouteParamsJSON, raw)
+		headers.Set(runtimeproto.HeaderRouteParamsJSON, raw)
 	}
 	if raw, ok := marshalContextValue(ctx, "admin_extension_nav"); ok {
-		headers.Set(publicruntime.HeaderAdminExtensionNavJSON, raw)
+		headers.Set(runtimeproto.HeaderAdminExtensionNavJSON, raw)
 	}
 	if raw, ok := marshalContextValue(ctx, "admin_extension_widgets"); ok {
-		headers.Set(publicruntime.HeaderAdminWidgetsJSON, raw)
+		headers.Set(runtimeproto.HeaderAdminWidgetsJSON, raw)
 	}
 	if show, ok := ctx.Get("admin_feature_analytics"); ok {
-		headers.Set(publicruntime.HeaderShowAnalytics, fmt.Sprint(show))
+		headers.Set(runtimeproto.HeaderShowAnalytics, fmt.Sprint(show))
 	}
 	if show, ok := ctx.Get("admin_feature_error_tracking"); ok {
-		headers.Set(publicruntime.HeaderShowErrorTracking, fmt.Sprint(show))
+		headers.Set(runtimeproto.HeaderShowErrorTracking, fmt.Sprint(show))
 	}
 }
 

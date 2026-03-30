@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/movebigrocks/extension-sdk/runtimeproto"
 	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
-	publicruntime "github.com/movebigrocks/platform/pkg/extensionsruntime"
 )
 
 func TestApplyRuntimeIdentityHeadersIncludesEffectiveExtensionConfig(t *testing.T) {
@@ -33,15 +33,15 @@ func TestApplyRuntimeIdentityHeadersIncludesEffectiveExtensionConfig(t *testing.
 	headers := http.Header{}
 	applyRuntimeIdentityHeaders(headers, extension)
 
-	if got := headers.Get(publicruntime.HeaderExtensionID); got != "ext_123" {
+	if got := headers.Get(runtimeproto.HeaderExtensionID); got != "ext_123" {
 		t.Fatalf("expected extension id header, got %q", got)
 	}
-	if got := headers.Get(publicruntime.HeaderWorkspaceID); got != "ws_123" {
+	if got := headers.Get(runtimeproto.HeaderWorkspaceID); got != "ws_123" {
 		t.Fatalf("expected workspace header, got %q", got)
 	}
 
 	var config map[string]any
-	if err := json.Unmarshal([]byte(headers.Get(publicruntime.HeaderExtensionConfigJSON)), &config); err != nil {
+	if err := json.Unmarshal([]byte(headers.Get(runtimeproto.HeaderExtensionConfigJSON)), &config); err != nil {
 		t.Fatalf("decode config header: %v", err)
 	}
 	if got := config["mode"]; got != "agency" {

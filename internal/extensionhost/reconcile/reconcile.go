@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/movebigrocks/extension-sdk/runtimeproto"
 	"github.com/movebigrocks/platform/internal/platform/extensionbundle"
 	"github.com/movebigrocks/platform/internal/platform/extensiondesiredstate"
 	domain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
-	publicruntime "github.com/movebigrocks/platform/pkg/extensionsruntime"
 )
 
 type BundleLoader interface {
@@ -835,7 +835,7 @@ func runtimeEntryForManifest(manifest domain.ExtensionManifest) (RuntimeManifest
 		Artifact:   artifact,
 		Binary:     serviceName,
 		Service:    serviceName,
-		Socket:     filepath.Base(publicruntime.SocketPath("/", manifest.PackageKey())),
+		Socket:     filepath.Base(runtimeproto.SocketPath("/", manifest.PackageKey())),
 	}, true, nil
 }
 
