@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/config"
 	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
 	"github.com/movebigrocks/platform/pkg/extensionhost/testutil/synth"
 )
@@ -16,7 +17,7 @@ import (
 func main() {
 	// Parse flags
 	var (
-		dataDir       = flag.String("data-dir", "./data/synth", "Directory for synthetic data storage")
+		dataDir       = flag.String("data-dir", "./data/synth", "Directory for file-based scenario artifacts and event bus state")
 		numWorkspaces = flag.Int("workspaces", 2, "Number of workspaces to create")
 		numAgents     = flag.Int("agents", 3, "Number of agents per workspace")
 		numCases      = flag.Int("cases", 20, "Number of cases per workspace")
@@ -52,12 +53,19 @@ func main() {
 
 	fmt.Printf("Data directory: %s\n\n", absDataDir)
 
-	// Create store (filesystem-backed)
-	store, err := stores.NewStore(absDataDir)
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Create store from the configured PostgreSQL DSN
+	store, err := stores.NewStoreFromConfig(cfg.Database)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create store: %v\n", err)
 		os.Exit(1)
 	}
+	defer store.Close()
 
 	ctx := context.Background()
 

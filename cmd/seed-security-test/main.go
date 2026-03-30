@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/config"
 	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
 	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 	"github.com/movebigrocks/platform/pkg/logger"
@@ -18,18 +19,19 @@ func main() {
 
 	log.Info("Seeding security test data...")
 
-	// Get storage path from environment or use default
-	storagePath := os.Getenv("STORAGE_PATH")
-	if storagePath == "" {
-		storagePath = "./data"
+	cfg, err := config.Load()
+	if err != nil {
+		log.Error("Failed to load config", "error", err)
+		os.Exit(1)
 	}
-	log.Info("Using filesystem storage", "path", storagePath)
+	log.Info("Connecting to database", "driver", cfg.Database.EffectiveDriver(), "dsn", cfg.Database.RedactedDSN())
 
 	// Initialize store
-	store, err := stores.NewStore(storagePath)
+	store, err := stores.NewStoreFromConfig(cfg.Database)
 	if err != nil {
 		log.Fatal("Failed to initialize store", "error", err)
 	}
+	defer store.Close()
 
 	ctx := context.Background()
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -30,18 +29,7 @@ type DBConfig struct {
 
 // NewDB creates a new PostgreSQL database connection.
 func NewDB(dsn string) (*DB, error) {
-	if dsn == "" {
-		dsn = getEnvOrDefault("DATABASE_DSN", "")
-	}
 	return NewDBWithConfig(DBConfig{DSN: dsn})
-}
-
-// getEnvOrDefault returns the environment variable value or the default
-func getEnvOrDefault(key, defaultVal string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return defaultVal
 }
 
 // NewDBFromConfig creates a new database connection from config.

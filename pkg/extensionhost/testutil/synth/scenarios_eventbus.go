@@ -13,7 +13,6 @@ import (
 	"github.com/movebigrocks/platform/internal/shared/events"
 	"github.com/movebigrocks/platform/pkg/eventbus"
 	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/outbox"
-	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
 	"github.com/movebigrocks/platform/pkg/id"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
@@ -210,11 +209,7 @@ func (sr *EventBusScenarioRunner) scenarioOutboxReliableDelivery(ctx context.Con
 
 	// Initialize components
 	appLogger := logger.New()
-	store, err := stores.NewStore(testDir)
-	if err != nil {
-		result.Error = err
-		return result, err
-	}
+	store := sr.services.Store
 	eventBus, err := eventbus.NewFileEventBus(ctx, testDir, appLogger)
 	if err != nil {
 		result.Error = err
@@ -526,11 +521,7 @@ func (sr *EventBusScenarioRunner) scenarioEndToEndEventFlow(ctx context.Context)
 
 	// Initialize full stack
 	appLogger := logger.New()
-	store, err := stores.NewStore(testDir)
-	if err != nil {
-		result.Error = err
-		return result, err
-	}
+	store := sr.services.Store
 	eventBus, err := eventbus.NewFileEventBus(ctx, testDir, appLogger)
 	if err != nil {
 		result.Error = err
