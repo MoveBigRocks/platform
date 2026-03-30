@@ -52,3 +52,4 @@ operations platform.
 | [0015](0015-workspace-scoped-agent-access.md) | Workspace-Scoped Agent Access | Accepted |
 | [0016](0016-cli-and-agent-authentication.md) | CLI and Agent Authentication Guidelines | Accepted |
 | [0018](0018-api-interface-versioning.md) | API Interface and Versioning Strategy | Accepted |
+| [0026](0026-extension-host-lifecycle-and-public-extension-sdk-boundary.md) | Extension Host Lifecycle and Public Extension SDK Boundary | Proposed |
