@@ -1,6 +1,6 @@
 # Move Big Rocks
 
-**The SaaS-replacement platform. One AI-friendly system instead of dozens of separate SaaS subscriptions, powerful out of the box and extensible by design. Run multiple brands, countries, or portfolio businesses from one owned instance instead of buying the same stack again and again.**
+**The SaaS-replacement platform. One AI-friendly system instead of dozens of separate SaaS subscriptions, powerful out of the box and extensible by design. Run multiple brands, countries, or portfolio businesses from one owned instance instead of licensing the same SaaS tools over and over.**
 
 This repository is the source of truth for Move Big Rocks core.
 
