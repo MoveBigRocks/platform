@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,6 +20,26 @@ import (
 )
 
 const unixSocketHTTPTimeout = 15 * time.Second
+
+type cancelOnCloseReadCloser struct {
+	io.ReadCloser
+	cancel context.CancelFunc
+	once   sync.Once
+}
+
+func (r *cancelOnCloseReadCloser) Read(p []byte) (int, error) {
+	n, err := r.ReadCloser.Read(p)
+	if err != nil {
+		r.once.Do(r.cancel)
+	}
+	return n, err
+}
+
+func (r *cancelOnCloseReadCloser) Close() error {
+	err := r.ReadCloser.Close()
+	r.once.Do(r.cancel)
+	return err
+}
 
 func (r *Registry) DispatchEndpoint(extension *platformdomain.InstalledExtension, endpoint platformdomain.ExtensionEndpoint, ctx *gin.Context) error {
 	if r == nil || extension == nil {
@@ -175,7 +196,6 @@ func (r *Registry) doUnixSocketRequest(
 		timeoutCtx = context.Background()
 	}
 	timeoutCtx, cancel := context.WithTimeout(timeoutCtx, unixSocketHTTPTimeout)
-	defer cancel()
 
 	urlPath := requestURI
 	if !strings.HasPrefix(urlPath, "/") {
@@ -183,6 +203,7 @@ func (r *Registry) doUnixSocketRequest(
 	}
 	req, err := http.NewRequestWithContext(timeoutCtx, method, "http://unix"+urlPath, bytes.NewReader(body))
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	req.Header = cloneHeaders(headers)
@@ -196,7 +217,16 @@ func (r *Registry) doUnixSocketRequest(
 			},
 		},
 	}
-	return client.Do(req)
+	resp, err := client.Do(req)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	resp.Body = &cancelOnCloseReadCloser{
+		ReadCloser: resp.Body,
+		cancel:     cancel,
+	}
+	return resp, nil
 }
 
 func applyRuntimeIdentityHeaders(headers http.Header, extension *platformdomain.InstalledExtension) {
