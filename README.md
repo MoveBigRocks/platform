@@ -1,6 +1,6 @@
 # Move Big Rocks
 
-**The SaaS-replacement platform. Move Big Rocks is free to use with source code available, gives you a growing set of off-the-shelf extensions, and lets you build your own with Claude Code, Codex, or other tools. Manage operational knowledge in structured Markdown with real versioning, team ownership, and agent-native workflows.**
+**The SaaS-replacement platform. One AI-friendly system instead of dozens of separate SaaS subscriptions, powerful out of the box and extensible by design. Run multiple brands, countries, or portfolio businesses from one owned instance instead of buying the same stack again and again.**
 
 This repository is the source of truth for Move Big Rocks core.
 
