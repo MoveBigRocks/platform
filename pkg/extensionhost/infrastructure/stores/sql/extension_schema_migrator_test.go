@@ -236,7 +236,7 @@ CREATE TABLE ${SCHEMA_NAME}.issues (
 	assert.True(t, strings.Contains(registration.LastError, "checksum drift"))
 }
 
-func TestExtensionSchemaMigrator_AcceptsLegacyRawSQLMigrationBodies(t *testing.T) {
+func TestExtensionSchemaMigrator_RejectsRawSQLMigrationBodies(t *testing.T) {
 	store, cleanup := testutil.SetupTestPostgresStore(t)
 	defer cleanup()
 
@@ -258,7 +258,7 @@ func TestExtensionSchemaMigrator_AcceptsLegacyRawSQLMigrationBodies(t *testing.T
 
 	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:  workspace.ID,
-		LicenseToken: "lic_schema_legacy",
+		LicenseToken: "lic_schema_strict",
 		Manifest: platformdomain.ExtensionManifest{
 			SchemaVersion: 1,
 			Slug:          "error-tracking",
@@ -317,9 +317,9 @@ CREATE TABLE ${SCHEMA_NAME}.issues (
 	}
 	require.NoError(t, json.Unmarshal(bundlePayload, &bundle))
 	require.Len(t, bundle.Migrations, 1)
-	legacySQL, err := base64.StdEncoding.DecodeString(bundle.Migrations[0].Content)
+	rawSQL, err := base64.StdEncoding.DecodeString(bundle.Migrations[0].Content)
 	require.NoError(t, err)
-	bundle.Migrations[0].Content = string(legacySQL)
+	bundle.Migrations[0].Content = string(rawSQL)
 	mutatedPayload, err := json.Marshal(bundle)
 	require.NoError(t, err)
 
@@ -329,10 +329,11 @@ CREATE TABLE ${SCHEMA_NAME}.issues (
 	require.NoError(t, err)
 
 	err = concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed)
-	require.NoError(t, err)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "decode extension migration 000001_init.up.sql body")
 }
 
-func TestExtensionSchemaMigrator_AcceptsLegacyMigrationHistoryMarkers(t *testing.T) {
+func TestExtensionSchemaMigrator_RejectsInvalidMigrationHistoryChecksums(t *testing.T) {
 	store, cleanup := testutil.SetupTestPostgresStore(t)
 	defer cleanup()
 
@@ -354,7 +355,7 @@ func TestExtensionSchemaMigrator_AcceptsLegacyMigrationHistoryMarkers(t *testing
 
 	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:  workspace.ID,
-		LicenseToken: "lic_schema_legacy_markers",
+		LicenseToken: "lic_schema_checksum_drift",
 		Manifest: platformdomain.ExtensionManifest{
 			SchemaVersion: 1,
 			Slug:          "web-analytics",
@@ -421,7 +422,8 @@ ALTER TABLE ${SCHEMA_NAME}.events
 	require.NoError(t, err)
 
 	err = concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed)
-	require.NoError(t, err)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "checksum drift")
 }
 
 func TestExtensionSchemaMigrator_ReferenceExtensionBundlesApply(t *testing.T) {

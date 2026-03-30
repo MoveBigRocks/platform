@@ -105,7 +105,7 @@ func (m *ExtensionSchemaMigrator) EnsureInstalledExtensionSchema(ctx context.Con
 
 		for _, migration := range migrations {
 			if checksum, ok := applied[migration.Version]; ok {
-				if comparableLegacyAwareChecksum(checksum) && checksum != migration.Checksum {
+				if checksum != migration.Checksum {
 					return fmt.Errorf("extension schema migration checksum drift for version %s", migration.Version)
 				}
 				registration.CurrentSchemaVersion = migration.Version
@@ -200,13 +200,9 @@ func decodeExtensionSchemaMigrations(bundlePayload []byte) ([]sqlMigration, erro
 	migrations := make([]sqlMigration, 0, len(bundle.Migrations))
 	seenVersions := make(map[string]struct{}, len(bundle.Migrations))
 	for _, migration := range bundle.Migrations {
-		rawContent := migration.Content
-		body, err := base64.StdEncoding.DecodeString(strings.TrimSpace(rawContent))
+		body, err := base64.StdEncoding.DecodeString(strings.TrimSpace(migration.Content))
 		if err != nil {
-			// Older first-party installs stored raw SQL in bundle_payload rather than
-			// base64-encoded migration bodies. Keep reading those bundles so in-place
-			// upgrades can repair them through the normal lifecycle.
-			body = []byte(rawContent)
+			return nil, fmt.Errorf("decode extension migration %s body: %w", migration.Path, err)
 		}
 		version := migrationVersion(migration.Path)
 		if version == "" {
@@ -228,20 +224,4 @@ func decodeExtensionSchemaMigrations(bundlePayload []byte) ([]sqlMigration, erro
 		return migrations[i].Version < migrations[j].Version
 	})
 	return migrations, nil
-}
-
-func comparableLegacyAwareChecksum(value string) bool {
-	value = strings.TrimSpace(strings.ToLower(value))
-	if len(value) != 64 {
-		return false
-	}
-	for _, r := range value {
-		switch {
-		case r >= '0' && r <= '9':
-		case r >= 'a' && r <= 'f':
-		default:
-			return false
-		}
-	}
-	return true
 }
