@@ -1,6 +1,6 @@
 # Move Big Rocks
 
-**The SaaS-replacement platform. Move Big Rocks is free to use with source code available, gives you a growing set of free off-the-shelf extensions, and lets you build your own with Claude Code, Codex, or other tools. Manage operational knowledge in structured Markdown with real versioning, team ownership, and agent-native workflows.**
+**The SaaS-replacement platform. Move Big Rocks is free to use with source code available, gives you a growing set of off-the-shelf extensions, and lets you build your own with Claude Code, Codex, or other tools. Manage operational knowledge in structured Markdown with real versioning, team ownership, and agent-native workflows.**
 
 This repository is the source of truth for Move Big Rocks core.
 
@@ -19,6 +19,14 @@ each siloing the context that matters. Together they do not make sense at
 all. Some companies have literally hundreds of SaaS tools deployed. The
 aggregate is six or even seven figures per year spent on a disconnected set
 of systems that were never designed to work with each other.
+
+And the multiplication is not only by headcount. If you operate multiple
+brands, portfolio companies, countries, or business units, the same tool
+stack often has to be bought again and again. The ATS for one brand becomes
+another ATS account, another billing line, another admin surface, and often
+another enterprise-tier conversation for the next. The analytics account
+for one market becomes another analytics account for the next. What looks
+reasonable for one business becomes absurd when repeated across a portfolio.
 
 These tools fragment your operations, fragment your knowledge, and create a
 sprawling attack surface of dozens or hundreds of separate vendors with
@@ -39,16 +47,19 @@ This was already expensive, inefficient, and risky for humans. For agents,
 it is unworkable. Claude Code, Codex, and other agent tools are becoming
 part of how teams operate. But an agent cannot reason coherently across
 twenty disconnected systems with twenty different data models, twenty
-authentication schemes, and twenty ways of representing the same work. SaaS
-sprawl was never designed for this, and layering AI on top of it makes the
-mess worse, not better.
+authentication schemes, and twenty ways of representing the same work, let
+alone repeated copies of those systems across brands, markets, or portfolio
+companies. SaaS sprawl was never designed for this, and layering AI on top
+of it makes the mess worse, not better.
 
 The time has come for an alternative that is an order of magnitude cheaper,
 an order of magnitude more coherent, and built from the ground up for both
 humans and agents. One operational core where work, knowledge, strategic
-context, and agent activity live in the same system. Extensions you can
-install for a fraction of what the standalone tool costs, or build your own
-with an agent in an afternoon.
+context, and agent activity live in the same system, and that you can reuse
+across teams, brands, countries, and portfolio companies instead of buying
+the same SaaS stack again for each one. Extensions you can install for a
+fraction of what the standalone tool costs, or build your own with an agent
+in an afternoon.
 
 That is what Move Big Rocks is.
 
@@ -61,9 +72,21 @@ Move Big Rocks is not a speculative blank-sheet project.
 - That earlier system ran in production for more than 10 years across campuses
   around Australia, supporting students with all kinds of issues across
   multiple departments including student services.
+- The current rebuild started because Adrian McPhee needed one owned instance
+  across multiple brands in the DemandOps portfolio instead of separate SaaS
+  accounts, licenses, identities, and hidden workflows for each brand.
+- That same pressure made secure agentic operation a design requirement: one
+  CLI, one contract, explicit workspace and team scoping, and controlled
+  access instead of asking agents to hop across many SaaS vendors.
 - AI-assisted migration made it practical to carry that codebase forward into
   Go with a cleaner architecture, explicit extensions, and a stronger
   agent-operable command surface.
+- The shared workspace model and first-party extensions were refined through
+  that operational use, including extensions such as web analytics and error
+  tracking that replace roughly EUR10,000 per year of SaaS spend across
+  Adrian McPhee's ventures and help extend runway.
+- The extension path was then made public so other teams and agents can use
+  or extend the same model instead of rebuilding the same fragmented stack.
 
 ## What Move Big Rocks Does About It
 
