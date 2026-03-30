@@ -124,6 +124,8 @@ Every self-built extension should follow these rules:
    Installation, activation, configuration, and asset changes must be attributable to a user or agent.
 8. **Use sanctioned core action paths**
    Extensions should request shared actions such as case creation, replies, or contact updates through documented core interfaces and event flows rather than bypassing core boundaries.
+9. **Do not import core internals**
+   External extension repos should build against public SDK surfaces and normal dependencies, not `platform/internal/...`.
 
 ## Threat Model Checklist
 

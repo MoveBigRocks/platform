@@ -84,7 +84,8 @@ Purpose:
 - docs
 - CLI
 - release artifacts
-- extension runtime contracts
+- extension host lifecycle
+- public extension runtime and authoring contracts
 
 It should not be the deployment control plane for live installations.
 
@@ -115,6 +116,7 @@ For most customers, this should be the only private repo they need.
 Purpose:
 
 - source code for customer-built extension logic
+- runtime implementation built against public SDK surfaces
 
 This repo is only needed when the customer is building:
 
@@ -205,6 +207,13 @@ That repo should contain:
 - review checklist
 
 This repo should be private by default.
+
+The extension repo owns extension logic. It does not own install, activate,
+monitor, rollback, or route admission. Those remain explicit host-managed steps
+on the Move Big Rocks platform surface.
+
+Custom extension repos should depend on public SDK packages and ordinary
+libraries only. They should not import `platform/internal/...`.
 
 Publishing to a marketplace should be optional.
 

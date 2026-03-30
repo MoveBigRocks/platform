@@ -376,7 +376,8 @@ Production delivery follows a split repo model:
 
 - **Public core repo** for source, releases, docs, and shared runtime contracts
 - **Public instance template repo** at `MoveBigRocks/instance-template`
-- **Public extension SDK repo** at `MoveBigRocks/extension-sdk`
+- **Public extension SDK repo** at `MoveBigRocks/extension-sdk` for extension
+  runtime helpers, authoring scaffolds, and proof tooling
 - **Public first-party extensions repo** at `MoveBigRocks/extensions`
 - **Private instance repo** created from `MoveBigRocks/instance-template` and
   used as the deployment control plane for one customer installation
@@ -388,6 +389,11 @@ install signed extension bundles into that running instance. This is what makes
 the product agent-friendly: an agent can open the instance repo, configure
 secrets, deploy the server, install extensions, and keep the installation
 upgraded without managing a permanent core fork.
+
+The platform remains the extension host. Packaging, validation, activation,
+monitoring, and rollback stay on the `mbr extensions ...` surface. Custom
+extension repos should build against the public extension SDK, not against
+`platform/internal/...`.
 
 ## Production Setup
 

@@ -15,11 +15,13 @@ For the full intended lifecycle after initial setup, including when to create a 
 A standard Move Big Rocks deployment uses up to three repo types:
 
 1. **Public core repo**
-   Shared source, docs, CLI, and signed release artifacts.
+   Shared source, docs, CLI, signed release artifacts, and the host-owned
+   extension lifecycle.
 2. **Private instance repo**
    The deployment control plane for one live Move Big Rocks installation.
 3. **Optional custom extension repo**
-   Source code for a customer-built extension.
+   Source code for a customer-built extension built against the public
+   extension SDK.
 
 Do not deploy production from a long-lived fork of the core repo by default.
 
@@ -35,6 +37,10 @@ The point of this model is that Move Big Rocks becomes the hub for both paths:
 - install off-the-shelf extensions when they already exist
 - build your own private extensions when you need custom logic
 - use the same primitives, deployment model, and review flow for both
+
+The platform remains the extension host in both cases. Packaging, validation,
+activation, monitoring, and rollback stay on the Move Big Rocks side through
+`mbr extensions ...`, not inside the custom extension repo.
 
 ## What You Need Before You Start
 
