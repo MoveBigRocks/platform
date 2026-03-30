@@ -131,7 +131,7 @@ jobs:
           STORAGE_PATH: /tmp/mbr-test
           CACHE_ENABLED: true
         run: |
-          go test -v ./internal/infrastructure/stores/sql \
+          go test -v ./pkg/extensionhost/infrastructure/stores/sql \
             -run 'TestStoreContractPostgres|TestExtensionSchemaMigrator|TestNewDBWithConfigRejectsDirtyPostgresMigrationLedger|TestOutboxStoreGetPendingOutboxEventsOnPostgres|TestIdempotencyStoreMarkProcessedOnPostgres|TestRuleStoreIncrementRuleStatsOnPostgres|TestErrorMonitoringStoreDeleteProjectOnPostgres|TestCaseStoreLinkCaseToKBArticleOnPostgres' \
             -count=1
 
