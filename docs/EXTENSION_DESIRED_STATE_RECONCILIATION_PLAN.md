@@ -147,7 +147,7 @@ Relevant shipped areas:
 
 - `internal/platform/extensionbundle`
 - `internal/platform/extensiondesiredstate`
-- `internal/platform/extensionreconcile`
+- `internal/extensionhost/reconcile`
 - `cmd/reconcile-extensions`
 - `.github/workflows/_build.yml`
 

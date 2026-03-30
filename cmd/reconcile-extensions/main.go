@@ -10,12 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	reconcile "github.com/movebigrocks/platform/internal/extensionhost/reconcile"
 	extensionruntime "github.com/movebigrocks/platform/internal/extensionhost/runtime"
 	"github.com/movebigrocks/platform/internal/infrastructure/config"
 	"github.com/movebigrocks/platform/internal/infrastructure/container"
 	"github.com/movebigrocks/platform/internal/platform/extensionbundle"
 	"github.com/movebigrocks/platform/internal/platform/extensiondesiredstate"
-	"github.com/movebigrocks/platform/internal/platform/extensionreconcile"
 )
 
 func main() {
@@ -46,7 +46,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
-		manifest, err := extensionreconcile.BuildRuntimeManifest(ctx, doc, extensionreconcile.DefaultBundleLoader{
+		manifest, err := reconcile.BuildRuntimeManifest(ctx, doc, reconcile.DefaultBundleLoader{
 			Config: extensionbundle.DefaultResolverConfigFromEnv(),
 		})
 		if err != nil {
@@ -197,9 +197,9 @@ func (a *app) Close() {
 	}
 }
 
-func (a *app) Engine(actor string) *extensionreconcile.Engine {
-	engine := extensionreconcile.NewEngine(
-		extensionreconcile.DefaultBundleLoader{Config: extensionbundle.DefaultResolverConfigFromEnv()},
+func (a *app) Engine(actor string) *reconcile.Engine {
+	engine := reconcile.NewEngine(
+		reconcile.DefaultBundleLoader{Config: extensionbundle.DefaultResolverConfigFromEnv()},
 		a.container.Store.Extensions(),
 		a.container.Store.Workspaces(),
 		a.container.Platform.Extension,
@@ -227,7 +227,7 @@ func writeJSON(path string, value any, stdout io.Writer) error {
 	return nil
 }
 
-func maybeWriteRuntimeManifest(path string, manifest extensionreconcile.RuntimeManifest, stdout io.Writer) error {
+func maybeWriteRuntimeManifest(path string, manifest reconcile.RuntimeManifest, stdout io.Writer) error {
 	if strings.TrimSpace(path) == "" {
 		return nil
 	}
