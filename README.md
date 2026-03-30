@@ -16,11 +16,12 @@ a CRM, and $100 for a forms tool. Each one has its own business case, its
 own champion, its own budget line. But a mid-market company runs 20 or 30
 of these tools, each charging per seat, each modelling work differently,
 each siloing the context that matters. Together they do not make sense at
-all. The aggregate is tens of thousands a year for a set of systems that
+all. Some companies have literally hundreds of SaaS tools deployed. The
+aggregate is tens or hundreds of thousands a year for a set of systems that
 were never designed to work with each other, that fragment your operations,
-fragment your knowledge, and create a sprawling attack surface of 20 or 30
-separate vendors with access to your data, your credentials, and your
-employees' identities.
+fragment your knowledge, and create a sprawling attack surface of dozens or
+hundreds of separate vendors with access to your data, your credentials,
+and your employees' identities.
 
 Every additional SaaS tool is another vendor to vet, another SSO
 integration to maintain, another set of API keys to rotate, another third
