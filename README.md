@@ -10,21 +10,30 @@ Public site: [movebigrocks.com](https://movebigrocks.com)
 
 ## The Problem
 
-Most organisations run their operations across a sprawl of SaaS tools that
-each charge per seat, model work differently, and silo the context that
-matters. A mid-market company easily spends tens of thousands a year on
-recruiting tools, ticketing systems, error trackers, analytics platforms,
-CRMs, knowledge bases, and the glue that holds them together. None of these
-tools were designed to work with each other. The result is fragmented
-operations, fragmented knowledge, and a permanent tax on every person who
-needs to understand what is actually happening.
+Paying $500 a month for an ATS might make sense in isolation. So might $300
+for error tracking, $200 for analytics, $150 for a knowledge base, $400 for
+a CRM, and $100 for a forms tool. Each one has its own business case, its
+own champion, its own budget line. But a mid-market company runs 20 or 30
+of these tools, each charging per seat, each modelling work differently,
+each siloing the context that matters. Together they do not make sense at
+all. The aggregate is tens of thousands a year for a set of systems that
+were never designed to work with each other, that fragment your operations,
+fragment your knowledge, and create a sprawling attack surface of 20 or 30
+separate vendors with access to your data, your credentials, and your
+employees' identities.
 
-This was already expensive and inefficient for humans. For agents, it is
-unworkable. Claude Code, Codex, and other agent tools are becoming part of how
-teams operate. But an agent cannot reason coherently across seven disconnected
-systems with seven different data models, seven authentication schemes, and
-seven ways of representing the same work. SaaS sprawl was never designed for
-this, and layering AI on top of it makes the mess worse, not better.
+Every additional SaaS tool is another vendor to vet, another SSO
+integration to maintain, another set of API keys to rotate, another third
+party processing your data under their terms. The security cost of this
+sprawl is real and growing, and most organisations have stopped counting.
+
+This was already expensive, inefficient, and risky for humans. For agents,
+it is unworkable. Claude Code, Codex, and other agent tools are becoming
+part of how teams operate. But an agent cannot reason coherently across
+twenty disconnected systems with twenty different data models, twenty
+authentication schemes, and twenty ways of representing the same work. SaaS
+sprawl was never designed for this, and layering AI on top of it makes the
+mess worse, not better.
 
 The time has come for an alternative that is an order of magnitude cheaper,
 an order of magnitude more coherent, and built from the ground up for both
