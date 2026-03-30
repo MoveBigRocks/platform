@@ -67,9 +67,12 @@ Move Big Rocks is not a speculative blank-sheet project.
 
 ## What Move Big Rocks Does About It
 
-Move Big Rocks replaces your SaaS sprawl with one self-hosted
-SaaS-replacement platform and a set of extensions, each an order of
-magnitude cheaper than the tool it replaces:
+Move Big Rocks replaces your SaaS sprawl with one self-hosted platform and
+a set of extensions, each an order of magnitude cheaper than the tool it
+replaces. Every SaaS tool you eliminate is one fewer vendor with access to
+your employees' identities, your operational data, and your API keys. For
+any company that has been through a SOC 2 audit or a serious security
+review, the attack surface reduction is as compelling as the cost savings:
 
 - **Service catalog and forms** — define what work exists and what information
   must be collected before work is accepted, routed, or acted on
