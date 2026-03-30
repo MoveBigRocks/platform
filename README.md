@@ -101,14 +101,14 @@ no cost.
 Each extension replaces a standalone SaaS product, running on the same
 operational core:
 
-| Extension | What it replaces | They charge (per user/month) |
-|-----------|-----------------|-------------|
-| **ATS** | Homerun, Greenhouse, Lever | $100-500/mo |
-| **Error tracking** | Sentry, Bugsnag, Rollbar | $30-600/mo |
-| **Web analytics** | Plausible, Mixpanel, GA | $100-300/mo |
-| **Sales pipeline** | Pipedrive, HubSpot | $180-500/mo |
-| **Community feature requests** | Canny, UserVoice | $400-700/mo |
-| **Enterprise access** | SSO tax on every SaaS tool | $2,000-5,000/yr |
+| Extension | What it replaces | What they charge |
+|-----------|-----------------|-----------------|
+| **ATS** | Homerun, Greenhouse, Lever | €79/mo to $12K+/yr depending on scale |
+| **Error tracking** | Sentry, Bugsnag, Rollbar | $26/mo to thousands/mo at volume |
+| **Web analytics** | Plausible, Mixpanel | $9/mo to $2,500+/mo at scale |
+| **Sales pipeline** | Pipedrive, HubSpot | $14-99/user/mo (Pipedrive) to $500-1,500/mo (HubSpot) |
+| **Community feature requests** | Canny, UserVoice | $79/mo (Canny) to $899-1,499/mo (UserVoice) |
+| **Enterprise access** | SSO tax on every SaaS tool | $1,000-5,000/yr per vendor |
 
 All of the above are currently free to install. When paid tiers are
 introduced, pricing will be per instance with no per-seat tax — a fraction
