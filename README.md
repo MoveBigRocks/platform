@@ -17,16 +17,23 @@ own champion, its own budget line. But a mid-market company runs 20 or 30
 of these tools, each charging per seat, each modelling work differently,
 each siloing the context that matters. Together they do not make sense at
 all. Some companies have literally hundreds of SaaS tools deployed. The
-aggregate is tens or hundreds of thousands a year for a set of systems that
-were never designed to work with each other, that fragment your operations,
-fragment your knowledge, and create a sprawling attack surface of dozens or
-hundreds of separate vendors with access to your data, your credentials,
-and your employees' identities.
+aggregate is six or even seven figures per year spent on a disconnected set
+of systems that were never designed to work with each other.
 
+These tools fragment your operations, fragment your knowledge, and create a
+sprawling attack surface of dozens or hundreds of separate vendors with
+access to your data, your credentials, and your employees' identities.
 Every additional SaaS tool is another vendor to vet, another SSO
 integration to maintain, another set of API keys to rotate, another third
-party processing your data under their terms. The security cost of this
-sprawl is real and growing, and most organisations have stopped counting.
+party processing your data under their terms.
+
+And when the person who championed a tool leaves the company, the tool
+enters a kind of zombie mode: still live, still billing, still holding
+data, but no longer sponsored or maintained by anyone internally. Nobody
+knows what it connects to, nobody knows what would break if it were turned
+off, and nobody wants to find out. Most organisations have dozens of these
+zombie tools running at any given time, each one an unmanaged cost and an
+unmanaged risk.
 
 This was already expensive, inefficient, and risky for humans. For agents,
 it is unworkable. Claude Code, Codex, and other agent tools are becoming
