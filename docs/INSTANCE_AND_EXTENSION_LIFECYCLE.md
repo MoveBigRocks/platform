@@ -213,7 +213,11 @@ monitor, rollback, or route admission. Those remain explicit host-managed steps
 on the Move Big Rocks platform surface.
 
 Custom extension repos should depend on public SDK packages and ordinary
-libraries only. They should not import `platform/internal/...`.
+libraries only. They should not import `platform/internal/...`. In the current
+implementation that means:
+
+- runtime helpers from `MoveBigRocks/extension-sdk`
+- host-facing public Go packages from `github.com/movebigrocks/platform/pkg/extensionhost/...`
 
 For service-backed routes, the host forwards extension identity, effective
 extension config, session context, and admin navigation/widget context into the

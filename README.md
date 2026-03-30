@@ -393,9 +393,12 @@ upgraded without managing a permanent core fork.
 The platform remains the extension host. Packaging, validation, activation,
 monitoring, and rollback stay on the `mbr extensions ...` surface. Custom
 extension repos should build against the public extension SDK, not against
-`platform/internal/...`. Service-backed runtimes should receive their
-extension identity and effective config from the host-forwarded runtime
-context, not by reaching back into core stores.
+`platform/internal/...`. Today that public surface is split between the
+`MoveBigRocks/extension-sdk` repo for runtime helpers like `runtimehttp` and
+`extdb`, and `github.com/movebigrocks/platform/pkg/extensionhost/...` for
+host-owned types and contracts that external runtimes still need. Service-backed
+runtimes should receive their extension identity and effective config from the
+host-forwarded runtime context, not by reaching back into core stores.
 
 ## Production Setup
 

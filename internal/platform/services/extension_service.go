@@ -521,7 +521,7 @@ func (s *ExtensionService) UpgradeExtension(ctx context.Context, params UpgradeE
 	upgraded.LicenseToken = installParams.LicenseToken
 	upgraded.BundleSHA256 = checksumBytes(bundle)
 	upgraded.BundleSize = int64(len(bundle))
-	upgraded.BundlePayload = append([]byte(nil), bundle...)
+	upgraded.BundlePayload = cloneInstallBundlePayload(bundle)
 	upgraded.UpdatedAt = existing.UpdatedAt
 	if upgraded.Config.IsEmpty() {
 		config := params.Manifest.DefaultConfig
@@ -1462,4 +1462,13 @@ func (s *ExtensionService) resolveExtensionHealth(ctx context.Context, extension
 		message = platformdomain.DefaultExtensionHealthMessage(status)
 	}
 	return status, message
+}
+
+func cloneInstallBundlePayload(bundle []byte) []byte {
+	if bundle == nil {
+		return []byte{}
+	}
+	cloned := make([]byte, len(bundle))
+	copy(cloned, bundle)
+	return cloned
 }

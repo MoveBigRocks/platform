@@ -2,6 +2,7 @@ package refext
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -105,6 +106,7 @@ func loadReferenceExtensionInstallParams(extensionName, workspaceID string) (pla
 	return platformservices.InstallExtensionParams{
 		WorkspaceID:  workspaceID,
 		LicenseToken: "lic_" + strings.ReplaceAll(extensionName, "-", "_"),
+		BundleBase64: encodeReferenceExtensionBundle(manifest, migrations),
 		Manifest:     manifest,
 		Migrations:   migrations,
 	}, nil
@@ -140,6 +142,37 @@ func loadReferenceExtensionMigrations(root string) ([]platformservices.Extension
 		return nil, fmt.Errorf("expected ATS extension migrations in %s", root)
 	}
 	return migrations, nil
+}
+
+func encodeReferenceExtensionBundle(manifest platformdomain.ExtensionManifest, migrations []platformservices.ExtensionMigrationInput) string {
+	payload := struct {
+		Manifest   platformdomain.ExtensionManifest `json:"manifest"`
+		Migrations []struct {
+			Path    string `json:"path"`
+			Content string `json:"content,omitempty"`
+		} `json:"migrations,omitempty"`
+	}{
+		Manifest: manifest,
+		Migrations: make([]struct {
+			Path    string `json:"path"`
+			Content string `json:"content,omitempty"`
+		}, 0, len(migrations)),
+	}
+	for _, migration := range migrations {
+		payload.Migrations = append(payload.Migrations, struct {
+			Path    string `json:"path"`
+			Content string `json:"content,omitempty"`
+		}{
+			Path:    strings.TrimSpace(migration.Path),
+			Content: base64.StdEncoding.EncodeToString(migration.Content),
+		})
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		panic(fmt.Sprintf("marshal reference extension bundle: %v", err))
+	}
+	return base64.StdEncoding.EncodeToString(data)
 }
 
 func referenceExtensionRoot() (string, error) {

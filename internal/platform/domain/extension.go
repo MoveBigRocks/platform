@@ -978,7 +978,7 @@ func NewInstalledExtension(workspaceID, installedByID, licenseToken string, mani
 		LicenseToken:      strings.TrimSpace(licenseToken),
 		BundleSHA256:      checksumBytes(bundle),
 		BundleSize:        int64(len(bundle)),
-		BundlePayload:     append([]byte(nil), bundle...),
+		BundlePayload:     cloneBundlePayload(bundle),
 		Manifest:          manifest,
 		Config:            config,
 		Status:            ExtensionStatusInstalled,
@@ -992,6 +992,15 @@ func NewInstalledExtension(workspaceID, installedByID, licenseToken string, mani
 		UpdatedAt:         now,
 	}
 	return installation, nil
+}
+
+func cloneBundlePayload(bundle []byte) []byte {
+	if bundle == nil {
+		return []byte{}
+	}
+	cloned := make([]byte, len(bundle))
+	copy(cloned, bundle)
+	return cloned
 }
 
 func (e *InstalledExtension) IsInstanceScoped() bool {

@@ -1,0 +1,14 @@
+package platformhandlers
+
+import internalplatformhandlers "github.com/movebigrocks/platform/internal/platform/handlers"
+
+type BasePageData = internalplatformhandlers.BasePageData
+type ErrorPageData = internalplatformhandlers.ErrorPageData
+type WorkspaceOption = internalplatformhandlers.WorkspaceOption
+type AdminExtensionNavSection = internalplatformhandlers.AdminExtensionNavSection
+type AdminExtensionNavItem = internalplatformhandlers.AdminExtensionNavItem
+type AdminExtensionWidget = internalplatformhandlers.AdminExtensionWidget
+type ContextValues = internalplatformhandlers.ContextValues
+
+var GetContextValues = internalplatformhandlers.GetContextValues
+var AdminTemplateFuncMap = internalplatformhandlers.AdminTemplateFuncMap

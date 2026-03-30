@@ -328,7 +328,7 @@ func (s *ExtensionStore) mapInstallationToModel(extension *platformdomain.Instal
 		LicenseToken:      extension.LicenseToken,
 		BundleSHA256:      extension.BundleSHA256,
 		BundleSize:        extension.BundleSize,
-		BundlePayload:     append([]byte(nil), extension.BundlePayload...),
+		BundlePayload:     cloneBundlePayload(extension.BundlePayload),
 		ManifestJSON:      manifestJSON,
 		ConfigJSON:        configJSON,
 		Status:            string(extension.Status),
@@ -369,7 +369,7 @@ func (s *ExtensionStore) mapModelToInstallation(model *models.InstalledExtension
 		LicenseToken:      model.LicenseToken,
 		BundleSHA256:      model.BundleSHA256,
 		BundleSize:        model.BundleSize,
-		BundlePayload:     append([]byte(nil), model.BundlePayload...),
+		BundlePayload:     cloneBundlePayload(model.BundlePayload),
 		Manifest:          manifest,
 		Config:            config,
 		Status:            platformdomain.ExtensionStatus(model.Status),
@@ -386,6 +386,15 @@ func (s *ExtensionStore) mapModelToInstallation(model *models.InstalledExtension
 		UpdatedAt:         model.UpdatedAt,
 		DeletedAt:         model.DeletedAt,
 	}
+}
+
+func cloneBundlePayload(payload []byte) []byte {
+	if payload == nil {
+		return []byte{}
+	}
+	cloned := make([]byte, len(payload))
+	copy(cloned, payload)
+	return cloned
 }
 
 func nullableStringPtr(value string) *string {
