@@ -12,6 +12,7 @@ const (
 	HeaderExtensionID           = "X-MBR-Extension-ID"
 	HeaderExtensionSlug         = "X-MBR-Extension-Slug"
 	HeaderExtensionPackageKey   = "X-MBR-Extension-Package-Key"
+	HeaderExtensionConfigJSON   = "X-MBR-Extension-Config-JSON"
 	HeaderWorkspaceID           = "X-MBR-Workspace-ID"
 	HeaderUserName              = "X-MBR-User-Name"
 	HeaderUserEmail             = "X-MBR-User-Email"

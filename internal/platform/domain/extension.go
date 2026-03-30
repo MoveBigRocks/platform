@@ -1053,6 +1053,21 @@ func (e *InstalledExtension) UpdateConfig(config shareddomain.TypedCustomFields)
 	e.UpdatedAt = time.Now()
 }
 
+func (e *InstalledExtension) EffectiveConfig() shareddomain.TypedCustomFields {
+	if e == nil {
+		return shareddomain.NewTypedCustomFields()
+	}
+
+	effective := shareddomain.NewTypedCustomFields()
+	for key, value := range e.Manifest.DefaultConfig.ToMap() {
+		effective.SetAny(key, value)
+	}
+	for key, value := range e.Config.ToMap() {
+		effective.SetAny(key, value)
+	}
+	return effective
+}
+
 func (e *InstalledExtension) RecordHealth(status ExtensionHealthStatus, message string) {
 	now := time.Now()
 	e.HealthStatus = status

@@ -207,6 +207,9 @@ func applyRuntimeIdentityHeaders(headers http.Header, extension *platformdomain.
 	headers.Set(publicruntime.HeaderExtensionID, strings.TrimSpace(extension.ID))
 	headers.Set(publicruntime.HeaderExtensionSlug, strings.TrimSpace(extension.Slug))
 	headers.Set(publicruntime.HeaderExtensionPackageKey, strings.TrimSpace(extension.Manifest.PackageKey()))
+	if raw, ok := marshalHeaderValue(extension.EffectiveConfig().ToMap()); ok {
+		headers.Set(publicruntime.HeaderExtensionConfigJSON, raw)
+	}
 	if workspaceID := strings.TrimSpace(extension.WorkspaceID); workspaceID != "" {
 		headers.Set(publicruntime.HeaderWorkspaceID, workspaceID)
 	}
