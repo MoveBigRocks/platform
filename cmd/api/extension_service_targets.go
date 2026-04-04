@@ -72,6 +72,7 @@ func serveResolvedExtensionServiceRoute(
 		ctx.AbortWithStatus(http.StatusNotFound)
 		return
 	}
+	applyResolvedExtensionWorkspaceContext(ctx, resolved.Extension)
 	applyExtensionRouteParams(ctx, resolved.RouteParams)
 	if !enforceResolvedExtensionServiceRoutePolicy(ctx, resolved, cfg, principalAuth) {
 		return

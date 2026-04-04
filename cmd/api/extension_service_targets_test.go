@@ -140,6 +140,60 @@ func TestServeResolvedExtensionServiceRoute_DispatchesInstalledServiceEndpoint(t
 	assert.Contains(t, w.Body.String(), `"handled":true`)
 }
 
+func TestServeResolvedExtensionServiceRoute_AppliesResolvedWorkspaceContext(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	extensionService := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+	installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
+		WorkspaceID:  workspace.ID,
+		LicenseToken: "lic_workspace_binding",
+		Manifest: platformdomain.ExtensionManifest{
+			SchemaVersion: 1,
+			Slug:          "careers",
+			Name:          "Careers",
+			Version:       "1.0.0",
+			Publisher:     "DemandOps",
+			Kind:          platformdomain.ExtensionKindOperational,
+			Scope:         platformdomain.ExtensionScopeWorkspace,
+			Risk:          platformdomain.ExtensionRiskStandard,
+			Endpoints: []platformdomain.ExtensionEndpoint{
+				{
+					Name:          "public-apply",
+					Class:         platformdomain.ExtensionEndpointClassPublicIngest,
+					MountPath:     "/careers/applications",
+					Methods:       []string{"POST"},
+					Auth:          platformdomain.ExtensionEndpointAuthPublic,
+					ServiceTarget: "careers.public.apply",
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	_, err = extensionService.ActivateExtension(ctx, installed.ID)
+	require.NoError(t, err)
+
+	registry := &extensionruntime.Registry{}
+	registry.Register("careers.public.apply", func(c *gin.Context) {
+		c.JSON(http.StatusCreated, gin.H{"workspaceID": c.GetString("workspace_id")})
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPost, "/careers/applications", nil)
+
+	serveResolvedExtensionServiceRoute(c, extensionService, registry, nil, nil)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	assert.Contains(t, w.Body.String(), `"workspaceID":"`+workspace.ID+`"`)
+}
+
 func TestServeResolvedExtensionServiceRoute_ReturnsServiceUnavailableForUnknownTarget(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
