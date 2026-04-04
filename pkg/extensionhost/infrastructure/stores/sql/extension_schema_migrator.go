@@ -200,9 +200,9 @@ func decodeExtensionSchemaMigrations(bundlePayload []byte) ([]sqlMigration, erro
 	migrations := make([]sqlMigration, 0, len(bundle.Migrations))
 	seenVersions := make(map[string]struct{}, len(bundle.Migrations))
 	for _, migration := range bundle.Migrations {
-		body, err := base64.StdEncoding.DecodeString(strings.TrimSpace(migration.Content))
-		if err != nil {
-			return nil, fmt.Errorf("decode extension migration %s body: %w", migration.Path, err)
+		body := []byte(migration.Content)
+		if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(migration.Content)); err == nil {
+			body = decoded
 		}
 		version := migrationVersion(migration.Path)
 		if version == "" {

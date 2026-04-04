@@ -113,6 +113,13 @@ This is the repo an operator or agent opens to:
 
 For most customers, this should be the only private repo they need.
 
+Before any desired-state change that pins or upgrades an installed extension,
+the instance repo should validate that the referenced bundle actually exists:
+
+```bash
+scripts/validate-extension-desired-state.sh extensions/desired-state.yaml
+```
+
 ### 3. Optional custom extension repo
 
 Purpose:

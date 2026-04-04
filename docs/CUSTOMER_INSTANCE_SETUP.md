@@ -100,6 +100,7 @@ The new repo should contain:
 
 - `mbr.instance.yaml`
 - `scripts/read-instance-config.sh`
+- `scripts/validate-extension-desired-state.sh`
 - `agents/bootstrap.md`
 - `extensions/desired-state.yaml`
 - `branding/site.json`
@@ -162,6 +163,12 @@ Validate it with:
 
 ```bash
 scripts/read-instance-config.sh mbr.instance.yaml
+```
+
+Validate pinned installed extension refs with:
+
+```bash
+scripts/validate-extension-desired-state.sh extensions/desired-state.yaml
 ```
 
 ## Fleet Registration And Disclosure
@@ -269,16 +276,17 @@ Tell the agent to follow `agents/bootstrap.md`.
 The bootstrap run should:
 
 1. Validate `mbr.instance.yaml`.
-2. Confirm the parsed host, domains, provider choices, and artifact refs from `scripts/read-instance-config.sh`.
-3. Confirm DNS and host reachability.
-4. Bootstrap the host.
-5. Pull the pinned Move Big Rocks artifacts for the declared version.
-6. Render the environment file from `mbr.instance.yaml` plus repo secrets.
-7. Deploy the core release.
-8. Run the explicit fleet registration workflow when `spec.fleet` is enabled.
-9. Create the first admin user.
-10. Verify health for the app, admin, and API domains.
-11. Configure outbound email.
+2. Validate any installed extension refs in `extensions/desired-state.yaml`.
+3. Confirm the parsed host, domains, provider choices, and artifact refs from `scripts/read-instance-config.sh`.
+4. Confirm DNS and host reachability.
+5. Bootstrap the host.
+6. Pull the pinned Move Big Rocks artifacts for the declared version.
+7. Render the environment file from `mbr.instance.yaml` plus repo secrets.
+8. Deploy the core release.
+9. Run the explicit fleet registration workflow when `spec.fleet` is enabled.
+10. Create the first admin user.
+11. Verify health for the app, admin, and API domains.
+12. Configure outbound email.
 
 The agent should not modify the public core repo to do this.
 
@@ -287,6 +295,10 @@ The agent should not modify the public core repo to do this.
 Optional capabilities should be installed after core is healthy.
 
 Use `extensions/desired-state.yaml` to record which extensions should exist.
+
+The instance template now starts with no installed optional extensions by
+default. Add entries under `extensions.installed` only when you are ready to
+pin real published refs.
 
 Example categories:
 
@@ -298,13 +310,14 @@ Example categories:
 The recommended activation flow is:
 
 1. Add the desired extension ref to `extensions/desired-state.yaml`.
-2. Install the bundle into the running instance.
-3. Validate signature, manifest, and any required bundle-install credential.
-4. Configure extension-specific settings.
-5. For `enterprise-access`, restrict provider hosts to the approved IdP domains and use non-literal `clientSecretRef` values.
-6. Run the required checks in a preview workspace first.
-7. Monitor the extension in that preview workspace.
-8. Activate it in the target production workspace only after the preview pass is clean.
+2. Run `scripts/validate-extension-desired-state.sh extensions/desired-state.yaml`.
+3. Install the bundle into the running instance.
+4. Validate signature, manifest, and any required bundle-install credential.
+5. Configure extension-specific settings.
+6. For `enterprise-access`, restrict provider hosts to the approved IdP domains and use non-literal `clientSecretRef` values.
+7. Run the required checks in a preview workspace first.
+8. Monitor the extension in that preview workspace.
+9. Activate it in the target production workspace only after the preview pass is clean.
 
 Current control-plane model:
 

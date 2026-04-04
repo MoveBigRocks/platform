@@ -236,7 +236,7 @@ CREATE TABLE ${SCHEMA_NAME}.issues (
 	assert.True(t, strings.Contains(registration.LastError, "checksum drift"))
 }
 
-func TestExtensionSchemaMigrator_RejectsRawSQLMigrationBodies(t *testing.T) {
+func TestExtensionSchemaMigrator_AcceptsLegacyRawSQLMigrationBodies(t *testing.T) {
 	store, cleanup := testutil.SetupTestPostgresStore(t)
 	defer cleanup()
 
@@ -329,8 +329,7 @@ CREATE TABLE ${SCHEMA_NAME}.issues (
 	require.NoError(t, err)
 
 	err = concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "decode extension migration 000001_init.up.sql body")
+	require.NoError(t, err)
 }
 
 func TestExtensionSchemaMigrator_RejectsInvalidMigrationHistoryChecksums(t *testing.T) {
