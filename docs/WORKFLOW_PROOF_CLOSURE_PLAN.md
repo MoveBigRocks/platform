@@ -239,19 +239,19 @@ case actions true.
 
 Progress on 2026-03-28:
 
-- `case-commands` is now the chosen Milestone 1 sanctioned case-action
-  mechanism for case creation, and it now has a production consumer in
+- `case-commands` is the Milestone 1 sanctioned case-action
+  mechanism for case creation, and it has a production consumer in
   [`internal/service/handlers/case_command_handler.go`](../internal/service/handlers/case_command_handler.go).
-- The worker manager and container startup path now wire `case-commands`
+- The worker manager and container startup path wire `case-commands`
   alongside the other production command streams via
   [`internal/workers/manager_test.go`](../internal/workers/manager_test.go) and
   [`internal/infrastructure/container/container_integration_test.go`](../internal/infrastructure/container/container_integration_test.go).
-- The repo now proves a real producer -> consumer -> durable case result flow
+- The repo proves a real producer -> consumer -> durable case result flow
   plus a failure-visible retry path via
   [`internal/service/handlers/case_command_handler_test.go`](../internal/service/handlers/case_command_handler_test.go),
   archived as `workflow-proof/case-command-create.json` and
   `workflow-proof/case-command-failure-visible.json`.
-- The contract now carries queue-routing metadata and emits a durable
+- The contract carries queue-routing metadata and emits a durable
   `case.created_from_command` response event after successful case creation.
 
 Changes:

@@ -75,11 +75,11 @@ Supported source types remain:
 
 ### 4. A real reconciliation engine exists
 
-The platform now ships a deterministic desired-state engine that:
+The platform ships a deterministic desired-state engine that:
 
 - parses desired state
 - resolves workspace slugs to IDs
-- loads currently installed instance and workspace extensions
+- loads installed instance and workspace extensions
 - computes a machine-readable plan
 - applies lifecycle operations through the real extension service
 - checks for remaining drift

@@ -77,17 +77,15 @@ Use this split consistently:
 
 Do not put customer extension source code into the private instance repo unless it is a tiny local-only override.
 
-## Current Runtime Policy
+## Runtime Policy
 
-The current generic extension runtime is intentionally narrower than the long-term marketplace model.
-
-Today, the core implementation supports installation only for:
+The generic extension runtime supports installation only for:
 
 - `scope: workspace`
 - `risk: standard`
 - `kind: product` or `kind: operational`
 
-The generic runtime does **not** currently install:
+The generic runtime does **not** install:
 
 - `scope: instance`
 - `risk: privileged`
@@ -97,12 +95,12 @@ The generic runtime does **not** currently install:
 Reason:
 
 - identity and connector extensions touch authentication, external credentials, or transport boundaries
-- those categories need stronger review, richer isolation, and more explicit lifecycle controls than the current generic slice provides
+- those categories need stronger review, richer isolation, and more explicit lifecycle controls than the supported generic slice provides
 
 This means:
 
 - self-built ATS-like or workflow-like extensions are in scope
-- enterprise SSO, Slack connectors, WhatsApp connectors, and similar privileged integrations remain first-party-only paths until the privileged runtime is fully dogfooded and opened up beyond trusted first-party publishers
+- enterprise SSO, Slack connectors, WhatsApp connectors, and similar privileged integrations remain first-party-only or separately controlled paths
 
 ## Security Rules for Self-Built Extensions
 
@@ -125,7 +123,7 @@ Every self-built extension should follow these rules:
 8. **Use sanctioned core action paths**
    Extensions should request shared actions such as case creation, replies, or contact updates through documented core interfaces and event flows rather than bypassing core boundaries.
 9. **Do not import core internals**
-   External extension repos should build against public SDK surfaces and normal dependencies, not `platform/internal/...`.
+   External extension repos should build against public SDK surfaces and normal dependencies, not core repo packages.
 
 ## Threat Model Checklist
 

@@ -86,7 +86,7 @@ https://api.your-app-domain/v1/webhooks/postmark/<POSTMARK_WEBHOOK_SECRET>/deliv
 
 ## Workspace Routing Rules
 
-Move Big Rocks currently extracts the target workspace from the recipient address.
+Move Big Rocks extracts the target workspace from the recipient address.
 
 Supported patterns:
 

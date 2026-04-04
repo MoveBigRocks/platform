@@ -116,11 +116,7 @@ review, the attack surface reduction is as compelling as the cost savings:
   own extensions against the same runtime model, or install off-the-shelf
   extensions that replace entire standalone SaaS products
 
-The core platform is free. All first-party extensions are currently free
-too. When we introduce paid extensions, pricing will be per instance, not
-per user, and an order of magnitude below what the standalone SaaS tool
-charges. Every installation made before that date will be grandfathered at
-no cost.
+The core platform is free. All first-party extensions are free to install.
 
 ## Extensions You Can Install
 
@@ -136,9 +132,7 @@ operational core:
 | **Community feature requests** | Canny, UserVoice | $79/mo (Canny) to $899-1,499/mo (UserVoice) |
 | **Enterprise access** | SSO tax on every SaaS tool | $1,000-5,000/yr per vendor |
 
-All of the above are currently free to install. When paid tiers are
-introduced, pricing will be per instance with no per-seat tax — a fraction
-of what these tools charge today.
+All of the above are free to install.
 
 Every extension runs on the same core primitives — same teams, same queues,
 same knowledge, same agent contract. Your ATS candidates, error tracking
@@ -415,13 +409,13 @@ upgraded without managing a permanent core fork.
 
 The platform remains the extension host. Packaging, validation, activation,
 monitoring, and rollback stay on the `mbr extensions ...` surface. Custom
-extension repos should build against the public extension SDK, not against
-`platform/internal/...`. Today that public surface is split between the
-`MoveBigRocks/extension-sdk` repo for runtime helpers like `runtimehttp` and
-`extdb`, and `github.com/movebigrocks/platform/pkg/extensionhost/...` for
-host-owned types and contracts that external runtimes still need. Service-backed
-runtimes should receive their extension identity and effective config from the
-host-forwarded runtime context, not by reaching back into core stores.
+extension repos should build against the public extension SDK and should not
+import `github.com/movebigrocks/platform/...`. The SDK carries both the
+runtime helpers like `runtimehttp` and `extdb` and the host-facing contract
+packages under `github.com/movebigrocks/extension-sdk/extensionhost/...`.
+Service-backed runtimes should receive their extension identity and effective
+config from the host-forwarded runtime context, not by reaching back into core
+stores.
 
 ## Production Setup
 

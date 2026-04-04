@@ -208,12 +208,9 @@ Current reality:
   [`docs/evidence/public-bundle-publication-runs.json`](./evidence/public-bundle-publication-runs.json)
 - reusable CI outputs and summaries now report the integration sweep as part of
   the required gate instead of a soft signal
-- the reusable `Test` workflow now materializes the same canonical sibling repos
-  (`extensions` and `extension-sdk`) that first-party source tests
-  depend on, verifies those checkouts against
-  [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json),
-  and sets `MBR_REQUIRE_WORKSPACE_REFS=true` so those tests fail closed in
-  everyday CI instead of only during milestone-proof runs
+- the reusable `Test` workflow now verifies core in standalone mode without
+  materializing sibling extension repos, so core CI proves that the platform
+  repo can build and test independently
 - milestone proof CI materializes the canonical sibling repos
   (`extensions` and `extension-sdk`) before running proof, and proof mode sets
   `MBR_REQUIRE_WORKSPACE_REFS=true` so canonical-source tests fail closed

@@ -9,24 +9,24 @@ The short version is:
 - extensions declare endpoint types in the manifest
 - core mounts those endpoints into approved path families and proxies to the extension runtime when needed
 
-Current implemented slice:
+Implemented slice:
 
-- asset-backed `public-page` and `public-asset` endpoints are now mounted through core
-- asset-backed `admin-page` endpoints are now mounted through core when they live under `/admin/extensions/*`
+- asset-backed `public-page` and `public-asset` endpoints are mounted through core
+- asset-backed `admin-page` endpoints are mounted through core when they live under `/extensions/*`
 - `publicRoutes` and `adminRoutes` are resolved through the same runtime
-- service-backed public routes can now resolve installed `public-asset`, `public-page`, and `public-ingest` endpoints through the shared target registry
-- admin-side service-backed routes under `/admin/extensions/*` can now resolve installed `admin-page` and `admin-action` endpoints through the same target registry
-- parameterized service endpoints such as `/api/:projectNumber/envelope` are now supported for compatibility-sensitive first-party extensions
-- service-backed runtime health can now be checked through internal manifest-declared `health` endpoints during activation and `mbr extensions monitor`
-- service-backed scheduled jobs and event consumers now run through the same service-target runtime registry
-- supervised process management and full external `extension-api` extraction are still pending
+- service-backed public routes resolve installed `public-asset`, `public-page`, and `public-ingest` endpoints through the shared target registry
+- admin-side service-backed routes under `/extensions/*` resolve installed `admin-page` and `admin-action` endpoints through the same target registry
+- parameterized service endpoints such as `/api/:projectNumber/envelope` are supported for compatibility-sensitive first-party extensions
+- service-backed runtime health is checked through internal manifest-declared `health` endpoints during activation and `mbr extensions monitor`
+- service-backed scheduled jobs and event consumers run through the same service-target runtime registry
+- supervised process management and full external `extension-api` extraction remain out of scope for this document
 
 This is required for extensions such as `web-analytics`, `error-tracking`, and future connector or product extensions that need public ingest routes, admin pages, or machine APIs.
 
 ## Design Goals
 
 - keep endpoint behavior predictable for humans and agents
-- preserve the current analytics and error-tracking UI and API behavior
+- preserve analytics and error-tracking UI and API behavior
 - let extensions add real routes without bypassing core auth and tenancy
 - make endpoint security policy declarative and reviewable
 - support both bundle and service-backed extension runtimes
@@ -80,12 +80,12 @@ Compatible aliases can be added where needed for product continuity, but they sh
 
 Aliases should be explicit, reviewed, and reserved to first-party or privileged extensions when they affect public product contracts.
 
-The currently implemented asset-backed runtime supports:
+The asset-backed runtime supports:
 
 - public routes on their declared mount paths, except reserved core paths such as `/auth`, `/health`, `/metrics`, `/pricing`, and `/signup`
-- admin routes on their declared mount paths only when they live under `/admin/extensions/*`
+- admin routes on their declared mount paths only when they live under `/extensions/*`
 
-That narrower contract is deliberate. It keeps asset-backed extensions predictable while the richer service-backed runtime is still being completed.
+That narrower contract keeps asset-backed extensions predictable while the richer service-backed runtime surface stays bounded.
 
 ## Manifest Contract
 
@@ -171,7 +171,7 @@ Instance-admin rule:
 
 - session auth required
 - workspace membership and RBAC enforced by core
-- mounted under `/admin/extensions/*` in the current runtime
+- mounted under `/extensions/*`
 - extension nav registration required
 - workspace-scoped pages should still be reachable from instance-admin
   navigation without a live workspace session
@@ -275,10 +275,10 @@ Milestone 1 should standardize on these rules:
 - first-party-only aliases are allowed where compatibility matters, such as analytics scripts or Sentry-compatible endpoints
 - every endpoint declaration must be visible to the CLI, admin diagnostics, and security review flow
 
-Implemented today:
+Implemented:
 
 - bundle extensions can mount asset-backed public pages and assets from stored extension assets
-- bundle extensions can mount asset-backed admin pages under `/admin/extensions/*`
+- bundle extensions can mount asset-backed admin pages under `/extensions/*`
 - route resolution is workspace-aware for admin pages and instance-wide for public pages
 - active public path collisions are rejected across workspaces
 - active admin path collisions are rejected within a workspace
