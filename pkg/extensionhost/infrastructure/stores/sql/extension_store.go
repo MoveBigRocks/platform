@@ -2,6 +2,8 @@ package sql
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
@@ -206,6 +208,30 @@ func (s *ExtensionStore) GetExtensionBundle(ctx context.Context, extensionID str
 	return payload, nil
 }
 
+func (s *ExtensionStore) UpdateExtensionBundle(ctx context.Context, extensionID string, payload []byte) error {
+	payload = cloneBundlePayload(payload)
+	query := `UPDATE core_platform.installed_extensions SET
+		bundle_sha256 = ?, bundle_size = ?, bundle_payload = ?, updated_at = ?
+		WHERE id = ? AND deleted_at IS NULL`
+	result, err := s.db.Get(ctx).ExecContext(
+		ctx,
+		query,
+		checksumBundlePayload(payload),
+		int64(len(payload)),
+		payload,
+		time.Now(),
+		extensionID,
+	)
+	if err != nil {
+		return TranslateSqlxError(err, "installed_extensions")
+	}
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr == nil && rows == 0 {
+		return shared.ErrNotFound
+	}
+	return nil
+}
+
 func (s *ExtensionStore) DeleteInstalledExtension(ctx context.Context, extensionID string) error {
 	now := time.Now()
 	query := `UPDATE core_platform.installed_extensions SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`
@@ -395,6 +421,11 @@ func cloneBundlePayload(payload []byte) []byte {
 	cloned := make([]byte, len(payload))
 	copy(cloned, payload)
 	return cloned
+}
+
+func checksumBundlePayload(payload []byte) string {
+	sum := sha256.Sum256(payload)
+	return hex.EncodeToString(sum[:])
 }
 
 func nullableStringPtr(value string) *string {

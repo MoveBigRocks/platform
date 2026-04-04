@@ -397,6 +397,11 @@ Current model:
 - service-backed runtime deployment now derives from generated desired-state
   runtime manifests instead of a separate hand-maintained file
 - deploy and verify archive reconciliation artifacts and fail closed on drift
+- schema-backed extension upgrades now prefer the verified bundle supplied by
+  the current reconcile/apply operation and repair unreadable stored bundle
+  payloads before running migrations
+- valid stored bundle mismatches still fail closed through migration checksum
+  drift detection instead of being silently overwritten
 
 The control-plane record for that implementation lives in
 [Extension Desired-State Reconciliation](./EXTENSION_DESIRED_STATE_RECONCILIATION_PLAN.md).

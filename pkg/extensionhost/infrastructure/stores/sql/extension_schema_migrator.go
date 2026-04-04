@@ -49,11 +49,7 @@ func (m *ExtensionSchemaMigrator) EnsureInstalledExtensionSchema(ctx context.Con
 		return err
 	}
 
-	bundlePayload, err := m.extensions.GetExtensionBundle(ctx, extension.ID)
-	if err != nil {
-		return err
-	}
-	migrations, err := decodeExtensionSchemaMigrations(bundlePayload)
+	migrations, err := m.loadExtensionSchemaMigrations(ctx, extension)
 	if err != nil {
 		return err
 	}
@@ -149,6 +145,50 @@ func (m *ExtensionSchemaMigrator) EnsureInstalledExtensionSchema(ctx context.Con
 	return nil
 }
 
+func (m *ExtensionSchemaMigrator) loadExtensionSchemaMigrations(ctx context.Context, extension *platformdomain.InstalledExtension) ([]sqlMigration, error) {
+	if extension == nil {
+		return nil, fmt.Errorf("extension is required")
+	}
+
+	providedPayload := cloneBundlePayload(extension.BundlePayload)
+	var (
+		providedMigrations []sqlMigration
+		providedErr        error
+	)
+	if len(providedPayload) > 0 {
+		providedMigrations, providedErr = decodeExtensionSchemaMigrations(providedPayload)
+		if providedErr != nil {
+			providedErr = fmt.Errorf("decode provided extension bundle: %w", providedErr)
+		}
+	}
+
+	return m.loadStoredExtensionSchemaMigrations(ctx, extension.ID, providedPayload, providedMigrations, providedErr)
+}
+
+func (m *ExtensionSchemaMigrator) loadStoredExtensionSchemaMigrations(ctx context.Context, extensionID string, providedPayload []byte, providedMigrations []sqlMigration, providedErr error) ([]sqlMigration, error) {
+	bundlePayload, err := m.extensions.GetExtensionBundle(ctx, extensionID)
+	if err != nil {
+		if providedErr != nil {
+			return nil, fmt.Errorf("%v; load stored extension bundle: %w", providedErr, err)
+		}
+		return nil, err
+	}
+	migrations, err := decodeExtensionSchemaMigrations(bundlePayload)
+	if err != nil {
+		if len(providedMigrations) > 0 {
+			if err := m.extensions.UpdateExtensionBundle(ctx, extensionID, providedPayload); err != nil {
+				return nil, fmt.Errorf("repair stored extension bundle: %w", err)
+			}
+			return providedMigrations, nil
+		}
+		if providedErr != nil {
+			return nil, fmt.Errorf("%v; decode stored extension bundle: %w", providedErr, err)
+		}
+		return nil, fmt.Errorf("decode stored extension bundle: %w", err)
+	}
+	return migrations, nil
+}
+
 func (m *ExtensionSchemaMigrator) acquirePackageLock(ctx context.Context, packageKey string) error {
 	_, err := m.db.Get(ctx).ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, packageKey)
 	if err != nil {
@@ -194,7 +234,7 @@ func decodeExtensionSchemaMigrations(bundlePayload []byte) ([]sqlMigration, erro
 		} `json:"migrations"`
 	}
 	if err := json.Unmarshal(bundlePayload, &bundle); err != nil {
-		return nil, fmt.Errorf("decode stored extension bundle: %w", err)
+		return nil, fmt.Errorf("decode extension bundle payload: %w", err)
 	}
 
 	migrations := make([]sqlMigration, 0, len(bundle.Migrations))
