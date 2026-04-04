@@ -78,7 +78,6 @@ const (
 )
 
 const (
-	ExtensionRuntimeProtocolInProcessHTTP  = "in_process_http"
 	ExtensionRuntimeProtocolUnixSocketHTTP = "unix_socket_http"
 )
 
@@ -518,7 +517,6 @@ func (m *ExtensionManifest) Validate() error {
 			problems = append(problems, "runtime.protocol is required for service-backed extensions")
 		}
 		if m.Runtime.Protocol != "" &&
-			m.Runtime.Protocol != ExtensionRuntimeProtocolInProcessHTTP &&
 			m.Runtime.Protocol != ExtensionRuntimeProtocolUnixSocketHTTP {
 			problems = append(problems, fmt.Sprintf("runtime.protocol %q is not supported", m.Runtime.Protocol))
 		}
@@ -1393,7 +1391,7 @@ func normalizeRuntimeClass(value ExtensionRuntimeClass) ExtensionRuntimeClass {
 func normalizeRuntimeProtocol(value string) string {
 	value = strings.TrimSpace(strings.ToLower(value))
 	switch value {
-	case "", ExtensionRuntimeProtocolInProcessHTTP, ExtensionRuntimeProtocolUnixSocketHTTP:
+	case "", ExtensionRuntimeProtocolUnixSocketHTTP:
 		return value
 	default:
 		return value

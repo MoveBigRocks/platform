@@ -15,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/movebigrocks/extension-sdk/runtimeproto"
+	"github.com/movebigrocks/platform/internal/extensionhost/hostapi"
 
 	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 )
@@ -49,13 +50,7 @@ func (r *Registry) DispatchEndpoint(extension *platformdomain.InstalledExtension
 	case platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP:
 		return r.proxyHTTPToUnixSocket(extension, endpoint, ctx)
 	default:
-		if ctx == nil {
-			return fmt.Errorf("request context is required")
-		}
-		if !r.Dispatch(endpoint.ServiceTarget, ctx) {
-			return fmt.Errorf("service target %s is not registered", endpoint.ServiceTarget)
-		}
-		return nil
+		return fmt.Errorf("runtime protocol %s is not supported", strings.TrimSpace(extension.Manifest.Runtime.Protocol))
 	}
 }
 
@@ -85,7 +80,7 @@ func (r *Registry) ProbeEndpoint(extension *platformdomain.InstalledExtension, e
 		}
 		return ProbeResult{StatusCode: resp.StatusCode, Body: body}, nil
 	default:
-		return r.Probe(endpoint.ServiceTarget, http.MethodGet, endpoint.MountPath, nil)
+		return ProbeResult{}, fmt.Errorf("runtime protocol %s is not supported", strings.TrimSpace(extension.Manifest.Runtime.Protocol))
 	}
 }
 
@@ -109,7 +104,7 @@ func (r *Registry) ConsumeExtension(extension *platformdomain.InstalledExtension
 		}
 		return nil
 	default:
-		return r.Consume(consumer.ServiceTarget, ctx, data)
+		return fmt.Errorf("runtime protocol %s is not supported", strings.TrimSpace(extension.Manifest.Runtime.Protocol))
 	}
 }
 
@@ -133,7 +128,7 @@ func (r *Registry) RunExtensionJob(extension *platformdomain.InstalledExtension,
 		}
 		return nil
 	default:
-		return r.RunJob(job.ServiceTarget, ctx)
+		return fmt.Errorf("runtime protocol %s is not supported", strings.TrimSpace(extension.Manifest.Runtime.Protocol))
 	}
 }
 
@@ -152,7 +147,7 @@ func (r *Registry) proxyHTTPToUnixSocket(extension *platformdomain.InstalledExte
 	}
 
 	headers := cloneHeaders(ctx.Request.Header)
-	applyForwardedHeaders(headers, extension, ctx)
+	applyForwardedHeaders(headers, extension, ctx, r.hostTokenSecret)
 
 	resp, err := r.doUnixSocketRequest(
 		ctx.Request.Context(),
@@ -208,6 +203,8 @@ func (r *Registry) doUnixSocketRequest(
 	}
 	req.Header = cloneHeaders(headers)
 	applyRuntimeIdentityHeaders(req.Header, extension)
+	applyRuntimeHostAuthHeader(req.Header, extension, r.hostTokenSecret)
+	applyRuntimeBaseURLHeaders(req.Header, r.publicBaseURL, r.adminBaseURL, r.apiBaseURL)
 
 	client := &http.Client{
 		Transport: &http.Transport{
@@ -245,10 +242,51 @@ func applyRuntimeIdentityHeaders(headers http.Header, extension *platformdomain.
 	}
 }
 
-func applyForwardedHeaders(headers http.Header, extension *platformdomain.InstalledExtension, ctx *gin.Context) {
+func applyRuntimeHostAuthHeader(headers http.Header, extension *platformdomain.InstalledExtension, secret string) {
+	if headers == nil || extension == nil || strings.TrimSpace(secret) == "" {
+		return
+	}
+	token, err := hostapi.IssueToken(secret, extension, hostapi.DefaultTokenTTL)
+	if err != nil {
+		return
+	}
+	headers.Set(runtimeproto.HeaderHostToken, token)
+}
+
+func applyRuntimeBaseURLHeaders(headers http.Header, publicBaseURL, adminBaseURL, apiBaseURL string) {
+	if headers == nil {
+		return
+	}
+	if value := strings.TrimSpace(publicBaseURL); value != "" {
+		headers.Set(runtimeproto.HeaderPublicBaseURL, value)
+	}
+	if value := strings.TrimSpace(adminBaseURL); value != "" {
+		headers.Set(runtimeproto.HeaderAdminBaseURL, value)
+	}
+	if value := strings.TrimSpace(apiBaseURL); value != "" {
+		headers.Set(runtimeproto.HeaderAPIBaseURL, value)
+	}
+}
+
+func applyForwardedHeaders(headers http.Header, extension *platformdomain.InstalledExtension, ctx *gin.Context, hostTokenSecret string) {
 	applyRuntimeIdentityHeaders(headers, extension)
+	applyRuntimeHostAuthHeader(headers, extension, hostTokenSecret)
 	if ctx == nil {
 		return
+	}
+	if ctx.Request != nil {
+		if host := strings.TrimSpace(ctx.Request.Host); host != "" {
+			headers.Set("X-Forwarded-Host", host)
+		}
+		proto := strings.TrimSpace(ctx.GetHeader("X-Forwarded-Proto"))
+		if proto == "" {
+			if ctx.Request.TLS != nil {
+				proto = "https"
+			} else {
+				proto = "http"
+			}
+		}
+		headers.Set("X-Forwarded-Proto", proto)
 	}
 	if workspaceID := strings.TrimSpace(ctx.GetString("workspace_id")); workspaceID != "" {
 		headers.Set(runtimeproto.HeaderWorkspaceID, workspaceID)

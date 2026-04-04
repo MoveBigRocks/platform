@@ -29,7 +29,9 @@ func TestExtensionManifestJSONRoundTrip(t *testing.T) {
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: ExtensionRuntimeSpec{
-			Protocol: ExtensionRuntimeProtocolInProcessHTTP,
+			Protocol:     ExtensionRuntimeProtocolUnixSocketHTTP,
+			OCIReference: "ghcr.io/test/web-analytics-runtime:test",
+			Digest:       "sha256:test",
 		},
 		Permissions:     []string{"case:read"},
 		Queues:          []ExtensionQueueSeed{{Slug: "jobs", Name: "Jobs"}},

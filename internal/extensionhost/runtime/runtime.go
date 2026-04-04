@@ -222,7 +222,8 @@ func (r *Runtime) PrepareInstall(_ context.Context, manifest platformdomain.Exte
 		if endpoint.Class == platformdomain.ExtensionEndpointClassPublicPage || endpoint.Class == platformdomain.ExtensionEndpointClassPublicAsset {
 			return fmt.Errorf("privileged extensions may not declare %s endpoints", endpoint.Class)
 		}
-		if endpoint.Auth == platformdomain.ExtensionEndpointAuthPublic {
+		if endpoint.Auth == platformdomain.ExtensionEndpointAuthPublic &&
+			endpoint.Class != platformdomain.ExtensionEndpointClassWebhook {
 			return fmt.Errorf("privileged endpoint %s may not use public auth", endpoint.Name)
 		}
 		serviceTarget := strings.TrimSpace(endpoint.ServiceTarget)

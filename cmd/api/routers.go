@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/movebigrocks/extension-sdk/runtimehost"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -132,6 +133,10 @@ func createAdminRouter(
 		c.Automation.Rule,
 		c.Automation.Form,
 	)
+	hostAPIHandler := platformhandlers.NewExtensionHostAPIHandler(
+		cfg,
+		platformservices.NewExtensionIdentityHostService(c.Platform.Extension, c.Platform.Session, c.Platform.User),
+	)
 	adminFeatureMiddleware := adminManagementHandler.FeatureContextMiddleware()
 	attachmentUploadHandler := servicehandlers.NewAttachmentUploadHandler(c.Service.Attachment, c.Store.Cases())
 	adminServiceTargets := serviceTargets
@@ -178,6 +183,7 @@ func createAdminRouter(
 	// Auth API endpoints (public)
 	router.POST("/auth/magic-link", authHandler.HandleMagicLinkRequest)
 	router.POST("/auth/logout", authHandler.Logout)
+	router.POST(runtimehost.IdentitySessionPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.IssueIdentitySession)
 
 	// Protected auth routes
 	authProtected := router.Group("/auth")
@@ -426,6 +432,12 @@ func createAPIRouter(
 	if serviceTargets == nil {
 		serviceTargets = extensionruntime.NewRegistry(c)
 	}
+
+	hostAPIHandler := platformhandlers.NewExtensionHostAPIHandler(
+		cfg,
+		platformservices.NewExtensionIdentityHostService(c.Platform.Extension, c.Platform.Session, c.Platform.User),
+	)
+	router.POST(runtimehost.IdentitySessionPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.IssueIdentitySession)
 
 	router.NoRoute(func(ctx *gin.Context) {
 		serveResolvedExtensionServiceRoute(ctx, c.Platform.Extension, serviceTargets, cfg, principalAuth)

@@ -151,8 +151,8 @@ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9Gz0M=
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
-github.com/movebigrocks/extension-sdk v0.8.24-0.20260330122540-01f8f3de213d h1:zyiU7AU0PMaylJVEXDFWwaB6ENOnw1hsuOuCRCTF9F4=
-github.com/movebigrocks/extension-sdk v0.8.24-0.20260330122540-01f8f3de213d/go.mod h1:xaXznYw8drQt/SaWbR8LOJDLTE2W6Dw1WAFg3xhCDnQ=
+github.com/movebigrocks/extension-sdk v0.8.24-0.20260404150333-eb4d14652e85 h1:RW0Zun8XsEXXQRE97nQEJ3TQopt37zy8rQTlr/ViA08=
+github.com/movebigrocks/extension-sdk v0.8.24-0.20260404150333-eb4d14652e85/go.mod h1:xaXznYw8drQt/SaWbR8LOJDLTE2W6Dw1WAFg3xhCDnQ=
 github.com/mr-tron/base58 v1.2.0 h1:T/HDJBh4ZCPbU39/+c3rRvE0uKBQlU27+QI8LJ4t64o=
 github.com/mr-tron/base58 v1.2.0/go.mod h1:BinMc/sQntlIE1frQmRFPUoPA1Zkr8VRgBdjWI2mNwc=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=

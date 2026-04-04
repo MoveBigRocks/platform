@@ -35,8 +35,6 @@ first-party sources, because part of the Milestone 1 contract is that
 - The proof script exports `MBR_REQUIRE_WORKSPACE_REFS=true`, so first-party
   tests fail closed when those canonical sibling repos are missing instead of
   silently skipping.
-- The proof script validates `enterprise-access` from the same canonical
-  `extensions` checkout as the rest of the first-party extension set.
 - If the workspace does not already provide a top-level `go.work`, or if the
   available `go.work` does not actually include the `platform` checkout being
   proven, the proof script bootstraps a temporary one inside the proof bundle

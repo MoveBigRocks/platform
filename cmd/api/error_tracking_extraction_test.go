@@ -50,6 +50,7 @@ func TestCreateAPIRouter_ServesErrorTrackingEnvelopeFromInstalledExtension(t *te
 	require.NoError(t, c.Store.Workspaces().CreateWorkspace(ctx, workspace))
 
 	extensionService := platformservices.NewExtensionService(c.Store.Extensions(), c.Store.Workspaces(), c.Store.Queues(), c.Store.Forms(), c.Store.Rules(), c.Store)
+	runtimeDir := newShortRuntimeDir(t)
 	installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:  workspace.ID,
 		LicenseToken: "lic_error_tracking",
@@ -62,50 +63,85 @@ func TestCreateAPIRouter_ServesErrorTrackingEnvelopeFromInstalledExtension(t *te
 			Kind:          platformdomain.ExtensionKindOperational,
 			Scope:         platformdomain.ExtensionScopeWorkspace,
 			Risk:          platformdomain.ExtensionRiskStandard,
+			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
+			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
+			Schema: platformdomain.ExtensionSchemaManifest{
+				Name:            "ext_demandops_error_tracking",
+				PackageKey:      "demandops/error-tracking",
+				TargetVersion:   "000001",
+				MigrationEngine: "postgres_sql",
+			},
+			Runtime: platformdomain.ExtensionRuntimeSpec{
+				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				OCIReference: "ghcr.io/test/error-tracking-runtime:test",
+				Digest:       "sha256:test",
+			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
-					Name:          "sentry-envelope",
-					Class:         platformdomain.ExtensionEndpointClassPublicIngest,
-					MountPath:     "/api/envelope",
-					Methods:       []string{"POST"},
-					Auth:          platformdomain.ExtensionEndpointAuthPublic,
-					ServiceTarget: "error-tracking.ingest.envelope",
+					Name:             "sentry-envelope",
+					Class:            platformdomain.ExtensionEndpointClassPublicIngest,
+					MountPath:        "/api/envelope",
+					Methods:          []string{"POST"},
+					Auth:             platformdomain.ExtensionEndpointAuthPublic,
+					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingNone,
+					ServiceTarget:    "error-tracking.ingest.envelope",
 				},
 				{
-					Name:          "sentry-envelope-project",
-					Class:         platformdomain.ExtensionEndpointClassPublicIngest,
-					MountPath:     "/api/:projectNumber/envelope",
-					Methods:       []string{"POST"},
-					Auth:          platformdomain.ExtensionEndpointAuthPublic,
-					ServiceTarget: "error-tracking.ingest.envelope.project",
+					Name:             "sentry-envelope-project",
+					Class:            platformdomain.ExtensionEndpointClassPublicIngest,
+					MountPath:        "/api/:projectNumber/envelope",
+					Methods:          []string{"POST"},
+					Auth:             platformdomain.ExtensionEndpointAuthPublic,
+					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingNone,
+					ServiceTarget:    "error-tracking.ingest.envelope.project",
 				},
 				{
-					Name:          "sentry-envelope-v1",
-					Class:         platformdomain.ExtensionEndpointClassPublicIngest,
-					MountPath:     "/1/envelope",
-					Methods:       []string{"POST"},
-					Auth:          platformdomain.ExtensionEndpointAuthPublic,
-					ServiceTarget: "error-tracking.ingest.envelope",
+					Name:             "sentry-envelope-v1",
+					Class:            platformdomain.ExtensionEndpointClassPublicIngest,
+					MountPath:        "/1/envelope",
+					Methods:          []string{"POST"},
+					Auth:             platformdomain.ExtensionEndpointAuthPublic,
+					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingNone,
+					ServiceTarget:    "error-tracking.ingest.envelope",
+				},
+				{
+					Name:             "runtime-health",
+					Class:            platformdomain.ExtensionEndpointClassHealth,
+					MountPath:        "/extensions/error-tracking/health",
+					Methods:          []string{"GET"},
+					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
+					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
+					ServiceTarget:    "error-tracking.runtime.health",
 				},
 			},
 		},
+		Migrations: serviceBackedTestMigrations(),
 	})
 	require.NoError(t, err)
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
-	registry := &extensionruntime.Registry{}
 	var dispatchedTarget string
-	registry.Register("error-tracking.ingest.envelope", func(ctx *gin.Context) {
+	engine := gin.New()
+	engine.POST("/api/envelope", func(ctx *gin.Context) {
 		dispatchedTarget = "error-tracking.ingest.envelope"
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid sentry auth header"})
 	})
-	registry.Register("error-tracking.ingest.envelope.project", func(ctx *gin.Context) {
+	engine.POST("/api/:projectNumber/envelope", func(ctx *gin.Context) {
 		dispatchedTarget = "error-tracking.ingest.envelope.project"
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid sentry auth header"})
 	})
+	engine.POST("/1/envelope", func(ctx *gin.Context) {
+		dispatchedTarget = "error-tracking.ingest.envelope"
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid sentry auth header"})
+	})
+	engine.GET("/extensions/error-tracking/health", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
+	stop := startUnixSocketTestServer(t, runtimeDir, installed.Manifest.PackageKey(), engine)
+	defer stop()
 
-	router := createAPIRouter(cfg, c, nil, nil, nil, registry)
+	router := createAPIRouter(cfg, c, nil, nil, nil, extensionruntime.NewRegistryForRuntimeDir(runtimeDir))
 
 	testCases := []struct {
 		name           string

@@ -22,7 +22,9 @@ func TestNewExtensionPackageRegistration(t *testing.T) {
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: ExtensionRuntimeSpec{
-			Protocol: ExtensionRuntimeProtocolInProcessHTTP,
+			Protocol:     ExtensionRuntimeProtocolUnixSocketHTTP,
+			OCIReference: "ghcr.io/test/web-analytics-runtime:test",
+			Digest:       "sha256:test",
 		},
 		Endpoints: []ExtensionEndpoint{
 			{
@@ -175,7 +177,9 @@ func validServiceBackedOwnedSchemaManifest() ExtensionManifest {
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: ExtensionRuntimeSpec{
-			Protocol: ExtensionRuntimeProtocolInProcessHTTP,
+			Protocol:     ExtensionRuntimeProtocolUnixSocketHTTP,
+			OCIReference: "ghcr.io/test/web-analytics-runtime:test",
+			Digest:       "sha256:test",
 		},
 		Endpoints: []ExtensionEndpoint{
 			{

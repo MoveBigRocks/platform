@@ -523,16 +523,19 @@ func TestExtensionService_AllowsFirstPartyPrivilegedWorkspaceScopedExtensions(t 
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
+				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				OCIReference: "ghcr.io/test/enterprise-access-runtime:test",
+				Digest:       "sha256:test",
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
-					Name:          "health",
-					Class:         platformdomain.ExtensionEndpointClassHealth,
-					MountPath:     "/extensions/enterprise-access/health",
-					Methods:       []string{"GET"},
-					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
-					ServiceTarget: "enterprise-access.runtime.health",
+					Name:             "health",
+					Class:            platformdomain.ExtensionEndpointClassHealth,
+					MountPath:        "/extensions/enterprise-access/health",
+					Methods:          []string{"GET"},
+					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
+					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
+					ServiceTarget:    "enterprise-access.runtime.health",
 				},
 			},
 		},
@@ -573,16 +576,19 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
+				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				OCIReference: "ghcr.io/test/enterprise-access-runtime:test",
+				Digest:       "sha256:test",
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
-					Name:          "health",
-					Class:         platformdomain.ExtensionEndpointClassHealth,
-					MountPath:     "/extensions/enterprise-access/health",
-					Methods:       []string{"GET"},
-					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
-					ServiceTarget: "enterprise-access.runtime.health",
+					Name:             "health",
+					Class:            platformdomain.ExtensionEndpointClassHealth,
+					MountPath:        "/extensions/enterprise-access/health",
+					Methods:          []string{"GET"},
+					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
+					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
+					ServiceTarget:    "enterprise-access.runtime.health",
 				},
 			},
 		},
@@ -613,16 +619,19 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
+				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				OCIReference: "ghcr.io/test/enterprise-access-runtime:test",
+				Digest:       "sha256:test",
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
-					Name:          "health",
-					Class:         platformdomain.ExtensionEndpointClassHealth,
-					MountPath:     "/extensions/enterprise-access-alt/health",
-					Methods:       []string{"GET"},
-					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
-					ServiceTarget: "enterprise-access.runtime.health",
+					Name:             "health",
+					Class:            platformdomain.ExtensionEndpointClassHealth,
+					MountPath:        "/extensions/enterprise-access-alt/health",
+					Methods:          []string{"GET"},
+					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
+					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
+					ServiceTarget:    "enterprise-access.runtime.health",
 				},
 			},
 		},
@@ -651,7 +660,9 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
+				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				OCIReference: "ghcr.io/test/slack-alerts-runtime:test",
+				Digest:       "sha256:test",
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
@@ -689,7 +700,9 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
+				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				OCIReference: "ghcr.io/test/slack-alerts-runtime:test",
+				Digest:       "sha256:test",
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{

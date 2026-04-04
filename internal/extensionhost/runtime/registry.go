@@ -19,6 +19,10 @@ type Registry struct {
 	scheduledJobHandlers  map[string]func(context.Context) error
 	closeFns              []func() error
 	runtimeDir            string
+	hostTokenSecret       string
+	publicBaseURL         string
+	adminBaseURL          string
+	apiBaseURL            string
 }
 
 type ProbeResult struct {
@@ -34,11 +38,22 @@ func NewRegistry(c *container.Container) *Registry {
 	}
 	if c != nil && c.Config != nil {
 		registry.runtimeDir = c.Config.ExtensionRuntimeDir
+		registry.hostTokenSecret = c.Config.Auth.JWTSecret
+		registry.publicBaseURL = c.Config.Server.BaseURL
+		registry.adminBaseURL = c.Config.Server.AdminBaseURL
+		registry.apiBaseURL = c.Config.Server.APIBaseURL
 	}
 
-	registerEnterpriseAccessTargets(registry, c)
-
 	return registry
+}
+
+func NewRegistryForRuntimeDir(runtimeDir string) *Registry {
+	return &Registry{
+		httpHandlers:          make(map[string]gin.HandlerFunc),
+		eventConsumerHandlers: make(map[string]func(context.Context, []byte) error),
+		scheduledJobHandlers:  make(map[string]func(context.Context) error),
+		runtimeDir:            strings.TrimSpace(runtimeDir),
+	}
 }
 
 func (r *Registry) Close() error {
@@ -106,8 +121,6 @@ func (r *Registry) SupportsServiceTarget(protocol, serviceTarget string) bool {
 	switch strings.TrimSpace(protocol) {
 	case platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP:
 		return serviceTarget != ""
-	case "", platformdomain.ExtensionRuntimeProtocolInProcessHTTP:
-		return r.Has(serviceTarget)
 	default:
 		return false
 	}

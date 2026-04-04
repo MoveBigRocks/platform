@@ -339,13 +339,14 @@ Use a dedicated preview workspace on the live instance for this preview pass.
 Current repo baseline:
 
 - local development can install from a bundle file, an extension source directory with `manifest.json` plus `assets/`, or an HTTPS bundle URL
-- all first-party extension source lives in `MoveBigRocks/extensions`, not in the public core repo
+- public first-party extension source lives in `MoveBigRocks/extensions`, not in the public core repo
+- private first-party extension source lives in `MoveBigRocks/private-extensions`
 - the intended free public first-party OCI refs are:
   - `ghcr.io/movebigrocks/mbr-ext-ats:<version>`
   - `ghcr.io/movebigrocks/mbr-ext-error-tracking:<version>`
   - `ghcr.io/movebigrocks/mbr-ext-web-analytics:<version>`
 - those public signed bundles can install without an instance-bound token
-- `enterprise-access` source lives in the same first-party extensions repo and installs as an instance-scoped extension
+- `enterprise-access` installs as an instance-scoped private first-party extension
 
 ## Step 7: Build a Custom Extension Only If You Need One
 

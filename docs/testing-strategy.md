@@ -215,8 +215,6 @@ Current reality:
   (`extensions` and `extension-sdk`) before running proof, and proof mode sets
   `MBR_REQUIRE_WORKSPACE_REFS=true` so canonical-source tests fail closed
   instead of silently skipping
-- `enterprise-access` now validates from the same canonical `extensions`
-  checkout as the rest of the first-party extension set
 - those sibling repos are pinned by
   [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
   and verified by the proof script before milestone-critical tests run

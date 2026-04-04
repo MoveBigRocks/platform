@@ -72,8 +72,8 @@ Use this split consistently:
   Desired state for one live installation.
 - **Private or public extension repo**
   Source code for a custom extension.
-- **First-party extensions repo**
-  Source code for official first-party extensions.
+- **First-party extension repos**
+  Source code for official first-party extensions, whether public or private.
 
 Do not put customer extension source code into the private instance repo unless it is a tiny local-only override.
 

@@ -140,7 +140,9 @@ func TestExtensionManifestValidateServiceBackedRequirements(t *testing.T) {
 			MigrationEngine: "POSTGRES_SQL",
 		},
 		Runtime: ExtensionRuntimeSpec{
-			Protocol: ExtensionRuntimeProtocolInProcessHTTP,
+			Protocol:     ExtensionRuntimeProtocolUnixSocketHTTP,
+			OCIReference: "ghcr.io/test/web-analytics-runtime:test",
+			Digest:       "sha256:test",
 		},
 		Endpoints: []ExtensionEndpoint{
 			{
@@ -198,7 +200,9 @@ func TestExtensionManifestValidateRejectsServiceBackedPackageKeyMismatch(t *test
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: ExtensionRuntimeSpec{
-			Protocol: ExtensionRuntimeProtocolInProcessHTTP,
+			Protocol:     ExtensionRuntimeProtocolUnixSocketHTTP,
+			OCIReference: "ghcr.io/test/web-analytics-runtime:test",
+			Digest:       "sha256:test",
 		},
 	}
 
@@ -227,7 +231,9 @@ func TestExtensionManifestValidateRejectsServiceBackedManifestWithoutHealthEndpo
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: ExtensionRuntimeSpec{
-			Protocol: ExtensionRuntimeProtocolInProcessHTTP,
+			Protocol:     ExtensionRuntimeProtocolUnixSocketHTTP,
+			OCIReference: "ghcr.io/test/web-analytics-runtime:test",
+			Digest:       "sha256:test",
 		},
 	}
 
@@ -256,7 +262,9 @@ func TestExtensionManifestValidateAcceptsAdminNavigationForAdminPageEndpoints(t 
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: ExtensionRuntimeSpec{
-			Protocol: ExtensionRuntimeProtocolInProcessHTTP,
+			Protocol:     ExtensionRuntimeProtocolUnixSocketHTTP,
+			OCIReference: "ghcr.io/test/web-analytics-runtime:test",
+			Digest:       "sha256:test",
 		},
 		Endpoints: []ExtensionEndpoint{
 			{
@@ -314,7 +322,9 @@ func TestExtensionManifestValidateAcceptsEventConsumersAndScheduledJobs(t *testi
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: ExtensionRuntimeSpec{
-			Protocol: ExtensionRuntimeProtocolInProcessHTTP,
+			Protocol:     ExtensionRuntimeProtocolUnixSocketHTTP,
+			OCIReference: "ghcr.io/test/web-analytics-runtime:test",
+			Digest:       "sha256:test",
 		},
 		Endpoints: []ExtensionEndpoint{
 			{
@@ -372,7 +382,9 @@ func TestExtensionManifestValidateRejectsConsumerWithoutSubscribedEvent(t *testi
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: ExtensionRuntimeSpec{
-			Protocol: ExtensionRuntimeProtocolInProcessHTTP,
+			Protocol:     ExtensionRuntimeProtocolUnixSocketHTTP,
+			OCIReference: "ghcr.io/test/web-analytics-runtime:test",
+			Digest:       "sha256:test",
 		},
 		Endpoints: []ExtensionEndpoint{
 			{
@@ -420,7 +432,9 @@ func TestExtensionManifestValidateRejectsAdminNavigationWithoutAdminPageEndpoint
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: ExtensionRuntimeSpec{
-			Protocol: ExtensionRuntimeProtocolInProcessHTTP,
+			Protocol:     ExtensionRuntimeProtocolUnixSocketHTTP,
+			OCIReference: "ghcr.io/test/web-analytics-runtime:test",
+			Digest:       "sha256:test",
 		},
 		Endpoints: []ExtensionEndpoint{
 			{
