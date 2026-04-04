@@ -56,6 +56,7 @@ jobs:
         run: |
           manifest="docs/evidence/canonical-workspace-refs.json"
           echo "extensions_ref=$(jq -r '.repositories.extensions.ref' "$manifest")" >> "$GITHUB_OUTPUT"
+          echo "private_extensions_ref=$(jq -r '.repositories["private-extensions"].ref' "$manifest")" >> "$GITHUB_OUTPUT"
           echo "extension_sdk_ref=$(jq -r '.repositories["extension-sdk"].ref' "$manifest")" >> "$GITHUB_OUTPUT"
 
       - name: Checkout extensions
@@ -64,6 +65,14 @@ jobs:
           repository: MoveBigRocks/extensions
           path: extensions
           ref: ${{ steps.workspace_refs.outputs.extensions_ref }}
+
+      - name: Checkout private-extensions
+        uses: actions/checkout@v6
+        with:
+          repository: MoveBigRocks/private-extensions
+          path: private-extensions
+          ref: ${{ steps.workspace_refs.outputs.private_extensions_ref }}
+          token: ${{ secrets.PRIVATE_REPO_READ_TOKEN || github.token }}
 
       - name: Checkout extension-sdk
         uses: actions/checkout@v6
@@ -79,6 +88,7 @@ jobs:
           cache-dependency-path: |
             platform/go.sum
             extensions/go.sum
+            private-extensions/go.sum
 
       - name: Run milestone proof script
         working-directory: platform
@@ -87,6 +97,7 @@ jobs:
           MBR_WORKSPACE_ROOT: ${{ github.workspace }}
           MBR_REQUIRE_WORKSPACE_REFS: "true"
           FIRST_PARTY_EXTENSIONS_ROOT: ${{ github.workspace }}/extensions
+          PRIVATE_EXTENSIONS_ROOT: ${{ github.workspace }}/private-extensions
           CANONICAL_WORKSPACE_REFS_MANIFEST: docs/evidence/canonical-workspace-refs.json
           FIRST_PARTY_PUBLICATION_EVIDENCE_MANIFEST: docs/evidence/public-bundle-publication-runs.json
           REQUIRE_PUBLICATION_EVIDENCE: "true"

@@ -5,6 +5,11 @@
       "path": "extensions",
       "ref": "a0aa6945763ad1559834a3639658f31b7fe25ea6"
     },
+    "private-extensions": {
+      "repository": "MoveBigRocks/private-extensions",
+      "path": "private-extensions",
+      "ref": "0903539eb8afaeb95482f7e06c0e559a6e167313"
+    },
     "extension-sdk": {
       "repository": "MoveBigRocks/extension-sdk",
       "path": "extension-sdk",

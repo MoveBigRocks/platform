@@ -53,12 +53,18 @@ type SandboxProvisioner interface {
 }
 
 type SandboxServiceConfig struct {
-	PublicBaseURL    string
-	RuntimeDomain    string
-	ActivationTTL    time.Duration
-	TrialTTL         time.Duration
-	ExtensionTTL     time.Duration
-	VerificationPath string
+	PublicBaseURL       string
+	RuntimeDomain       string
+	ActivationTTL       time.Duration
+	TrialTTL            time.Duration
+	ExtensionTTL        time.Duration
+	VerificationPath    string
+	PublicBundleCatalog []SandboxPublicBundleCatalogEntry
+}
+
+type SandboxPublicBundleCatalogEntry struct {
+	Slug    string
+	Channel string
 }
 
 type SandboxServiceOption func(*SandboxService)
@@ -373,13 +379,7 @@ func (s *SandboxService) ExportSandbox(ctx context.Context, sandboxID, manageTok
 		"export_url":    sandboxActionURL(s.config.PublicBaseURL, sandbox.ID, "export"),
 		"destroy_url":   sandboxManageURL(s.config.PublicBaseURL, sandbox.ID),
 	}
-	bundle.Data["public_bundle_catalog"] = []map[string]any{
-		{"slug": "ats", "channel": "launch"},
-		{"slug": "error-tracking", "channel": "launch"},
-		{"slug": "web-analytics", "channel": "launch"},
-		{"slug": "sales-pipeline", "channel": "beta"},
-		{"slug": "community-feature-requests", "channel": "beta"},
-	}
+	bundle.Data["public_bundle_catalog"] = s.publicBundleCatalogData()
 	bundle.Data["sandbox"] = map[string]any{
 		"id":                     sandbox.ID,
 		"slug":                   sandbox.Slug,
@@ -559,6 +559,26 @@ func sandboxActionURL(baseURL, sandboxID, action string) string {
 		return base
 	}
 	return base + "/" + action
+}
+
+func (s *SandboxService) publicBundleCatalogData() []map[string]any {
+	if len(s.config.PublicBundleCatalog) == 0 {
+		return []map[string]any{}
+	}
+
+	catalog := make([]map[string]any, 0, len(s.config.PublicBundleCatalog))
+	for _, entry := range s.config.PublicBundleCatalog {
+		slug := strings.TrimSpace(entry.Slug)
+		channel := strings.TrimSpace(entry.Channel)
+		if slug == "" || channel == "" {
+			continue
+		}
+		catalog = append(catalog, map[string]any{
+			"slug":    slug,
+			"channel": channel,
+		})
+	}
+	return catalog
 }
 
 func randomIndex(length int) int {

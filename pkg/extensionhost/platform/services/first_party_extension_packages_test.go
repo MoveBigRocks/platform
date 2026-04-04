@@ -321,6 +321,39 @@ func TestExtensionSDKTemplateInstallsAndActivates(t *testing.T) {
 	assert.Equal(t, "/extensions/sample-ops-extension", nav[0].Href)
 }
 
+func TestPrivateEnterpriseAccessPackInstallsAsInstanceScopedPrivilegedPack(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	manifest, assets, migrations := loadTestExtensionPackage(t, "enterprise-access")
+	service := newTestExtensionService(t, store)
+
+	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
+		InstalledByID: "user_123",
+		LicenseToken:  "lic_enterprise_access",
+		Manifest:      manifest,
+		Assets:        assets,
+		Migrations:    migrations,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "enterprise-access", installed.Slug)
+	assert.Equal(t, platformdomain.ExtensionScopeInstance, installed.Manifest.Scope)
+	assert.Equal(t, platformdomain.ExtensionKindIdentity, installed.Manifest.Kind)
+	assert.Equal(t, platformdomain.ExtensionRiskPrivileged, installed.Manifest.Risk)
+
+	activated, err := service.ActivateExtension(ctx, installed.ID)
+	require.NoError(t, err)
+	assert.Equal(t, platformdomain.ExtensionStatusActive, activated.Status)
+
+	nav, err := service.ListInstanceAdminNavigation(ctx)
+	require.NoError(t, err)
+	require.Len(t, nav, 1)
+	assert.Equal(t, "Identity", nav[0].Section)
+	assert.Equal(t, "Enterprise Access", nav[0].Title)
+	assert.Equal(t, "/extensions/enterprise-access", nav[0].Href)
+}
+
 func loadTestExtensionBundle(t *testing.T, slug string) (platformdomain.ExtensionManifest, []platformservices.ExtensionAssetInput) {
 	t.Helper()
 
@@ -430,6 +463,8 @@ func canonicalExtensionSourceDir(t *testing.T, slug string) string {
 	switch slug {
 	case "ats", "community-feature-requests", "error-tracking", "sales-pipeline", "web-analytics":
 		rel = filepath.Join("extensions", slug)
+	case "enterprise-access":
+		rel = filepath.Join("private-extensions", slug)
 	case "sample-ops-extension":
 		rel = "extension-sdk"
 	default:

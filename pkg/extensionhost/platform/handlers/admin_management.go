@@ -50,9 +50,7 @@ func NewAdminManagementHandler(
 
 func (h *AdminManagementHandler) FeatureContextMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		workspaceID, _, ok := currentWorkspaceScope(c)
-		c.Set(adminFeatureErrorTrackingKey, h.isSurfaceEnabled(c.Request.Context(), workspaceID, ok, "error-tracking"))
-		c.Set(adminFeatureAnalyticsKey, h.isSurfaceEnabled(c.Request.Context(), workspaceID, ok, "web-analytics"))
+		workspaceID, _, _ := currentWorkspaceScope(c)
 		c.Set(adminExtensionNavKey, h.extensionNavigation(c.Request.Context(), workspaceID))
 		c.Set(adminExtensionWidgetsKey, h.extensionWidgets(c.Request.Context(), workspaceID))
 		c.Next()

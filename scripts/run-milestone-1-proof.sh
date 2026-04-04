@@ -7,6 +7,7 @@ OUT_DIR="$ROOT_DIR/dist/milestone-proof"
 VERSION=""
 WORKSPACE_ROOT="${MBR_WORKSPACE_ROOT:-${MOVEBIGROCKS_WORKSPACE_ROOT:-$(cd "$ROOT_DIR/.." && pwd)}}"
 FIRST_PARTY_EXTENSIONS_ROOT="${FIRST_PARTY_EXTENSIONS_ROOT:-$WORKSPACE_ROOT/extensions}"
+PRIVATE_EXTENSIONS_ROOT="${PRIVATE_EXTENSIONS_ROOT:-$WORKSPACE_ROOT/private-extensions}"
 EXTENSION_SDK_ROOT="${EXTENSION_SDK_ROOT:-$WORKSPACE_ROOT/extension-sdk}"
 
 usage() {
@@ -209,6 +210,9 @@ ensure_go_workspace() {
   local modules=("$ROOT_DIR")
   if [[ -f "$FIRST_PARTY_EXTENSIONS_ROOT/go.mod" ]]; then
     modules+=("$FIRST_PARTY_EXTENSIONS_ROOT")
+  fi
+  if [[ -f "$PRIVATE_EXTENSIONS_ROOT/go.mod" ]]; then
+    modules+=("$PRIVATE_EXTENSIONS_ROOT")
   fi
   if [[ -f "$EXTENSION_SDK_ROOT/go.mod" ]]; then
     modules+=("$EXTENSION_SDK_ROOT")

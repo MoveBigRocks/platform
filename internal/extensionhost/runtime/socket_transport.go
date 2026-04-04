@@ -314,12 +314,6 @@ func applyForwardedHeaders(headers http.Header, extension *platformdomain.Instal
 	if raw, ok := marshalContextValue(ctx, "admin_extension_widgets"); ok {
 		headers.Set(runtimeproto.HeaderAdminWidgetsJSON, raw)
 	}
-	if show, ok := ctx.Get("admin_feature_analytics"); ok {
-		headers.Set(runtimeproto.HeaderShowAnalytics, fmt.Sprint(show))
-	}
-	if show, ok := ctx.Get("admin_feature_error_tracking"); ok {
-		headers.Set(runtimeproto.HeaderShowErrorTracking, fmt.Sprint(show))
-	}
 }
 
 func marshalContextValue(ctx *gin.Context, key string) (string, bool) {

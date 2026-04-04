@@ -192,11 +192,11 @@ func TestRunExtensionsWidgetsInstanceJSON(t *testing.T) {
 				"instanceExtensionDashboardWidgets": []map[string]any{
 					{
 						"extensionID":   "ext_inst_1",
-						"extensionSlug": "enterprise-access",
-						"title":         "Access Overview",
-						"description":   "Review access posture",
+						"extensionSlug": "identity-gateway",
+						"title":         "Identity Overview",
+						"description":   "Review identity posture",
 						"icon":          "shield-check",
-						"href":          "/extensions/enterprise-access",
+						"href":          "/extensions/identity-gateway",
 					},
 				},
 			},
@@ -221,7 +221,7 @@ func TestRunExtensionsWidgetsInstanceJSON(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
 		t.Fatalf("decode output: %v", err)
 	}
-	if len(payload) != 1 || payload[0].Href != "/extensions/enterprise-access" {
+	if len(payload) != 1 || payload[0].Href != "/extensions/identity-gateway" {
 		t.Fatalf("unexpected widget payload: %#v", payload)
 	}
 }

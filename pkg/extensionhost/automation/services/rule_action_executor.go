@@ -121,32 +121,9 @@ func (rae *RuleActionExecutor) convertTypedActions(typedActions automationdomain
 
 // executeAction dispatches to the appropriate handler
 func (rae *RuleActionExecutor) executeAction(ctx context.Context, action RuleAction, ruleContext *RuleContext, result *ActionResult) error {
-	if err := rae.validateExtensionRequirement(ctx, action, ruleContext); err != nil {
-		return err
-	}
 	handler, ok := rae.registry.Get(action.Type)
 	if !ok {
 		return fmt.Errorf("unknown action type: %s", action.Type)
 	}
 	return handler.Handle(ctx, action, ruleContext, result)
-}
-
-func (rae *RuleActionExecutor) validateExtensionRequirement(ctx context.Context, action RuleAction, ruleContext *RuleContext) error {
-	requiredExtension := automationdomain.RequiredExtensionForAction(action.Type)
-	if requiredExtension == "" || rae == nil || rae.extensionChecker == nil {
-		return nil
-	}
-
-	workspaceID, err := workspaceIDFromRuleContext(ruleContext)
-	if err != nil {
-		return err
-	}
-	enabled, err := rae.extensionChecker.HasActiveExtensionInWorkspace(ctx, workspaceID, requiredExtension)
-	if err != nil {
-		return fmt.Errorf("failed to resolve %s extension state: %w", requiredExtension, err)
-	}
-	if !enabled {
-		return fmt.Errorf("%s action requires %s to be active in workspace", action.Type, requiredExtension)
-	}
-	return nil
 }

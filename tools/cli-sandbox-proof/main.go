@@ -249,7 +249,7 @@ func (s *sandboxProofState) handle(w http.ResponseWriter, r *http.Request) {
 		  "bundle":{
 		    "sandbox":{"id":"sbx_cli_proof","status":"ready"},
 		    "runtime_configuration":{"status":"ready","default_trial_days":5},
-		    "public_bundle_catalog":[{"slug":"ats","channel":"launch"}]
+		    "public_bundle_catalog":[]
 		  }
 		}`)
 	case r.Method == http.MethodDelete && r.URL.Path == "/api/public/sandboxes/sbx_cli_proof":

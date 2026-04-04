@@ -50,24 +50,21 @@ func TestRegistryConsumeAndRunJob(t *testing.T) {
 	assert.True(t, jobRan)
 }
 
+func TestNewRegistryHasNoBuiltInExtensionTargets(t *testing.T) {
+	registry := NewRegistry(nil)
+
+	_, err := registry.Probe("identity-gateway.runtime.health", http.MethodGet, "/extensions/identity-gateway/health", nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not registered")
+}
+
 func TestRuntimeEnsureInstalledExtensionRuntimeRequiresRegisteredTargets(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	runtimeDir := newRuntimeTestDir(t)
-	runtime := NewRuntime(NewRegistryForRuntimeDir(runtimeDir))
+	runtime := NewRuntime(&Registry{})
 	extension := &platformdomain.InstalledExtension{
 		Manifest: platformdomain.ExtensionManifest{
-			Slug:         "web-analytics",
-			Publisher:    "DemandOps",
 			RuntimeClass: platformdomain.ExtensionRuntimeClassServiceBacked,
-			Schema: platformdomain.ExtensionSchemaManifest{
-				PackageKey: "demandops/web-analytics",
-			},
-			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/web-analytics-runtime:test",
-				Digest:       "sha256:test",
-			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
 					Name:          "analytics-ingest",
@@ -89,34 +86,21 @@ func TestRuntimeEnsureInstalledExtensionRuntimeRequiresRegisteredTargets(t *test
 
 	err := runtime.EnsureInstalledExtensionRuntime(context.Background(), extension)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "extension runtime socket unavailable")
+	assert.Contains(t, err.Error(), "analytics.ingest.event")
 }
 
 func TestRuntimeCheckInstalledExtensionHealth(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	runtimeDir := newRuntimeTestDir(t)
-	cleanup := startRuntimeSocketServer(t, runtimeDir, "demandops/web-analytics", func(engine *gin.Engine) {
-		engine.GET("/extensions/web-analytics/health", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"status": "healthy", "message": "analytics ready"})
-		})
-	}, nil, nil)
-	defer cleanup()
+	registry := &Registry{}
+	registry.Register("analytics.runtime.health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy", "message": "analytics ready"})
+	})
 
-	runtime := NewRuntime(NewRegistryForRuntimeDir(runtimeDir))
+	runtime := NewRuntime(registry)
 	extension := &platformdomain.InstalledExtension{
 		Manifest: platformdomain.ExtensionManifest{
-			Slug:         "web-analytics",
-			Publisher:    "DemandOps",
 			RuntimeClass: platformdomain.ExtensionRuntimeClassServiceBacked,
-			Schema: platformdomain.ExtensionSchemaManifest{
-				PackageKey: "demandops/web-analytics",
-			},
-			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/web-analytics-runtime:test",
-				Digest:       "sha256:test",
-			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
 					Name:             "runtime-health",
@@ -139,47 +123,41 @@ func TestRuntimeCheckInstalledExtensionHealth(t *testing.T) {
 func TestRuntimePrepareInstallValidatesPrivilegedManifest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	runtime := NewRuntime(NewRegistryForRuntimeDir(newRuntimeTestDir(t)))
+	registry := &Registry{}
+	registry.Register("identity-gateway.runtime.health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
+	registry.Register("identity-gateway.webhook.callback", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
+	runtime := NewRuntime(registry)
 	manifest := platformdomain.ExtensionManifest{
 		SchemaVersion: 1,
-		Slug:          "enterprise-access",
-		Name:          "Enterprise Access",
+		Slug:          "identity-gateway",
+		Name:          "Identity Gateway",
 		Version:       "1.0.0",
 		Publisher:     "DemandOps",
 		Kind:          platformdomain.ExtensionKindIdentity,
 		Scope:         platformdomain.ExtensionScopeInstance,
 		Risk:          platformdomain.ExtensionRiskPrivileged,
 		RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
-		StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
-		Schema: platformdomain.ExtensionSchemaManifest{
-			Name:            "ext_demandops_enterprise_access",
-			PackageKey:      "demandops/enterprise-access",
-			TargetVersion:   "000001",
-			MigrationEngine: "postgres_sql",
-		},
-		Runtime: platformdomain.ExtensionRuntimeSpec{
-			Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-			OCIReference: "ghcr.io/test/enterprise-access-runtime:test",
-			Digest:       "sha256:test",
-		},
 		Endpoints: []platformdomain.ExtensionEndpoint{
 			{
-				Name:             "health",
-				Class:            platformdomain.ExtensionEndpointClassHealth,
-				MountPath:        "/extensions/enterprise-access/health",
-				Methods:          []string{"GET"},
-				Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
-				WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-				ServiceTarget:    "enterprise-access.runtime.health",
+				Name:          "health",
+				Class:         platformdomain.ExtensionEndpointClassHealth,
+				MountPath:     "/extensions/identity-gateway/health",
+				Methods:       []string{"GET"},
+				Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
+				ServiceTarget: "identity-gateway.runtime.health",
 			},
 			{
-				Name:             "oidc-callback",
-				Class:            platformdomain.ExtensionEndpointClassWebhook,
-				MountPath:        "/webhooks/extensions/enterprise-access/callback/oidc",
-				Methods:          []string{"POST"},
-				Auth:             platformdomain.ExtensionEndpointAuthPublic,
-				WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-				ServiceTarget:    "enterprise-access.auth.oidc.callback",
+				Name:          "identity-callback",
+				Class:         platformdomain.ExtensionEndpointClassWebhook,
+				MountPath:     "/auth/extensions/identity-gateway/callback",
+				Methods:       []string{"POST"},
+				Auth:          platformdomain.ExtensionEndpointAuthSignedWebhook,
+				ServiceTarget: "identity-gateway.webhook.callback",
 			},
 		},
 	}
@@ -190,7 +168,12 @@ func TestRuntimePrepareInstallValidatesPrivilegedManifest(t *testing.T) {
 func TestRuntimePrepareInstallRejectsUnsafePrivilegedManifest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	runtime := NewRuntime(NewRegistryForRuntimeDir(newRuntimeTestDir(t)))
+	registry := &Registry{}
+	registry.Register("slack.runtime.health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
+
+	runtime := NewRuntime(registry)
 	manifest := platformdomain.ExtensionManifest{
 		SchemaVersion: 1,
 		Slug:          "slack-alerts",
@@ -201,18 +184,6 @@ func TestRuntimePrepareInstallRejectsUnsafePrivilegedManifest(t *testing.T) {
 		Scope:         platformdomain.ExtensionScopeWorkspace,
 		Risk:          platformdomain.ExtensionRiskPrivileged,
 		RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
-		StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
-		Schema: platformdomain.ExtensionSchemaManifest{
-			Name:            "ext_demandops_slack_alerts",
-			PackageKey:      "demandops/slack-alerts",
-			TargetVersion:   "000001",
-			MigrationEngine: "postgres_sql",
-		},
-		Runtime: platformdomain.ExtensionRuntimeSpec{
-			Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-			OCIReference: "ghcr.io/test/slack-alerts-runtime:test",
-			Digest:       "sha256:test",
-		},
 		Endpoints: []platformdomain.ExtensionEndpoint{
 			{
 				Name:          "public-page",
@@ -239,40 +210,30 @@ func TestRuntimeEnsureInstalledExtensionRuntimeRegistersEventConsumersAndJobs(t 
 	workspace := testutil.NewIsolatedWorkspace(t)
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
-	consumerCalls := make(chan struct{}, 1)
-	jobCalls := make(chan struct{}, 2)
-	runtimeDir := newRuntimeTestDir(t)
-	cleanupServer := startRuntimeSocketServer(
-		t,
-		runtimeDir,
-		"demandops/runtime-pack",
-		func(engine *gin.Engine) {
-			engine.GET("/extensions/runtime-pack/health", func(c *gin.Context) {
-				c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-			})
-		},
-		map[string]func(context.Context, []byte) error{
-			"test.consumer": func(context.Context, []byte) error {
-				select {
-				case consumerCalls <- struct{}{}:
-				default:
-				}
-				return nil
-			},
-		},
-		map[string]func(context.Context) error{
-			"test.job": func(context.Context) error {
-				select {
-				case jobCalls <- struct{}{}:
-				default:
-				}
-				return nil
-			},
-		},
-	)
-	defer cleanupServer()
+	registry := &Registry{}
+	registry.Register("runtime.health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
 
-	runtime := NewRuntime(NewRegistryForRuntimeDir(runtimeDir), WithBackgroundRuntimeDeps(eventbus.NewInMemoryBus(), store.Extensions(), store.Workspaces(), nil))
+	consumerCalls := make(chan struct{}, 1)
+	registry.RegisterEventConsumer("test.consumer", func(context.Context, []byte) error {
+		select {
+		case consumerCalls <- struct{}{}:
+		default:
+		}
+		return nil
+	})
+
+	jobCalls := make(chan struct{}, 2)
+	registry.RegisterScheduledJob("test.job", func(context.Context) error {
+		select {
+		case jobCalls <- struct{}{}:
+		default:
+		}
+		return nil
+	})
+
+	runtime := NewRuntime(registry, WithBackgroundRuntimeDeps(eventbus.NewInMemoryBus(), store.Extensions(), store.Workspaces(), nil))
 	defer runtime.Stop()
 
 	manifest := platformdomain.ExtensionManifest{
@@ -293,9 +254,7 @@ func TestRuntimeEnsureInstalledExtensionRuntimeRegistersEventConsumersAndJobs(t 
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: platformdomain.ExtensionRuntimeSpec{
-			Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-			OCIReference: "ghcr.io/test/runtime-pack:test",
-			Digest:       "sha256:test",
+			Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 		},
 		Endpoints: []platformdomain.ExtensionEndpoint{
 			{
@@ -393,40 +352,30 @@ func TestRuntimeDeactivateInstalledExtensionRuntimeStopsJobsAndAllowsReactivatio
 	workspace := testutil.NewIsolatedWorkspace(t)
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
-	consumerCalls := make(chan struct{}, 4)
-	jobCalls := make(chan struct{}, 8)
-	runtimeDir := newRuntimeTestDir(t)
-	cleanupServer := startRuntimeSocketServer(
-		t,
-		runtimeDir,
-		"demandops/runtime-pack",
-		func(engine *gin.Engine) {
-			engine.GET("/extensions/runtime-pack/health", func(c *gin.Context) {
-				c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-			})
-		},
-		map[string]func(context.Context, []byte) error{
-			"test.consumer": func(context.Context, []byte) error {
-				select {
-				case consumerCalls <- struct{}{}:
-				default:
-				}
-				return nil
-			},
-		},
-		map[string]func(context.Context) error{
-			"test.job": func(context.Context) error {
-				select {
-				case jobCalls <- struct{}{}:
-				default:
-				}
-				return nil
-			},
-		},
-	)
-	defer cleanupServer()
+	registry := &Registry{}
+	registry.Register("runtime.health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
 
-	runtime := NewRuntime(NewRegistryForRuntimeDir(runtimeDir), WithBackgroundRuntimeDeps(eventbus.NewInMemoryBus(), store.Extensions(), store.Workspaces(), nil))
+	consumerCalls := make(chan struct{}, 4)
+	registry.RegisterEventConsumer("test.consumer", func(context.Context, []byte) error {
+		select {
+		case consumerCalls <- struct{}{}:
+		default:
+		}
+		return nil
+	})
+
+	jobCalls := make(chan struct{}, 8)
+	registry.RegisterScheduledJob("test.job", func(context.Context) error {
+		select {
+		case jobCalls <- struct{}{}:
+		default:
+		}
+		return nil
+	})
+
+	runtime := NewRuntime(registry, WithBackgroundRuntimeDeps(eventbus.NewInMemoryBus(), store.Extensions(), store.Workspaces(), nil))
 	defer runtime.Stop()
 
 	manifest := platformdomain.ExtensionManifest{
@@ -447,9 +396,7 @@ func TestRuntimeDeactivateInstalledExtensionRuntimeStopsJobsAndAllowsReactivatio
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: platformdomain.ExtensionRuntimeSpec{
-			Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-			OCIReference: "ghcr.io/test/runtime-pack:test",
-			Digest:       "sha256:test",
+			Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 		},
 		Endpoints: []platformdomain.ExtensionEndpoint{
 			{
@@ -554,26 +501,15 @@ func TestRuntimeTracksConsumerFailures(t *testing.T) {
 	workspace := testutil.NewIsolatedWorkspace(t)
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
-	runtimeDir := newRuntimeTestDir(t)
-	cleanupServer := startRuntimeSocketServer(
-		t,
-		runtimeDir,
-		"demandops/runtime-pack",
-		func(engine *gin.Engine) {
-			engine.GET("/extensions/runtime-pack/health", func(c *gin.Context) {
-				c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-			})
-		},
-		map[string]func(context.Context, []byte) error{
-			"failing.consumer": func(context.Context, []byte) error {
-				return fmt.Errorf("consumer boom")
-			},
-		},
-		nil,
-	)
-	defer cleanupServer()
+	registry := &Registry{}
+	registry.Register("runtime.health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
+	registry.RegisterEventConsumer("failing.consumer", func(context.Context, []byte) error {
+		return fmt.Errorf("consumer boom")
+	})
 
-	runtime := NewRuntime(NewRegistryForRuntimeDir(runtimeDir), WithBackgroundRuntimeDeps(eventbus.NewInMemoryBus(), store.Extensions(), store.Workspaces(), nil))
+	runtime := NewRuntime(registry, WithBackgroundRuntimeDeps(eventbus.NewInMemoryBus(), store.Extensions(), store.Workspaces(), nil))
 	defer runtime.Stop()
 
 	manifest := platformdomain.ExtensionManifest{
@@ -594,9 +530,7 @@ func TestRuntimeTracksConsumerFailures(t *testing.T) {
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: platformdomain.ExtensionRuntimeSpec{
-			Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-			OCIReference: "ghcr.io/test/runtime-pack:test",
-			Digest:       "sha256:test",
+			Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 		},
 		Endpoints: []platformdomain.ExtensionEndpoint{
 			{
@@ -656,26 +590,15 @@ func TestRuntimeIsolatesDiagnosticsPerInstalledExtension(t *testing.T) {
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspaceOne))
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspaceTwo))
 
-	runtimeDir := newRuntimeTestDir(t)
-	cleanupServer := startRuntimeSocketServer(
-		t,
-		runtimeDir,
-		"demandops/runtime-pack",
-		func(engine *gin.Engine) {
-			engine.GET("/extensions/runtime-pack/health", func(c *gin.Context) {
-				c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-			})
-		},
-		map[string]func(context.Context, []byte) error{
-			"failing.consumer": func(context.Context, []byte) error {
-				return fmt.Errorf("consumer boom")
-			},
-		},
-		nil,
-	)
-	defer cleanupServer()
+	registry := &Registry{}
+	registry.Register("runtime.health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
+	registry.RegisterEventConsumer("failing.consumer", func(context.Context, []byte) error {
+		return fmt.Errorf("consumer boom")
+	})
 
-	runtime := NewRuntime(NewRegistryForRuntimeDir(runtimeDir), WithBackgroundRuntimeDeps(eventbus.NewInMemoryBus(), store.Extensions(), store.Workspaces(), nil))
+	runtime := NewRuntime(registry, WithBackgroundRuntimeDeps(eventbus.NewInMemoryBus(), store.Extensions(), store.Workspaces(), nil))
 	defer runtime.Stop()
 
 	manifest := platformdomain.ExtensionManifest{
@@ -696,9 +619,7 @@ func TestRuntimeIsolatesDiagnosticsPerInstalledExtension(t *testing.T) {
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: platformdomain.ExtensionRuntimeSpec{
-			Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-			OCIReference: "ghcr.io/test/runtime-pack:test",
-			Digest:       "sha256:test",
+			Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 		},
 		Endpoints: []platformdomain.ExtensionEndpoint{
 			{
@@ -769,22 +690,12 @@ func TestRuntimeStartContinuesAfterBootstrapFailure(t *testing.T) {
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspaceOne))
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspaceTwo))
 
-	runtimeDir := newRuntimeTestDir(t)
-	cleanupServer := startRuntimeSocketServer(
-		t,
-		runtimeDir,
-		"demandops/healthy-pack",
-		func(engine *gin.Engine) {
-			engine.GET("/extensions/healthy-pack/health", func(c *gin.Context) {
-				c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-			})
-		},
-		nil,
-		nil,
-	)
-	defer cleanupServer()
+	registry := &Registry{}
+	registry.Register("runtime.health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
 
-	runtime := NewRuntime(NewRegistryForRuntimeDir(runtimeDir), WithBackgroundRuntimeDeps(eventbus.NewInMemoryBus(), store.Extensions(), store.Workspaces(), nil))
+	runtime := NewRuntime(registry, WithBackgroundRuntimeDeps(eventbus.NewInMemoryBus(), store.Extensions(), store.Workspaces(), nil))
 	defer runtime.Stop()
 
 	healthyManifest := platformdomain.ExtensionManifest{
@@ -805,9 +716,7 @@ func TestRuntimeStartContinuesAfterBootstrapFailure(t *testing.T) {
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: platformdomain.ExtensionRuntimeSpec{
-			Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-			OCIReference: "ghcr.io/test/healthy-pack:test",
-			Digest:       "sha256:test",
+			Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 		},
 		Endpoints: []platformdomain.ExtensionEndpoint{
 			{
@@ -839,9 +748,7 @@ func TestRuntimeStartContinuesAfterBootstrapFailure(t *testing.T) {
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: platformdomain.ExtensionRuntimeSpec{
-			Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-			OCIReference: "ghcr.io/test/broken-pack:test",
-			Digest:       "sha256:test",
+			Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 		},
 		Endpoints: []platformdomain.ExtensionEndpoint{
 			{
@@ -879,7 +786,7 @@ func TestRuntimeStartContinuesAfterBootstrapFailure(t *testing.T) {
 	assert.Equal(t, "failed", failingDiagnostics.BootstrapStatus)
 	assert.NotNil(t, failingDiagnostics.LastBootstrapAt)
 	require.NotNil(t, failingDiagnostics.Endpoints)
-	assert.Contains(t, failingDiagnostics.LastBootstrapError, "extension runtime socket unavailable")
+	assert.Contains(t, failingDiagnostics.LastBootstrapError, "missing.runtime.health")
 }
 
 func TestRuntimeBacksOffFailingJobs(t *testing.T) {
@@ -892,26 +799,15 @@ func TestRuntimeBacksOffFailingJobs(t *testing.T) {
 	workspace := testutil.NewIsolatedWorkspace(t)
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
-	runtimeDir := newRuntimeTestDir(t)
-	cleanupServer := startRuntimeSocketServer(
-		t,
-		runtimeDir,
-		"demandops/runtime-pack",
-		func(engine *gin.Engine) {
-			engine.GET("/extensions/runtime-pack/health", func(c *gin.Context) {
-				c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-			})
-		},
-		nil,
-		map[string]func(context.Context) error{
-			"failing.job": func(context.Context) error {
-				return fmt.Errorf("job boom")
-			},
-		},
-	)
-	defer cleanupServer()
+	registry := &Registry{}
+	registry.Register("runtime.health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
+	registry.RegisterScheduledJob("failing.job", func(context.Context) error {
+		return fmt.Errorf("job boom")
+	})
 
-	runtime := NewRuntime(NewRegistryForRuntimeDir(runtimeDir), WithBackgroundRuntimeDeps(eventbus.NewInMemoryBus(), store.Extensions(), store.Workspaces(), nil))
+	runtime := NewRuntime(registry, WithBackgroundRuntimeDeps(eventbus.NewInMemoryBus(), store.Extensions(), store.Workspaces(), nil))
 	defer runtime.Stop()
 
 	manifest := platformdomain.ExtensionManifest{
@@ -932,9 +828,7 @@ func TestRuntimeBacksOffFailingJobs(t *testing.T) {
 			MigrationEngine: "postgres_sql",
 		},
 		Runtime: platformdomain.ExtensionRuntimeSpec{
-			Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-			OCIReference: "ghcr.io/test/runtime-pack:test",
-			Digest:       "sha256:test",
+			Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 		},
 		Endpoints: []platformdomain.ExtensionEndpoint{
 			{

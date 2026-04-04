@@ -212,9 +212,12 @@ Current reality:
   materializing sibling extension repos, so core CI proves that the platform
   repo can build and test independently
 - milestone proof CI materializes the canonical sibling repos
-  (`extensions` and `extension-sdk`) before running proof, and proof mode sets
-  `MBR_REQUIRE_WORKSPACE_REFS=true` so canonical-source tests fail closed
-  instead of silently skipping
+  (`extensions`, `private-extensions`, and `extension-sdk`) before running
+  proof, and proof mode sets `MBR_REQUIRE_WORKSPACE_REFS=true` so
+  canonical-source tests fail closed instead of silently skipping
+- `enterprise-access` now validates from the canonical
+  `private-extensions` checkout instead of leaking through `platform` or the
+  public first-party extensions repo
 - those sibling repos are pinned by
   [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
   and verified by the proof script before milestone-critical tests run

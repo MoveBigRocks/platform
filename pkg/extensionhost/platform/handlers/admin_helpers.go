@@ -60,8 +60,6 @@ type AdminPageData struct {
 	UserRole           string
 	CanManageUsers     bool
 	IsWorkspaceScoped  bool
-	ShowErrorTracking  bool
-	ShowAnalytics      bool
 	ExtensionNav       []AdminExtensionNavSection
 	ExtensionWidgets   []AdminExtensionWidget
 	CurrentWorkspaceID string
@@ -89,18 +87,14 @@ type AdminExtensionWidget struct {
 }
 
 const (
-	adminFeatureErrorTrackingKey = "admin_feature_error_tracking"
-	adminFeatureAnalyticsKey     = "admin_feature_analytics"
-	adminExtensionNavKey         = "admin_extension_nav"
-	adminExtensionWidgetsKey     = "admin_extension_widgets"
+	adminExtensionNavKey     = "admin_extension_nav"
+	adminExtensionWidgetsKey = "admin_extension_widgets"
 )
 
 // buildBasePageData creates common base page data from context.
 func buildBasePageData(c *gin.Context, activePage, title, subtitle string) BasePageData {
 	ctxValues := GetContextValues(c)
 	workspaceID, workspaceName, _, isWorkspaceScoped := ctxValues.WorkspaceContext()
-	showErrorTracking, _ := c.Get(adminFeatureErrorTrackingKey)
-	showAnalytics, _ := c.Get(adminFeatureAnalyticsKey)
 	extensionNav, _ := c.Get(adminExtensionNavKey)
 	extensionWidgets, _ := c.Get(adminExtensionWidgetsKey)
 
@@ -113,8 +107,6 @@ func buildBasePageData(c *gin.Context, activePage, title, subtitle string) BaseP
 		UserRole:           ctxValues.UserRole(),
 		CanManageUsers:     ctxValues.CanManageUsers(),
 		IsWorkspaceScoped:  isWorkspaceScoped,
-		ShowErrorTracking:  boolValueOrDefault(showErrorTracking, true),
-		ShowAnalytics:      boolValueOrDefault(showAnalytics, true),
 		ExtensionNav:       navSectionsOrDefault(extensionNav),
 		ExtensionWidgets:   extensionWidgetsOrDefault(extensionWidgets),
 		CurrentWorkspaceID: workspaceID,
@@ -135,8 +127,6 @@ func buildAdminPageData(c *gin.Context, activePage, title, subtitle string, work
 		UserRole:           base.UserRole,
 		CanManageUsers:     base.CanManageUsers,
 		IsWorkspaceScoped:  base.IsWorkspaceScoped,
-		ShowErrorTracking:  base.ShowErrorTracking,
-		ShowAnalytics:      base.ShowAnalytics,
 		ExtensionNav:       base.ExtensionNav,
 		ExtensionWidgets:   base.ExtensionWidgets,
 		CurrentWorkspaceID: base.CurrentWorkspaceID,
@@ -157,8 +147,6 @@ func buildAdminTemplateContext(c *gin.Context, activePage, pageTitle, pageSubtit
 		"UserRole":           base.UserRole,
 		"CanManageUsers":     base.CanManageUsers,
 		"IsWorkspaceScoped":  base.IsWorkspaceScoped,
-		"ShowErrorTracking":  base.ShowErrorTracking,
-		"ShowAnalytics":      base.ShowAnalytics,
 		"ExtensionNav":       base.ExtensionNav,
 		"ExtensionWidgets":   base.ExtensionWidgets,
 		"CurrentWorkspaceID": base.CurrentWorkspaceID,
@@ -177,8 +165,6 @@ func renderAdminPage(c *gin.Context, template string, pageData AdminPageData, ex
 		"UserRole":           pageData.UserRole,
 		"CanManageUsers":     pageData.CanManageUsers,
 		"IsWorkspaceScoped":  pageData.IsWorkspaceScoped,
-		"ShowErrorTracking":  pageData.ShowErrorTracking,
-		"ShowAnalytics":      pageData.ShowAnalytics,
 		"ExtensionNav":       pageData.ExtensionNav,
 		"ExtensionWidgets":   pageData.ExtensionWidgets,
 		"CurrentWorkspaceID": pageData.CurrentWorkspaceID,
@@ -192,14 +178,6 @@ func renderAdminPage(c *gin.Context, template string, pageData AdminPageData, ex
 	}
 
 	c.HTML(http.StatusOK, template, data)
-}
-
-func boolValueOrDefault(value any, fallback bool) bool {
-	flag, ok := value.(bool)
-	if !ok {
-		return fallback
-	}
-	return flag
 }
 
 func navSectionsOrDefault(value any) []AdminExtensionNavSection {

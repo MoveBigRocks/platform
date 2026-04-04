@@ -14,6 +14,7 @@ import (
 	"github.com/movebigrocks/platform/pkg/extensionhost/shared/contracts"
 	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
+	"github.com/movebigrocks/platform/pkg/id"
 )
 
 type testActionExtensionChecker struct {
@@ -110,20 +111,28 @@ func TestRuleActionExecutorReturnsErrorForCaseActionWithoutCaseContext(t *testin
 	assert.Empty(t, result.ExecutedActions)
 }
 
-func TestRuleActionExecutorRejectsIssueActionWhenErrorTrackingInactive(t *testing.T) {
-	executor := NewRuleActionExecutor(nil, nil, WithRuleActionExecutorExtensionChecker(testActionExtensionChecker{enabled: false}))
+func TestRuleActionExecutorExecutesIssueActionWithoutExtensionSlugDependency(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	caseService := serviceapp.NewCaseService(store.Queues(), store.Cases(), store.Workspaces(), nil)
+	executor := NewRuleActionExecutor(caseService, nil, WithRuleActionExecutorExtensionChecker(testActionExtensionChecker{enabled: false}))
 	actions := automationdomain.TypedActions{
 		Actions: []automationdomain.TypedAction{
 			{Type: "create_case", Value: shareddomain.StringValue("auto")},
 		},
 	}
 
-	result, err := executor.ExecuteActions(context.Background(), actions, &RuleContext{
-		Issue: &IssueContextData{
-			ID:          "issue_123",
-			WorkspaceID: "ws_123",
-			ProjectID:   "proj_123",
-			Title:       "Production issue",
+		result, err := executor.ExecuteActions(ctx, actions, &RuleContext{
+			Issue: &IssueContextData{
+				ID:          id.New(),
+				WorkspaceID: workspace.ID,
+				ProjectID:   "proj_123",
+				Title:       "Production issue",
 			Level:       "error",
 			FirstSeen:   time.Now(),
 			LastSeen:    time.Now(),
@@ -131,8 +140,8 @@ func TestRuleActionExecutorRejectsIssueActionWhenErrorTrackingInactive(t *testin
 		Event:    "issue_created",
 		Metadata: NewRuleMetadata(),
 	})
-	require.Error(t, err)
-	require.Len(t, result.Errors, 1)
-	assert.Contains(t, result.Errors[0], "requires error-tracking to be active")
-	assert.Empty(t, result.ExecutedActions)
+	require.NoError(t, err)
+	require.Empty(t, result.Errors)
+	require.Len(t, result.ExecutedActions, 1)
+	assert.Equal(t, "create_case", result.ExecutedActions[0])
 }

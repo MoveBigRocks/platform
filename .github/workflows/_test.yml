@@ -67,6 +67,10 @@ jobs:
         working-directory: platform
         run: make docs-check
 
+      - name: Check platform extension boundary
+        working-directory: platform
+        run: bash ./scripts/check-extension-boundary.sh
+
       - name: Run unit tests (no integration)
         id: unit_tests
         working-directory: platform

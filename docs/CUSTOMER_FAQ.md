@@ -246,9 +246,8 @@ one.
 
 ## What about enterprise SSO?
 
-That remains the first-party `enterprise-access` identity extension. It is a
-privileged extension, lives in the private first-party extensions repo, and is
-not part of the free public bundle set.
+That remains the private first-party `enterprise-access` identity extension. It
+is a privileged extension and is not part of the free public bundle set.
 
 ## Can I sell Move Big Rocks or sell extensions for it?
 

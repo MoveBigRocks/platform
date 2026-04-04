@@ -346,7 +346,7 @@ Current repo baseline:
   - `ghcr.io/movebigrocks/mbr-ext-error-tracking:<version>`
   - `ghcr.io/movebigrocks/mbr-ext-web-analytics:<version>`
 - those public signed bundles can install without an instance-bound token
-- `enterprise-access` installs as an instance-scoped private first-party extension
+- `enterprise-access` source lives in `MoveBigRocks/private-extensions` and installs as an instance-scoped extension
 
 ## Step 7: Build a Custom Extension Only If You Need One
 

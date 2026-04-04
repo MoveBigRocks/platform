@@ -170,11 +170,9 @@ func TestSidebarTemplateRendersExtensionNavigation(t *testing.T) {
 	require.NoError(t, err, "failed to parse templates")
 
 	pageData := gin.H{
-		"ActivePage":        "issues",
-		"UserName":          "Admin User",
-		"UserEmail":         "admin@example.com",
-		"ShowErrorTracking": true,
-		"ShowAnalytics":     true,
+		"ActivePage": "issues",
+		"UserName":   "Admin User",
+		"UserEmail":  "admin@example.com",
 		"ExtensionNav": []AdminExtensionNavSection{
 			{
 				Title: "Error Tracking",
@@ -205,14 +203,12 @@ func TestDashboardTemplateRendersExtensionWidgets(t *testing.T) {
 	require.NoError(t, err, "failed to parse templates")
 
 	pageData := gin.H{
-		"ActivePage":        "ats",
-		"PageTitle":         "Dashboard",
-		"PageSubtitle":      "Workspace overview",
-		"UserName":          "Admin User",
-		"UserEmail":         "admin@example.com",
-		"UserRole":          "admin",
-		"ShowErrorTracking": false,
-		"ShowAnalytics":     false,
+		"ActivePage":   "ats",
+		"PageTitle":    "Dashboard",
+		"PageSubtitle": "Workspace overview",
+		"UserName":     "Admin User",
+		"UserEmail":    "admin@example.com",
+		"UserRole":     "admin",
 		"ExtensionWidgets": []AdminExtensionWidget{
 			{
 				Title:       "ATS Workspace",

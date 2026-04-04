@@ -508,8 +508,8 @@ func TestExtensionService_AllowsFirstPartyPrivilegedWorkspaceScopedExtensions(t 
 		LicenseToken: "lic_identity",
 		Manifest: platformdomain.ExtensionManifest{
 			SchemaVersion: 1,
-			Slug:          "enterprise-access",
-			Name:          "Enterprise Access",
+			Slug:          "identity-gateway",
+			Name:          "Identity Gateway",
 			Version:       "1.0.0",
 			Publisher:     "DemandOps",
 			Kind:          platformdomain.ExtensionKindIdentity,
@@ -517,25 +517,24 @@ func TestExtensionService_AllowsFirstPartyPrivilegedWorkspaceScopedExtensions(t 
 			Risk:          platformdomain.ExtensionRiskPrivileged,
 			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
 			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_enterprise_access",
-				PackageKey:      "demandops/enterprise-access",
+				Name:            "ext_demandops_identity_gateway",
+				PackageKey:      "demandops/identity-gateway",
 				TargetVersion:   "1.0.0",
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
 				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/enterprise-access-runtime:test",
-				Digest:       "sha256:test",
+				OCIReference: "registry.example.com/mbr/identity-gateway:1.0.0",
+				Digest:       "sha256:identitygatewaytest",
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
-					Name:             "health",
-					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/enterprise-access/health",
-					Methods:          []string{"GET"},
-					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "enterprise-access.runtime.health",
+					Name:          "health",
+					Class:         platformdomain.ExtensionEndpointClassHealth,
+					MountPath:     "/extensions/identity-gateway/health",
+					Methods:       []string{"GET"},
+					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
+					ServiceTarget: "identity-gateway.runtime.health",
 				},
 			},
 		},
@@ -543,7 +542,7 @@ func TestExtensionService_AllowsFirstPartyPrivilegedWorkspaceScopedExtensions(t 
 	})
 	require.NoError(t, err)
 	require.NotNil(t, installed)
-	assert.Equal(t, "enterprise-access", installed.Slug)
+	assert.Equal(t, "identity-gateway", installed.Slug)
 	assert.Equal(t, platformdomain.ExtensionStatusInstalled, installed.Status)
 }
 
@@ -561,8 +560,8 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 		LicenseToken: "lic_identity_instance",
 		Manifest: platformdomain.ExtensionManifest{
 			SchemaVersion: 1,
-			Slug:          "enterprise-access",
-			Name:          "Enterprise Access",
+			Slug:          "identity-gateway",
+			Name:          "Identity Gateway",
 			Version:       "1.0.0",
 			Publisher:     "DemandOps",
 			Kind:          platformdomain.ExtensionKindIdentity,
@@ -570,25 +569,24 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 			Risk:          platformdomain.ExtensionRiskPrivileged,
 			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
 			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_enterprise_access",
-				PackageKey:      "demandops/enterprise-access",
+				Name:            "ext_demandops_identity_gateway",
+				PackageKey:      "demandops/identity-gateway",
 				TargetVersion:   "1.0.0",
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
 				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/enterprise-access-runtime:test",
-				Digest:       "sha256:test",
+				OCIReference: "registry.example.com/mbr/identity-gateway:1.0.0",
+				Digest:       "sha256:identitygatewaytest",
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
-					Name:             "health",
-					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/enterprise-access/health",
-					Methods:          []string{"GET"},
-					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "enterprise-access.runtime.health",
+					Name:          "health",
+					Class:         platformdomain.ExtensionEndpointClassHealth,
+					MountPath:     "/extensions/identity-gateway/health",
+					Methods:       []string{"GET"},
+					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
+					ServiceTarget: "identity-gateway.runtime.health",
 				},
 			},
 		},
@@ -604,8 +602,8 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 		LicenseToken: "lic_identity_instance_with_workspace",
 		Manifest: platformdomain.ExtensionManifest{
 			SchemaVersion: 1,
-			Slug:          "enterprise-access-alt",
-			Name:          "Enterprise Access",
+			Slug:          "identity-gateway-alt",
+			Name:          "Identity Gateway",
 			Version:       "1.0.0",
 			Publisher:     "DemandOps",
 			Kind:          platformdomain.ExtensionKindIdentity,
@@ -613,25 +611,24 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 			Risk:          platformdomain.ExtensionRiskPrivileged,
 			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
 			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_enterprise_access_alt",
-				PackageKey:      "demandops/enterprise-access-alt",
+				Name:            "ext_demandops_identity_gateway_alt",
+				PackageKey:      "demandops/identity-gateway-alt",
 				TargetVersion:   "1.0.0",
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
 				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/enterprise-access-runtime:test",
-				Digest:       "sha256:test",
+				OCIReference: "registry.example.com/mbr/identity-gateway-alt:1.0.0",
+				Digest:       "sha256:identitygatewayalttest",
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
-					Name:             "health",
-					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/enterprise-access-alt/health",
-					Methods:          []string{"GET"},
-					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "enterprise-access.runtime.health",
+					Name:          "health",
+					Class:         platformdomain.ExtensionEndpointClassHealth,
+					MountPath:     "/extensions/identity-gateway-alt/health",
+					Methods:       []string{"GET"},
+					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
+					ServiceTarget: "identity-gateway.runtime.health",
 				},
 			},
 		},
@@ -660,9 +657,7 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/slack-alerts-runtime:test",
-				Digest:       "sha256:test",
+				Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
@@ -700,9 +695,7 @@ func TestExtensionService_RejectsUnsupportedPrivilegedInstallPolicies(t *testing
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/slack-alerts-runtime:test",
-				Digest:       "sha256:test",
+				Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{

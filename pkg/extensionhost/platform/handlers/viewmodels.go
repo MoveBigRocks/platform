@@ -16,8 +16,6 @@ type BasePageData struct {
 	UserRole            string
 	CanManageUsers      bool
 	IsWorkspaceScoped   bool
-	ShowErrorTracking   bool
-	ShowAnalytics       bool
 	ExtensionNav        []AdminExtensionNavSection
 	ExtensionWidgets    []AdminExtensionWidget
 	CurrentWorkspaceID  string

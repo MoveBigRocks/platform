@@ -23,15 +23,6 @@ import (
 	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 )
 
-func serviceBackedTestMigrations() []platformservices.ExtensionMigrationInput {
-	return []platformservices.ExtensionMigrationInput{
-		{
-			Path:    "000001_init.up.sql",
-			Content: []byte("create table ${SCHEMA_NAME}.test_records (id text);"),
-		},
-	}
-}
-
 func TestExtensionServiceTargetRegistry_Dispatch(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -67,28 +58,15 @@ func TestExtensionServiceTargetRegistry_Probe(t *testing.T) {
 func TestExtensionServiceHealthRuntime_CheckInstalledExtensionHealth(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	runtimeDir := newShortRuntimeDir(t)
-	engine := gin.New()
-	engine.GET("/extensions/web-analytics/health", func(c *gin.Context) {
+	registry := &extensionruntime.Registry{}
+	registry.Register("analytics.runtime.health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy", "message": "analytics ready"})
 	})
-	cleanup := startUnixSocketTestServer(t, runtimeDir, "demandops/web-analytics", engine)
-	defer cleanup()
 
-	runtime := extensionruntime.NewRuntime(extensionruntime.NewRegistryForRuntimeDir(runtimeDir))
+	runtime := extensionruntime.NewRuntime(registry)
 	extension := &platformdomain.InstalledExtension{
 		Manifest: platformdomain.ExtensionManifest{
-			Slug:         "web-analytics",
-			Publisher:    "DemandOps",
 			RuntimeClass: platformdomain.ExtensionRuntimeClassServiceBacked,
-			Schema: platformdomain.ExtensionSchemaManifest{
-				PackageKey: "demandops/web-analytics",
-			},
-			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/web-analytics-runtime:test",
-				Digest:       "sha256:test",
-			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
 					Name:             "runtime-health",
@@ -119,7 +97,6 @@ func TestServeResolvedExtensionServiceRoute_DispatchesInstalledServiceEndpoint(t
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
 	extensionService := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
-	runtimeDir := newShortRuntimeDir(t)
 	installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:  workspace.ID,
 		LicenseToken: "lic_service_dispatch",
@@ -132,61 +109,32 @@ func TestServeResolvedExtensionServiceRoute_DispatchesInstalledServiceEndpoint(t
 			Kind:          platformdomain.ExtensionKindOperational,
 			Scope:         platformdomain.ExtensionScopeWorkspace,
 			Risk:          platformdomain.ExtensionRiskStandard,
-			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
-			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
-			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_web_analytics",
-				PackageKey:      "demandops/web-analytics",
-				TargetVersion:   "000001",
-				MigrationEngine: "postgres_sql",
-			},
-			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/web-analytics-runtime:test",
-				Digest:       "sha256:test",
-			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
-					Name:             "analytics-ingest",
-					Class:            platformdomain.ExtensionEndpointClassPublicIngest,
-					MountPath:        "/api/ext/test/event",
-					Methods:          []string{"POST"},
-					Auth:             platformdomain.ExtensionEndpointAuthPublic,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingNone,
-					ServiceTarget:    "test.analytics.ingest",
-				},
-				{
-					Name:             "runtime-health",
-					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/web-analytics/health",
-					Methods:          []string{"GET"},
-					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "analytics.runtime.health",
+					Name:          "analytics-ingest",
+					Class:         platformdomain.ExtensionEndpointClassPublicIngest,
+					MountPath:     "/api/ext/test/event",
+					Methods:       []string{"POST"},
+					Auth:          platformdomain.ExtensionEndpointAuthPublic,
+					ServiceTarget: "test.analytics.ingest",
 				},
 			},
 		},
-		Migrations: serviceBackedTestMigrations(),
 	})
 	require.NoError(t, err)
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
-	engine := gin.New()
-	engine.POST("/api/ext/test/event", func(c *gin.Context) {
+	registry := &extensionruntime.Registry{}
+	registry.Register("test.analytics.ingest", func(c *gin.Context) {
 		c.JSON(http.StatusCreated, gin.H{"handled": true})
 	})
-	engine.GET("/extensions/web-analytics/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-	})
-	socketCleanup := startUnixSocketTestServer(t, runtimeDir, installed.Manifest.PackageKey(), engine)
-	defer socketCleanup()
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/api/ext/test/event", nil)
 
-	serveResolvedExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(runtimeDir), nil, nil)
+	serveResolvedExtensionServiceRoute(c, extensionService, registry, nil, nil)
 
 	assert.Equal(t, http.StatusCreated, w.Code)
 	assert.Contains(t, w.Body.String(), `"handled":true`)
@@ -203,7 +151,6 @@ func TestServeResolvedExtensionServiceRoute_AppliesResolvedWorkspaceContext(t *t
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
 	extensionService := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
-	runtimeDir := newShortRuntimeDir(t)
 	installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:  workspace.ID,
 		LicenseToken: "lic_workspace_binding",
@@ -216,61 +163,32 @@ func TestServeResolvedExtensionServiceRoute_AppliesResolvedWorkspaceContext(t *t
 			Kind:          platformdomain.ExtensionKindOperational,
 			Scope:         platformdomain.ExtensionScopeWorkspace,
 			Risk:          platformdomain.ExtensionRiskStandard,
-			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
-			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
-			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_careers",
-				PackageKey:      "demandops/careers",
-				TargetVersion:   "000001",
-				MigrationEngine: "postgres_sql",
-			},
-			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/careers-runtime:test",
-				Digest:       "sha256:test",
-			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
-					Name:             "public-apply",
-					Class:            platformdomain.ExtensionEndpointClassPublicIngest,
-					MountPath:        "/careers/applications",
-					Methods:          []string{"POST"},
-					Auth:             platformdomain.ExtensionEndpointAuthPublic,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingNone,
-					ServiceTarget:    "careers.public.apply",
-				},
-				{
-					Name:             "runtime-health",
-					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/careers/health",
-					Methods:          []string{"GET"},
-					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "careers.runtime.health",
+					Name:          "public-apply",
+					Class:         platformdomain.ExtensionEndpointClassPublicIngest,
+					MountPath:     "/careers/applications",
+					Methods:       []string{"POST"},
+					Auth:          platformdomain.ExtensionEndpointAuthPublic,
+					ServiceTarget: "careers.public.apply",
 				},
 			},
 		},
-		Migrations: serviceBackedTestMigrations(),
 	})
 	require.NoError(t, err)
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
-	engine := gin.New()
-	engine.POST("/careers/applications", func(c *gin.Context) {
-		c.JSON(http.StatusCreated, gin.H{"workspaceID": c.GetHeader("X-MBR-Workspace-ID")})
+	registry := &extensionruntime.Registry{}
+	registry.Register("careers.public.apply", func(c *gin.Context) {
+		c.JSON(http.StatusCreated, gin.H{"workspaceID": c.GetString("workspace_id")})
 	})
-	engine.GET("/extensions/careers/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-	})
-	socketCleanup := startUnixSocketTestServer(t, runtimeDir, installed.Manifest.PackageKey(), engine)
-	defer socketCleanup()
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/careers/applications", nil)
 
-	serveResolvedExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(runtimeDir), nil, nil)
+	serveResolvedExtensionServiceRoute(c, extensionService, registry, nil, nil)
 
 	assert.Equal(t, http.StatusCreated, w.Code)
 	assert.Contains(t, w.Body.String(), `"workspaceID":"`+workspace.ID+`"`)
@@ -299,41 +217,17 @@ func TestServeResolvedExtensionServiceRoute_ReturnsServiceUnavailableForUnknownT
 			Kind:          platformdomain.ExtensionKindOperational,
 			Scope:         platformdomain.ExtensionScopeWorkspace,
 			Risk:          platformdomain.ExtensionRiskStandard,
-			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
-			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
-			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_web_analytics",
-				PackageKey:      "demandops/web-analytics",
-				TargetVersion:   "000001",
-				MigrationEngine: "postgres_sql",
-			},
-			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/web-analytics-runtime:test",
-				Digest:       "sha256:test",
-			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
-					Name:             "analytics-ingest",
-					Class:            platformdomain.ExtensionEndpointClassPublicIngest,
-					MountPath:        "/api/ext/test/event",
-					Methods:          []string{"POST"},
-					Auth:             platformdomain.ExtensionEndpointAuthPublic,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingNone,
-					ServiceTarget:    "test.analytics.ingest",
-				},
-				{
-					Name:             "runtime-health",
-					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/web-analytics/health",
-					Methods:          []string{"GET"},
-					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "analytics.runtime.health",
+					Name:          "analytics-ingest",
+					Class:         platformdomain.ExtensionEndpointClassPublicIngest,
+					MountPath:     "/api/ext/test/event",
+					Methods:       []string{"POST"},
+					Auth:          platformdomain.ExtensionEndpointAuthPublic,
+					ServiceTarget: "test.analytics.ingest",
 				},
 			},
 		},
-		Migrations: serviceBackedTestMigrations(),
 	})
 	require.NoError(t, err)
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
@@ -359,7 +253,6 @@ func TestServeResolvedExtensionServiceRoute_PropagatesRouteParams(t *testing.T) 
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
 	extensionService := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
-	runtimeDir := newShortRuntimeDir(t)
 	installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:  workspace.ID,
 		LicenseToken: "lic_route_params",
@@ -372,61 +265,32 @@ func TestServeResolvedExtensionServiceRoute_PropagatesRouteParams(t *testing.T) 
 			Kind:          platformdomain.ExtensionKindOperational,
 			Scope:         platformdomain.ExtensionScopeWorkspace,
 			Risk:          platformdomain.ExtensionRiskStandard,
-			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
-			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
-			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_error_tracking",
-				PackageKey:      "demandops/error-tracking",
-				TargetVersion:   "000001",
-				MigrationEngine: "postgres_sql",
-			},
-			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/error-tracking-runtime:test",
-				Digest:       "sha256:test",
-			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
-					Name:             "sentry-envelope-project",
-					Class:            platformdomain.ExtensionEndpointClassPublicIngest,
-					MountPath:        "/api/:projectNumber/envelope",
-					Methods:          []string{"POST"},
-					Auth:             platformdomain.ExtensionEndpointAuthPublic,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingNone,
-					ServiceTarget:    "error-tracking.ingest.envelope.project",
-				},
-				{
-					Name:             "runtime-health",
-					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/error-tracking/health",
-					Methods:          []string{"GET"},
-					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "error-tracking.runtime.health",
+					Name:          "sentry-envelope-project",
+					Class:         platformdomain.ExtensionEndpointClassPublicIngest,
+					MountPath:     "/api/:projectNumber/envelope",
+					Methods:       []string{"POST"},
+					Auth:          platformdomain.ExtensionEndpointAuthPublic,
+					ServiceTarget: "error-tracking.ingest.envelope.project",
 				},
 			},
 		},
-		Migrations: serviceBackedTestMigrations(),
 	})
 	require.NoError(t, err)
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
-	engine := gin.New()
-	engine.POST("/api/:projectNumber/envelope", func(c *gin.Context) {
+	registry := &extensionruntime.Registry{}
+	registry.Register("error-tracking.ingest.envelope.project", func(c *gin.Context) {
 		c.JSON(http.StatusAccepted, gin.H{"projectNumber": c.Param("projectNumber")})
 	})
-	engine.GET("/extensions/error-tracking/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-	})
-	socketCleanup := startUnixSocketTestServer(t, runtimeDir, installed.Manifest.PackageKey(), engine)
-	defer socketCleanup()
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/api/777/envelope", nil)
 
-	serveResolvedExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(runtimeDir), nil, nil)
+	serveResolvedExtensionServiceRoute(c, extensionService, registry, nil, nil)
 
 	assert.Equal(t, http.StatusAccepted, w.Code)
 	assert.Contains(t, w.Body.String(), `"projectNumber":"777"`)
@@ -439,14 +303,13 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesInstanceScopedService
 	defer cleanup()
 
 	ctx := context.Background()
-	runtimeDir := newShortRuntimeDir(t)
 	extensionService := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
 	installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
-		LicenseToken: "lic_enterprise_access",
+		LicenseToken: "lic_identity_gateway",
 		Manifest: platformdomain.ExtensionManifest{
 			SchemaVersion: 1,
-			Slug:          "enterprise-access",
-			Name:          "Enterprise Access",
+			Slug:          "identity-gateway",
+			Name:          "Identity Gateway",
 			Version:       "1.0.0",
 			Publisher:     "DemandOps",
 			Kind:          platformdomain.ExtensionKindIdentity,
@@ -454,34 +317,32 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesInstanceScopedService
 			Risk:          platformdomain.ExtensionRiskPrivileged,
 			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
 			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_enterprise_access",
-				PackageKey:      "demandops/enterprise-access",
-				TargetVersion:   "000001",
+				Name:            "ext_demandops_identity_gateway",
+				PackageKey:      "demandops/identity-gateway",
+				TargetVersion:   "1.0.0",
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/enterprise-access-runtime:test",
-				Digest:       "sha256:test",
+				Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
 					Name:             "settings",
 					Class:            platformdomain.ExtensionEndpointClassAdminPage,
-					MountPath:        "/extensions/enterprise-access",
+					MountPath:        "/extensions/identity-gateway",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthSession,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "enterprise-access.admin.settings",
+					ServiceTarget:    "identity-gateway.admin.settings",
 				},
 				{
 					Name:             "health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/enterprise-access/health",
+					MountPath:        "/extensions/identity-gateway/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "enterprise-access.runtime.health",
+					ServiceTarget:    "identity-gateway.runtime.health",
 				},
 			},
 		},
@@ -491,19 +352,17 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesInstanceScopedService
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
-	engine := gin.New()
-	engine.GET("/extensions/enterprise-access", func(c *gin.Context) {
+	registry := &extensionruntime.Registry{}
+	registry.Register("identity-gateway.admin.settings", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true, "scope": "instance"})
 	})
-	engine.GET("/extensions/enterprise-access/health", func(c *gin.Context) {
+	registry.Register("identity-gateway.runtime.health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
-	socketCleanup := startUnixSocketTestServer(t, runtimeDir, installed.Manifest.PackageKey(), engine)
-	defer socketCleanup()
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, "/extensions/enterprise-access", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/extensions/identity-gateway", nil)
 	c.Set("auth_context", &platformdomain.AuthContext{
 		Principal:     &platformdomain.User{ID: "user_admin", Email: "admin@example.com"},
 		PrincipalType: platformdomain.PrincipalTypeUser,
@@ -511,7 +370,7 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesInstanceScopedService
 		InstanceRole:  instanceRolePtr(platformdomain.InstanceRoleAdmin),
 	})
 
-	ok := serveResolvedAdminExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(runtimeDir), "", nil)
+	ok := serveResolvedAdminExtensionServiceRoute(c, extensionService, registry, "", nil)
 	require.True(t, ok)
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), `"scope":"instance"`)
@@ -528,7 +387,6 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesWorkspaceScopedEndpoi
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
 	extensionService := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
-	runtimeDir := newShortRuntimeDir(t)
 	installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:  workspace.ID,
 		LicenseToken: "lic_admin_service_dispatch",
@@ -541,19 +399,6 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesWorkspaceScopedEndpoi
 			Kind:          platformdomain.ExtensionKindOperational,
 			Scope:         platformdomain.ExtensionScopeWorkspace,
 			Risk:          platformdomain.ExtensionRiskStandard,
-			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
-			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
-			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_ops_pack",
-				PackageKey:      "demandops/ops-pack",
-				TargetVersion:   "000001",
-				MigrationEngine: "postgres_sql",
-			},
-			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/ops-pack-runtime:test",
-				Digest:       "sha256:test",
-			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
 					Name:             "refresh-dashboard",
@@ -564,32 +409,17 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesWorkspaceScopedEndpoi
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingFromSession,
 					ServiceTarget:    "ops.dashboard.action",
 				},
-				{
-					Name:             "runtime-health",
-					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/ops-pack/health",
-					Methods:          []string{"GET"},
-					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "ops.runtime.health",
-				},
 			},
 		},
-		Migrations: serviceBackedTestMigrations(),
 	})
 	require.NoError(t, err)
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
-	engine := gin.New()
-	engine.POST("/extensions/ops/actions/:actionName", func(c *gin.Context) {
+	registry := &extensionruntime.Registry{}
+	registry.Register("ops.dashboard.action", func(c *gin.Context) {
 		c.JSON(http.StatusAccepted, gin.H{"action": c.Param("actionName")})
 	})
-	engine.GET("/extensions/ops-pack/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-	})
-	socketCleanup := startUnixSocketTestServer(t, runtimeDir, installed.Manifest.PackageKey(), engine)
-	defer socketCleanup()
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -602,7 +432,7 @@ func TestServeResolvedAdminExtensionServiceRoute_DispatchesWorkspaceScopedEndpoi
 	})
 	c.Set("workspace_id", workspace.ID)
 
-	handled := serveResolvedAdminExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(runtimeDir), workspace.ID, nil)
+	handled := serveResolvedAdminExtensionServiceRoute(c, extensionService, registry, workspace.ID, nil)
 
 	require.True(t, handled)
 	assert.Equal(t, http.StatusAccepted, w.Code)
@@ -622,7 +452,6 @@ func TestServeResolvedAdminExtensionServiceRoute_InstanceAdminQueryWorkspaceSele
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspaceTwo))
 
 	extensionService := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
-	runtimeDir := newShortRuntimeDir(t)
 	install := func(workspaceID, target string) {
 		installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
 			WorkspaceID:  workspaceID,
@@ -636,19 +465,6 @@ func TestServeResolvedAdminExtensionServiceRoute_InstanceAdminQueryWorkspaceSele
 				Kind:          platformdomain.ExtensionKindOperational,
 				Scope:         platformdomain.ExtensionScopeWorkspace,
 				Risk:          platformdomain.ExtensionRiskStandard,
-				RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
-				StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
-				Schema: platformdomain.ExtensionSchemaManifest{
-					Name:            "ext_demandops_sales_pipeline",
-					PackageKey:      "demandops/sales-pipeline",
-					TargetVersion:   "000001",
-					MigrationEngine: "postgres_sql",
-				},
-				Runtime: platformdomain.ExtensionRuntimeSpec{
-					Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-					OCIReference: "ghcr.io/test/sales-pipeline-runtime:test",
-					Digest:       "sha256:test",
-				},
 				Endpoints: []platformdomain.ExtensionEndpoint{
 					{
 						Name:             "dashboard",
@@ -659,18 +475,8 @@ func TestServeResolvedAdminExtensionServiceRoute_InstanceAdminQueryWorkspaceSele
 						WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingFromSession,
 						ServiceTarget:    "sales.dashboard." + target,
 					},
-					{
-						Name:             "runtime-health",
-						Class:            platformdomain.ExtensionEndpointClassHealth,
-						MountPath:        "/extensions/sales-pipeline/health",
-						Methods:          []string{"GET"},
-						Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
-						WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-						ServiceTarget:    "sales.runtime.health",
-					},
 				},
 			},
-			Migrations: serviceBackedTestMigrations(),
 		})
 		require.NoError(t, err)
 		_, err = extensionService.ActivateExtension(ctx, installed.ID)
@@ -680,15 +486,13 @@ func TestServeResolvedAdminExtensionServiceRoute_InstanceAdminQueryWorkspaceSele
 	install(workspaceOne.ID, "one")
 	install(workspaceTwo.ID, "two")
 
-	engine := gin.New()
-	engine.GET("/extensions/sales-pipeline", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"workspaceID": c.GetHeader("X-MBR-Workspace-ID")})
+	registry := &extensionruntime.Registry{}
+	registry.Register("sales.dashboard.one", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"target": "one", "workspaceID": c.GetString("workspace_id")})
 	})
-	engine.GET("/extensions/sales-pipeline/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	registry.Register("sales.dashboard.two", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"target": "two", "workspaceID": c.GetString("workspace_id")})
 	})
-	socketCleanup := startUnixSocketTestServer(t, runtimeDir, "demandops/sales-pipeline", engine)
-	defer socketCleanup()
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -700,10 +504,11 @@ func TestServeResolvedAdminExtensionServiceRoute_InstanceAdminQueryWorkspaceSele
 		InstanceRole:  instanceRolePtr(platformdomain.InstanceRoleAdmin),
 	})
 
-	handled := serveResolvedAdminExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(runtimeDir), resolvedAdminRouteWorkspaceID(c), nil)
+	handled := serveResolvedAdminExtensionServiceRoute(c, extensionService, registry, resolvedAdminRouteWorkspaceID(c), nil)
 
 	require.True(t, handled)
 	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"target":"two"`)
 	assert.Contains(t, w.Body.String(), `"workspaceID":"`+workspaceTwo.ID+`"`)
 }
 
@@ -719,11 +524,11 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInstanceScopedEndpointFro
 
 	extensionService := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
 	installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
-		LicenseToken: "lic_enterprise_access_block",
+		LicenseToken: "lic_identity_gateway_block",
 		Manifest: platformdomain.ExtensionManifest{
 			SchemaVersion: 1,
-			Slug:          "enterprise-access",
-			Name:          "Enterprise Access",
+			Slug:          "identity-gateway",
+			Name:          "Identity Gateway",
 			Version:       "1.0.0",
 			Publisher:     "DemandOps",
 			Kind:          platformdomain.ExtensionKindIdentity,
@@ -731,34 +536,32 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInstanceScopedEndpointFro
 			Risk:          platformdomain.ExtensionRiskPrivileged,
 			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
 			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_enterprise_access",
-				PackageKey:      "demandops/enterprise-access",
-				TargetVersion:   "000001",
+				Name:            "ext_demandops_identity_gateway",
+				PackageKey:      "demandops/identity-gateway",
+				TargetVersion:   "1.0.0",
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/enterprise-access-runtime:test",
-				Digest:       "sha256:test",
+				Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
 					Name:             "settings",
 					Class:            platformdomain.ExtensionEndpointClassAdminPage,
-					MountPath:        "/extensions/enterprise-access",
+					MountPath:        "/extensions/identity-gateway",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthSession,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "enterprise-access.admin.settings",
+					ServiceTarget:    "identity-gateway.admin.settings",
 				},
 				{
 					Name:             "health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/enterprise-access/health",
+					MountPath:        "/extensions/identity-gateway/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "enterprise-access.runtime.health",
+					ServiceTarget:    "identity-gateway.runtime.health",
 				},
 			},
 		},
@@ -768,9 +571,14 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInstanceScopedEndpointFro
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
+	registry := &extensionruntime.Registry{}
+	registry.Register("identity-gateway.admin.settings", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, "/extensions/enterprise-access", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/extensions/identity-gateway", nil)
 	c.Set("auth_context", &platformdomain.AuthContext{
 		Principal:     &platformdomain.User{ID: "user_operator", Email: "ops@example.com"},
 		PrincipalType: platformdomain.PrincipalTypeUser,
@@ -779,7 +587,7 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInstanceScopedEndpointFro
 	})
 	c.Set("workspace_id", workspace.ID)
 
-	handled := serveResolvedAdminExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(newShortRuntimeDir(t)), workspace.ID, nil)
+	handled := serveResolvedAdminExtensionServiceRoute(c, extensionService, registry, workspace.ID, nil)
 
 	require.True(t, handled)
 	assert.Equal(t, http.StatusNotFound, w.Code)
@@ -797,8 +605,8 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInternalOnlyEndpointOverH
 		LicenseToken: "lic_internal_only",
 		Manifest: platformdomain.ExtensionManifest{
 			SchemaVersion: 1,
-			Slug:          "enterprise-access",
-			Name:          "Enterprise Access",
+			Slug:          "identity-gateway",
+			Name:          "Identity Gateway",
 			Version:       "1.0.0",
 			Publisher:     "DemandOps",
 			Kind:          platformdomain.ExtensionKindIdentity,
@@ -806,25 +614,23 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInternalOnlyEndpointOverH
 			Risk:          platformdomain.ExtensionRiskPrivileged,
 			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
 			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_enterprise_access",
-				PackageKey:      "demandops/enterprise-access",
-				TargetVersion:   "000001",
+				Name:            "ext_demandops_identity_gateway",
+				PackageKey:      "demandops/identity-gateway",
+				TargetVersion:   "1.0.0",
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/enterprise-access-runtime:test",
-				Digest:       "sha256:test",
+				Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
 					Name:             "health",
 					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/enterprise-access/health",
+					MountPath:        "/extensions/identity-gateway/health",
 					Methods:          []string{"GET"},
 					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "enterprise-access.runtime.health",
+					ServiceTarget:    "identity-gateway.runtime.health",
 				},
 			},
 		},
@@ -834,9 +640,14 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInternalOnlyEndpointOverH
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
+	registry := &extensionruntime.Registry{}
+	registry.Register("identity-gateway.runtime.health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, "/extensions/enterprise-access/health", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/extensions/identity-gateway/health", nil)
 	c.Set("auth_context", &platformdomain.AuthContext{
 		Principal:     &platformdomain.User{ID: "user_admin", Email: "admin@example.com"},
 		PrincipalType: platformdomain.PrincipalTypeUser,
@@ -844,7 +655,7 @@ func TestServeResolvedAdminExtensionServiceRoute_BlocksInternalOnlyEndpointOverH
 		InstanceRole:  instanceRolePtr(platformdomain.InstanceRoleAdmin),
 	})
 
-	handled := serveResolvedAdminExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(newShortRuntimeDir(t)), "", nil)
+	handled := serveResolvedAdminExtensionServiceRoute(c, extensionService, registry, "", nil)
 
 	require.True(t, handled)
 	assert.Equal(t, http.StatusNotFound, w.Code)
@@ -873,19 +684,6 @@ func TestServeResolvedExtensionServiceRoute_EnforcesMaxBodySize(t *testing.T) {
 			Kind:          platformdomain.ExtensionKindOperational,
 			Scope:         platformdomain.ExtensionScopeWorkspace,
 			Risk:          platformdomain.ExtensionRiskStandard,
-			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
-			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
-			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_web_analytics",
-				PackageKey:      "demandops/web-analytics",
-				TargetVersion:   "000001",
-				MigrationEngine: "postgres_sql",
-			},
-			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/web-analytics-runtime:test",
-				Digest:       "sha256:test",
-			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
 					Name:             "analytics-ingest",
@@ -897,28 +695,23 @@ func TestServeResolvedExtensionServiceRoute_EnforcesMaxBodySize(t *testing.T) {
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingNone,
 					ServiceTarget:    "test.analytics.ingest",
 				},
-				{
-					Name:             "runtime-health",
-					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/web-analytics/health",
-					Methods:          []string{"GET"},
-					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "analytics.runtime.health",
-				},
 			},
 		},
-		Migrations: serviceBackedTestMigrations(),
 	})
 	require.NoError(t, err)
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
+	registry := &extensionruntime.Registry{}
+	registry.Register("test.analytics.ingest", func(c *gin.Context) {
+		c.JSON(http.StatusCreated, gin.H{"handled": true})
+	})
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/api/ext/body-limit", bytes.NewBufferString("12345"))
 
-	serveResolvedExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(newShortRuntimeDir(t)), nil, nil)
+	serveResolvedExtensionServiceRoute(c, extensionService, registry, nil, nil)
 
 	assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
 	assert.NotContains(t, w.Body.String(), `"handled":true`)
@@ -935,7 +728,6 @@ func TestServeResolvedExtensionServiceRoute_EnforcesRateLimit(t *testing.T) {
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
 	extensionService := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
-	runtimeDir := newShortRuntimeDir(t)
 	installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:  workspace.ID,
 		LicenseToken: "lic_rate_limit",
@@ -948,19 +740,6 @@ func TestServeResolvedExtensionServiceRoute_EnforcesRateLimit(t *testing.T) {
 			Kind:          platformdomain.ExtensionKindOperational,
 			Scope:         platformdomain.ExtensionScopeWorkspace,
 			Risk:          platformdomain.ExtensionRiskStandard,
-			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
-			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
-			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_web_analytics",
-				PackageKey:      "demandops/web-analytics",
-				TargetVersion:   "000001",
-				MigrationEngine: "postgres_sql",
-			},
-			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/web-analytics-runtime:test",
-				Digest:       "sha256:test",
-			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
 					Name:             "analytics-ingest-rate-limited",
@@ -972,43 +751,28 @@ func TestServeResolvedExtensionServiceRoute_EnforcesRateLimit(t *testing.T) {
 					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingNone,
 					ServiceTarget:    "test.analytics.ingest",
 				},
-				{
-					Name:             "runtime-health",
-					Class:            platformdomain.ExtensionEndpointClassHealth,
-					MountPath:        "/extensions/web-analytics/health",
-					Methods:          []string{"GET"},
-					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
-					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
-					ServiceTarget:    "analytics.runtime.health",
-				},
 			},
 		},
-		Migrations: serviceBackedTestMigrations(),
 	})
 	require.NoError(t, err)
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
-	engine := gin.New()
-	engine.POST("/api/ext/rate-limit", func(c *gin.Context) {
+	registry := &extensionruntime.Registry{}
+	registry.Register("test.analytics.ingest", func(c *gin.Context) {
 		c.JSON(http.StatusCreated, gin.H{"handled": true})
 	})
-	engine.GET("/extensions/web-analytics/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-	})
-	socketCleanup := startUnixSocketTestServer(t, runtimeDir, installed.Manifest.PackageKey(), engine)
-	defer socketCleanup()
 
 	firstWriter := httptest.NewRecorder()
 	firstCtx, _ := gin.CreateTestContext(firstWriter)
 	firstCtx.Request = httptest.NewRequest(http.MethodPost, "/api/ext/rate-limit", bytes.NewBufferString("{}"))
-	serveResolvedExtensionServiceRoute(firstCtx, extensionService, extensionruntime.NewRegistryForRuntimeDir(runtimeDir), nil, nil)
+	serveResolvedExtensionServiceRoute(firstCtx, extensionService, registry, nil, nil)
 	require.Equal(t, http.StatusCreated, firstWriter.Code)
 
 	secondWriter := httptest.NewRecorder()
 	secondCtx, _ := gin.CreateTestContext(secondWriter)
 	secondCtx.Request = httptest.NewRequest(http.MethodPost, "/api/ext/rate-limit", bytes.NewBufferString("{}"))
-	serveResolvedExtensionServiceRoute(secondCtx, extensionService, extensionruntime.NewRegistryForRuntimeDir(runtimeDir), nil, nil)
+	serveResolvedExtensionServiceRoute(secondCtx, extensionService, registry, nil, nil)
 
 	assert.Equal(t, http.StatusTooManyRequests, secondWriter.Code)
 }
@@ -1024,7 +788,6 @@ func TestServeResolvedExtensionServiceRoute_ValidatesSignedWebhookAuth(t *testin
 	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
 
 	extensionService := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
-	runtimeDir := newShortRuntimeDir(t)
 	installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
 		WorkspaceID:  workspace.ID,
 		LicenseToken: "lic_signed_webhook",
@@ -1041,13 +804,11 @@ func TestServeResolvedExtensionServiceRoute_ValidatesSignedWebhookAuth(t *testin
 			Schema: platformdomain.ExtensionSchemaManifest{
 				Name:            "ext_demandops_ops_pack",
 				PackageKey:      "demandops/ops-pack",
-				TargetVersion:   "000001",
+				TargetVersion:   "1.0.0",
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "ghcr.io/test/ops-pack-runtime:test",
-				Digest:       "sha256:test",
+				Protocol: platformdomain.ExtensionRuntimeProtocolInProcessHTTP,
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
@@ -1071,23 +832,21 @@ func TestServeResolvedExtensionServiceRoute_ValidatesSignedWebhookAuth(t *testin
 				},
 			},
 		},
-		Migrations: serviceBackedTestMigrations(),
+		Migrations: []platformservices.ExtensionMigrationInput{{Path: "000001_init.sql", Content: []byte("select 1;")}},
 	})
 	require.NoError(t, err)
 	_, err = extensionService.ActivateExtension(ctx, installed.ID)
 	require.NoError(t, err)
 
-	engine := gin.New()
-	engine.POST("/api/ext/signed-webhook", func(c *gin.Context) {
+	registry := &extensionruntime.Registry{}
+	registry.Register("ops.signed.webhook", func(c *gin.Context) {
 		body, readErr := io.ReadAll(c.Request.Body)
 		require.NoError(t, readErr)
 		c.JSON(http.StatusAccepted, gin.H{"body": string(body)})
 	})
-	engine.GET("/extensions/ops-pack/health", func(c *gin.Context) {
+	registry.Register("ops.runtime.health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
-	socketCleanup := startUnixSocketTestServer(t, runtimeDir, installed.Manifest.PackageKey(), engine)
-	defer socketCleanup()
 
 	cfg := &config.Config{}
 	cfg.Auth.JWTSecret = "test-signed-webhook-secret"
@@ -1102,7 +861,7 @@ func TestServeResolvedExtensionServiceRoute_ValidatesSignedWebhookAuth(t *testin
 	c.Request.Header.Set(extensionWebhookTimestampHeader, timestamp)
 	c.Request.Header.Set(extensionWebhookSignatureHeader, signature)
 
-	serveResolvedExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(runtimeDir), cfg, nil)
+	serveResolvedExtensionServiceRoute(c, extensionService, registry, cfg, nil)
 
 	assert.Equal(t, http.StatusAccepted, w.Code)
 	assert.Contains(t, w.Body.String(), `"body":"{\"ok\":true}"`)
@@ -1153,7 +912,9 @@ func TestExtensionServiceTargetRegistry_DispatchesAnalyticsAdminPage(t *testing.
 				PackageKey: "demandops/web-analytics",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol: platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				OCIReference: "registry.example.com/mbr/web-analytics:1.0.0",
+				Digest:       "sha256:webanalyticstest",
 			},
 		},
 	}
@@ -1224,7 +985,9 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingApplicationsPage(
 				PackageKey: "demandops/error-tracking",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol: platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				OCIReference: "registry.example.com/mbr/error-tracking:1.0.0",
+				Digest:       "sha256:errortrackingtest",
 			},
 		},
 	}
@@ -1295,7 +1058,9 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingIssuesPage(t *tes
 				PackageKey: "demandops/error-tracking",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
-				Protocol: platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				OCIReference: "registry.example.com/mbr/error-tracking:1.0.0",
+				Digest:       "sha256:errortrackingtest",
 			},
 		},
 	}

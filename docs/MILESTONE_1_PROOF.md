@@ -29,12 +29,15 @@ first-party sources, because part of the Milestone 1 contract is that
   instead of floating on whatever happens to be current on `main`.
 - Local reruns should use the same workspace shape, or explicitly point
   `MBR_WORKSPACE_ROOT`, `FIRST_PARTY_EXTENSIONS_ROOT`, and
-  `EXTENSION_SDK_ROOT` at equivalent checkouts.
+  `PRIVATE_EXTENSIONS_ROOT`, and `EXTENSION_SDK_ROOT` at equivalent checkouts.
 - When `MBR_WORKSPACE_ROOT` is set, the proof script now resolves all sibling
-  repo defaults from that workspace root consistently, including `extensions`.
+  repo defaults from that workspace root consistently, including `extensions`,
+  `private-extensions`, and `extension-sdk`.
 - The proof script exports `MBR_REQUIRE_WORKSPACE_REFS=true`, so first-party
   tests fail closed when those canonical sibling repos are missing instead of
   silently skipping.
+- The proof script validates `enterprise-access` from the canonical
+  `private-extensions` checkout rather than the public `extensions` repo.
 - If the workspace does not already provide a top-level `go.work`, or if the
   available `go.work` does not actually include the `platform` checkout being
   proven, the proof script bootstraps a temporary one inside the proof bundle

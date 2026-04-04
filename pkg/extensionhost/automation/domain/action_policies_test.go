@@ -106,15 +106,6 @@ func TestSupportedRuleActionTypesAndExtensions(t *testing.T) {
 		}
 	}
 
-	if got := RequiredExtensionForAction("create_case"); got != "error-tracking" {
-		t.Fatalf("expected create_case extension requirement, got %q", got)
-	}
-	if got := RequiredExtensionForAction("send_email"); got != "" {
-		t.Fatalf("expected send_email to require no extension, got %q", got)
-	}
-	if got := RequiredExtensionForAction("missing"); got != "" {
-		t.Fatalf("expected unknown action to require no extension, got %q", got)
-	}
 }
 
 func TestActionPolicyBranches(t *testing.T) {
