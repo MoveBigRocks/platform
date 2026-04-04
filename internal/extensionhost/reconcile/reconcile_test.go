@@ -2,6 +2,7 @@ package extensionreconcile
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -75,6 +76,61 @@ func (fakeLifecycle) CheckExtensionHealth(_ context.Context, extensionID string)
 	return &domain.InstalledExtension{
 		ID:           extensionID,
 		HealthStatus: domain.ExtensionHealthHealthy,
+	}, nil
+}
+
+type recordingLifecycle struct {
+	calls []string
+}
+
+func (l *recordingLifecycle) InstallExtension(context.Context, platformservices.InstallExtensionParams) (*domain.InstalledExtension, error) {
+	return nil, nil
+}
+
+func (l *recordingLifecycle) UpgradeExtension(_ context.Context, params platformservices.UpgradeExtensionParams) (*domain.InstalledExtension, error) {
+	l.calls = append(l.calls, "upgrade")
+	return &domain.InstalledExtension{
+		ID:               params.ExtensionID,
+		WorkspaceID:      "ws_default",
+		Slug:             params.Manifest.Slug,
+		Version:          params.Manifest.Version,
+		BundleSHA256:     checksumHex(mustDecodeBase64(params.BundleBase64)),
+		Manifest:         params.Manifest,
+		Status:           domain.ExtensionStatusInactive,
+		ValidationStatus: domain.ExtensionValidationValid,
+	}, nil
+}
+
+func (l *recordingLifecycle) UpdateExtensionConfig(context.Context, string, map[string]any) (*domain.InstalledExtension, error) {
+	return nil, nil
+}
+
+func (l *recordingLifecycle) ValidateExtension(context.Context, string) (*domain.InstalledExtension, error) {
+	return nil, nil
+}
+
+func (l *recordingLifecycle) ActivateExtension(_ context.Context, extensionID string) (*domain.InstalledExtension, error) {
+	l.calls = append(l.calls, "activate")
+	return &domain.InstalledExtension{
+		ID:           extensionID,
+		HealthStatus: domain.ExtensionHealthHealthy,
+		Status:       domain.ExtensionStatusActive,
+	}, nil
+}
+
+func (l *recordingLifecycle) DeactivateExtension(context.Context, string, string) (*domain.InstalledExtension, error) {
+	return nil, nil
+}
+
+func (l *recordingLifecycle) UninstallExtension(context.Context, string) error {
+	return nil
+}
+
+func (l *recordingLifecycle) CheckExtensionHealth(_ context.Context, extensionID string) (*domain.InstalledExtension, error) {
+	return &domain.InstalledExtension{
+		ID:           extensionID,
+		HealthStatus: domain.ExtensionHealthHealthy,
+		Status:       domain.ExtensionStatusActive,
 	}, nil
 }
 
@@ -267,6 +323,65 @@ extensions:
 	assert.Equal(t, "demandops_ats.sock", manifest.Runtimes[0].Socket)
 }
 
+func TestApplyRefreshesSchemaBackedBundleBeforeActivation(t *testing.T) {
+	lifecycle := &recordingLifecycle{}
+	payload := payloadForManifest(t, domain.ExtensionManifest{
+		Slug:         "ats",
+		Name:         "ATS",
+		Version:      "1.0.0",
+		Publisher:    "DemandOps",
+		Kind:         domain.ExtensionKindProduct,
+		Scope:        domain.ExtensionScopeWorkspace,
+		Risk:         domain.ExtensionRiskStandard,
+		RuntimeClass: domain.ExtensionRuntimeClassServiceBacked,
+		StorageClass: domain.ExtensionStorageClassOwnedSchema,
+		Schema: domain.ExtensionSchemaManifest{
+			Name:          "ats",
+			PackageKey:    "demandops/ats",
+			TargetVersion: "1",
+		},
+		Runtime: domain.ExtensionRuntimeSpec{
+			Protocol:     domain.ExtensionRuntimeProtocolUnixSocketHTTP,
+			OCIReference: "ghcr.io/movebigrocks/mbr-ext-ats-runtime:v1.0.0",
+		},
+	})
+	engine := NewEngine(
+		fakeBundleLoader{payloads: map[string]extensionbundle.SourcePayload{
+			"oci://ats": payload,
+		}},
+		fakeInventory{installed: []*domain.InstalledExtension{
+			{
+				ID:               "ext_ats",
+				WorkspaceID:      "ws_default",
+				Slug:             "ats",
+				Version:          "1.0.0",
+				BundleSHA256:     checksumHex(payload.Bytes),
+				Manifest:         domain.ExtensionManifest{Scope: domain.ExtensionScopeWorkspace},
+				Status:           domain.ExtensionStatusInactive,
+				ValidationStatus: domain.ExtensionValidationValid,
+			},
+		}},
+		fakeWorkspaceLookup{bySlug: map[string]*domain.Workspace{
+			"default": {ID: "ws_default", Slug: "default"},
+		}},
+		lifecycle,
+	)
+
+	doc := mustDesiredState(t, `
+extensions:
+  installed:
+    - slug: ats
+      ref: oci://ats
+      scope: workspace
+      workspace: default
+`)
+
+	result, err := engine.Apply(t.Context(), doc, "extensions/desired-state.yaml")
+	require.NoError(t, err)
+	require.NotNil(t, result.Check)
+	assert.Equal(t, []string{"upgrade", "activate"}, lifecycle.calls)
+}
+
 func payloadForManifest(t *testing.T, manifest domain.ExtensionManifest) extensionbundle.SourcePayload {
 	t.Helper()
 	raw, err := json.Marshal(manifest)
@@ -292,4 +407,12 @@ func mustDesiredState(t *testing.T, raw string) extensiondesiredstate.Document {
 	doc, err := extensiondesiredstate.Parse([]byte(raw))
 	require.NoError(t, err)
 	return doc
+}
+
+func mustDecodeBase64(value string) []byte {
+	data, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		panic(fmt.Sprintf("decode base64: %v", err))
+	}
+	return data
 }

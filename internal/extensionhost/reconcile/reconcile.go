@@ -424,6 +424,27 @@ func (e *Engine) Apply(ctx context.Context, doc extensiondesiredstate.Document, 
 				result.Check = &check
 				return result, fmt.Errorf("current extension missing for activate")
 			}
+			if shouldRefreshBundleBeforeActivate(currentExt, resolved) {
+				refreshed, refreshErr := e.Lifecycle.UpgradeExtension(ctx, platformservices.UpgradeExtensionParams{
+					ExtensionID:   currentExt.ID,
+					InstalledByID: e.actor(),
+					BundleBase64:  base64.StdEncoding.EncodeToString(resolved.payload.Bytes),
+					Manifest:      resolved.manifest,
+					Assets:        assetInputs(resolved.payload.Bundle.Assets),
+					Migrations:    migrationInputs(resolved.payload.Bundle.Migrations),
+				})
+				if refreshErr != nil {
+					res.Status = "failed"
+					res.Message = refreshErr.Error()
+					result.Results = append(result.Results, res)
+					result.Clean = false
+					check, _ := e.Check(ctx, doc, desiredStatePath)
+					result.Check = &check
+					return result, refreshErr
+				}
+				currentExt = refreshed
+				current[key] = refreshed
+			}
 			activated, activateErr := e.Lifecycle.ActivateExtension(ctx, currentExt.ID)
 			if activateErr != nil {
 				res.Status = "failed"
@@ -887,6 +908,14 @@ func sortedKeys(m map[string]any) []string {
 func checksumHex(data []byte) string {
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])
+}
+
+func shouldRefreshBundleBeforeActivate(current *domain.InstalledExtension, desired resolvedEntry) bool {
+	if current == nil || len(desired.payload.Bytes) == 0 {
+		return false
+	}
+	return desired.manifest.RuntimeClass == domain.ExtensionRuntimeClassServiceBacked &&
+		desired.manifest.StorageClass == domain.ExtensionStorageClassOwnedSchema
 }
 
 func (e *Engine) actor() string {
