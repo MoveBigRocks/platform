@@ -106,11 +106,11 @@ func TestExtensionService_ListInstanceAdminNavigation(t *testing.T) {
 	)
 
 	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
-		LicenseToken: "lic_identity_gateway",
+		LicenseToken: "lic_enterprise_access",
 		Manifest: platformdomain.ExtensionManifest{
 			SchemaVersion: 1,
-			Slug:          "identity-gateway",
-			Name:          "Identity Gateway",
+			Slug:          "enterprise-access",
+			Name:          "Enterprise Access",
 			Version:       "1.0.0",
 			Publisher:     "DemandOps",
 			Kind:          platformdomain.ExtensionKindIdentity,
@@ -118,41 +118,43 @@ func TestExtensionService_ListInstanceAdminNavigation(t *testing.T) {
 			Risk:          platformdomain.ExtensionRiskPrivileged,
 			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
 			Schema: platformdomain.ExtensionSchemaManifest{
-				Name:            "ext_demandops_identity_gateway",
-				PackageKey:      "demandops/identity-gateway",
+				Name:            "ext_demandops_enterprise_access",
+				PackageKey:      "demandops/enterprise-access",
 				TargetVersion:   "1.0.0",
 				MigrationEngine: "postgres_sql",
 			},
 			Runtime: platformdomain.ExtensionRuntimeSpec{
 				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
-				OCIReference: "registry.example.com/mbr/identity-gateway:1.0.0",
-				Digest:       "sha256:identitygatewaytest",
+				OCIReference: "ghcr.io/test/enterprise-access-runtime:test",
+				Digest:       "sha256:test",
 			},
 			Endpoints: []platformdomain.ExtensionEndpoint{
 				{
-					Name:          "settings",
-					Class:         platformdomain.ExtensionEndpointClassAdminPage,
-					MountPath:     "/extensions/identity-gateway",
-					Methods:       []string{"GET"},
-					Auth:          platformdomain.ExtensionEndpointAuthSession,
-					ServiceTarget: "identity-gateway.admin.settings",
+					Name:             "settings",
+					Class:            platformdomain.ExtensionEndpointClassAdminPage,
+					MountPath:        "/extensions/enterprise-access",
+					Methods:          []string{"GET"},
+					Auth:             platformdomain.ExtensionEndpointAuthSession,
+					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
+					ServiceTarget:    "enterprise-access.admin.settings",
 				},
 				{
-					Name:          "health",
-					Class:         platformdomain.ExtensionEndpointClassHealth,
-					MountPath:     "/extensions/identity-gateway/health",
-					Methods:       []string{"GET"},
-					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
-					ServiceTarget: "identity-gateway.runtime.health",
+					Name:             "health",
+					Class:            platformdomain.ExtensionEndpointClassHealth,
+					MountPath:        "/extensions/enterprise-access/health",
+					Methods:          []string{"GET"},
+					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
+					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
+					ServiceTarget:    "enterprise-access.runtime.health",
 				},
 			},
 			AdminNavigation: []platformdomain.ExtensionAdminNavigationItem{
 				{
-					Name:       "identity-gateway",
+					Name:       "enterprise-access",
 					Section:    "Identity",
-					Title:      "Identity Gateway",
+					Title:      "Enterprise Access",
 					Endpoint:   "settings",
-					ActivePage: "identity-gateway",
+					ActivePage: "enterprise-access",
 				},
 			},
 		},
@@ -165,9 +167,9 @@ func TestExtensionService_ListInstanceAdminNavigation(t *testing.T) {
 	items, err := service.ListInstanceAdminNavigation(ctx)
 	require.NoError(t, err)
 	require.Len(t, items, 1)
-	assert.Equal(t, "/extensions/identity-gateway", items[0].Href)
+	assert.Equal(t, "/extensions/enterprise-access", items[0].Href)
 	assert.Equal(t, "Identity", items[0].Section)
-	assert.Equal(t, "Identity Gateway", items[0].Title)
+	assert.Equal(t, "Enterprise Access", items[0].Title)
 }
 
 func TestExtensionService_ListInstanceAdminNavigationForWorkspaceExtensionUsesWorkspaceHref(t *testing.T) {
