@@ -51,6 +51,47 @@ func (m *ContextAuthMiddleware) WithCookieDomain(domain string) *ContextAuthMidd
 	return m
 }
 
+// AuthRequiredForSessionOrAgent is a dual-auth gate for the /extensions/*
+// route group. It accepts either a browser session cookie (same path as
+// AuthRequired) or an agent token supplied via an Authorization: Bearer
+// header (delegated to PrincipalAuthMiddleware.AuthenticateAgent). Endpoint-
+// level enforcement in cmd/api/extension_service_targets.go is still the
+// source of truth for which auth mode a given endpoint accepts; this gate
+// only lets both kinds of callers through so the endpoint-level check can
+// decide.
+//
+// Background: see ADR 0028 and RFC-0015. Previously the /extensions/* group
+// used AuthRequired exclusively, which rejected agent tokens at the gate
+// and made declared auth: agent_token endpoints unreachable at runtime.
+func (m *ContextAuthMiddleware) AuthRequiredForSessionOrAgent(principalAuth *PrincipalAuthMiddleware) gin.HandlerFunc {
+	sessionHandler := m.AuthRequired()
+	return func(c *gin.Context) {
+		if hasBearerToken(c) {
+			if principalAuth == nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"error":   "Unauthorized",
+					"message": "Agent authentication is not configured for this instance",
+				})
+				return
+			}
+			principalAuth.AuthenticateAgent()(c)
+			return
+		}
+		sessionHandler(c)
+	}
+}
+
+func hasBearerToken(c *gin.Context) bool {
+	header := strings.TrimSpace(c.GetHeader("Authorization"))
+	if header == "" {
+		return false
+	}
+	if len(header) < 7 {
+		return false
+	}
+	return strings.EqualFold(header[:7], "Bearer ")
+}
+
 // AuthRequired validates the session and sets context variables
 // Use this for all protected routes.
 func (m *ContextAuthMiddleware) AuthRequired() gin.HandlerFunc {
@@ -149,8 +190,24 @@ func (m *ContextAuthMiddleware) AuthRequired() gin.HandlerFunc {
 
 // RequireOperationalAccess allows either instance-operator access or an active workspace context.
 // Use this for shared browser pages that can render either cross-workspace or workspace-scoped data.
+// It also accepts workspace-bound agent callers that arrived via
+// AuthRequiredForSessionOrAgent; in that case the agent's workspace binding
+// is the operational context and there is no session to consult.
 func (m *ContextAuthMiddleware) RequireOperationalAccess() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Agent callers short-circuit: their workspace binding was established
+		// by PrincipalAuthMiddleware.AuthenticateAgent; no session is attached.
+		if authCtx := GetAuthContext(c); authCtx != nil && authCtx.AuthMethod == platformdomain.AuthMethodAgentToken {
+			workspaceID := strings.TrimSpace(authCtx.WorkspaceID)
+			if workspaceID == "" {
+				m.respondForbidden(c, "The authenticated agent is missing a workspace binding")
+				return
+			}
+			c.Set("workspace_id", workspaceID)
+			c.Next()
+			return
+		}
+
 		session, exists := c.Get("session")
 		if !exists {
 			RespondWithErrorAndAbort(c, http.StatusUnauthorized, "Not authenticated")

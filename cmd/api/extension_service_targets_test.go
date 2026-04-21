@@ -1311,3 +1311,136 @@ func TestExtensionServiceTargetRegistry_DispatchesErrorTrackingIssuesPage(t *tes
 	assert.Contains(t, w.Body.String(), "/extensions/error-tracking/issues")
 	assert.Contains(t, w.Body.String(), "test@example.com")
 }
+
+// TestServeResolvedAdminExtensionServiceRoute_AcceptsAgentTokenEndpoint exercises
+// the agent-callable extension surface described by RFC-0015 and ADR 0028.
+// It installs an extension whose extension_api endpoint is declared with
+// auth: agent_token and workspaceBinding: workspace_from_agent_token, seeds
+// the gin context with a pre-authenticated agent AuthContext, and asserts
+// the request is routed to the extension runtime via the admin resolver.
+// Endpoint-level enforcement continues to reject session-authed callers on
+// an agent-token endpoint (and vice versa).
+func TestServeResolvedAdminExtensionServiceRoute_AcceptsAgentTokenEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	extensionService := platformservices.NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+	runtimeDir := newShortRuntimeDir(t)
+	installed, err := extensionService.InstallExtension(ctx, platformservices.InstallExtensionParams{
+		WorkspaceID:  workspace.ID,
+		LicenseToken: "lic_agent_token",
+		Manifest: platformdomain.ExtensionManifest{
+			SchemaVersion: 1,
+			Slug:          "agent-surface",
+			Name:          "Agent Surface",
+			Version:       "1.0.0",
+			Publisher:     "DemandOps",
+			Kind:          platformdomain.ExtensionKindProduct,
+			Scope:         platformdomain.ExtensionScopeWorkspace,
+			Risk:          platformdomain.ExtensionRiskStandard,
+			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
+			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
+			Schema: platformdomain.ExtensionSchemaManifest{
+				Name:            "ext_demandops_agent_surface",
+				PackageKey:      "demandops/agent-surface",
+				TargetVersion:   "000001",
+				MigrationEngine: "postgres_sql",
+			},
+			Runtime: platformdomain.ExtensionRuntimeSpec{
+				Protocol:     platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+				OCIReference: "ghcr.io/test/agent-surface-runtime:test",
+				Digest:       "sha256:test",
+			},
+			Endpoints: []platformdomain.ExtensionEndpoint{
+				{
+					Name:             "agent-properties-create",
+					Class:            platformdomain.ExtensionEndpointClassExtensionAPI,
+					MountPath:        "/extensions/agent-surface/api/agent/properties",
+					Methods:          []string{"POST"},
+					Auth:             platformdomain.ExtensionEndpointAuthAgentToken,
+					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingFromAgentToken,
+					ServiceTarget:    "agent_surface.api.properties.create",
+				},
+				{
+					Name:             "runtime-health",
+					Class:            platformdomain.ExtensionEndpointClassHealth,
+					MountPath:        "/extensions/agent-surface/health",
+					Methods:          []string{"GET"},
+					Auth:             platformdomain.ExtensionEndpointAuthInternalOnly,
+					WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped,
+					ServiceTarget:    "agent_surface.runtime.health",
+				},
+			},
+		},
+		Migrations: serviceBackedTestMigrations(),
+	})
+	require.NoError(t, err)
+	_, err = extensionService.ActivateExtension(ctx, installed.ID)
+	require.NoError(t, err)
+
+	engine := gin.New()
+	engine.POST("/extensions/agent-surface/api/agent/properties", func(c *gin.Context) {
+		c.JSON(http.StatusCreated, gin.H{
+			"workspaceID": c.GetHeader("X-MBR-Workspace-ID"),
+		})
+	})
+	engine.GET("/extensions/agent-surface/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
+	socketCleanup := startUnixSocketTestServer(t, runtimeDir, installed.Manifest.PackageKey(), engine)
+	defer socketCleanup()
+
+	cfg := &config.Config{}
+
+	t.Run("accepts pre-authenticated agent with workspace binding", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodPost, "/extensions/agent-surface/api/agent/properties", nil)
+		c.Set("auth_context", &platformdomain.AuthContext{
+			PrincipalType: platformdomain.PrincipalTypeAgent,
+			AuthMethod:    platformdomain.AuthMethodAgentToken,
+			WorkspaceID:   workspace.ID,
+		})
+
+		served := serveResolvedAdminExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(runtimeDir), workspace.ID, cfg)
+		assert.True(t, served)
+		assert.Equal(t, http.StatusCreated, w.Code)
+		assert.Contains(t, w.Body.String(), `"workspaceID":"`+workspace.ID+`"`)
+	})
+
+	t.Run("rejects session auth on an agent-token endpoint", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodPost, "/extensions/agent-surface/api/agent/properties", nil)
+		c.Set("auth_context", &platformdomain.AuthContext{
+			PrincipalType: platformdomain.PrincipalTypeUser,
+			AuthMethod:    platformdomain.AuthMethodSession,
+			WorkspaceID:   workspace.ID,
+		})
+
+		served := serveResolvedAdminExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(runtimeDir), workspace.ID, cfg)
+		assert.True(t, served)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("rejects agent without workspace binding", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodPost, "/extensions/agent-surface/api/agent/properties", nil)
+		c.Set("auth_context", &platformdomain.AuthContext{
+			PrincipalType: platformdomain.PrincipalTypeAgent,
+			AuthMethod:    platformdomain.AuthMethodAgentToken,
+			// WorkspaceID deliberately empty
+		})
+
+		served := serveResolvedAdminExtensionServiceRoute(c, extensionService, extensionruntime.NewRegistryForRuntimeDir(runtimeDir), "", cfg)
+		assert.True(t, served)
+		assert.Equal(t, http.StatusForbidden, w.Code)
+	})
+}

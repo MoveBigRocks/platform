@@ -421,6 +421,107 @@ func TestRequireOperationalAccess_WorkspaceContext(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "ws-123")
 }
 
+func TestRequireOperationalAccess_AcceptsAgentWithWorkspaceBinding(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	m := &ContextAuthMiddleware{}
+
+	router := gin.New()
+	router.GET("/extensions/foo", func(c *gin.Context) {
+		c.Set("auth_context", &platformdomain.AuthContext{
+			PrincipalType: platformdomain.PrincipalTypeAgent,
+			AuthMethod:    platformdomain.AuthMethodAgentToken,
+			WorkspaceID:   "ws-agent-42",
+		})
+		c.Next()
+	}, m.RequireOperationalAccess(), func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"workspace_id": c.GetString("workspace_id"),
+		})
+	})
+
+	req := httptest.NewRequest("GET", "/extensions/foo", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "ws-agent-42")
+}
+
+func TestRequireOperationalAccess_RejectsAgentWithoutWorkspaceBinding(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	m := &ContextAuthMiddleware{isDevelopment: true}
+
+	router := gin.New()
+	router.GET("/extensions/foo", func(c *gin.Context) {
+		c.Set("auth_context", &platformdomain.AuthContext{
+			PrincipalType: platformdomain.PrincipalTypeAgent,
+			AuthMethod:    platformdomain.AuthMethodAgentToken,
+			// WorkspaceID deliberately empty
+		})
+		c.Next()
+	}, m.RequireOperationalAccess(), func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{})
+	})
+
+	req := httptest.NewRequest("GET", "/extensions/foo", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestHasBearerToken(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cases := []struct {
+		name   string
+		header string
+		expect bool
+	}{
+		{"no header", "", false},
+		{"bearer lowercase", "bearer hat_abc", true},
+		{"bearer titlecase", "Bearer hat_abc", true},
+		{"bearer uppercase", "BEARER hat_abc", true},
+		{"basic auth", "Basic dXNlcjpwYXNz", false},
+		{"too short", "Bearer", false},
+		{"whitespace only", "   ", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/", nil)
+			if tc.header != "" {
+				req.Header.Set("Authorization", tc.header)
+			}
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = req
+
+			assert.Equal(t, tc.expect, hasBearerToken(c))
+		})
+	}
+}
+
+func TestAuthRequiredForSessionOrAgent_NilPrincipalAuthRejectsBearer(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	m := &ContextAuthMiddleware{}
+
+	router := gin.New()
+	router.GET("/extensions/foo", m.AuthRequiredForSessionOrAgent(nil), func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{})
+	})
+
+	req := httptest.NewRequest("GET", "/extensions/foo", nil)
+	req.Header.Set("Authorization", "Bearer hat_xyz")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Contains(t, w.Body.String(), "Agent authentication is not configured")
+}
+
 func TestNewContextAuthMiddleware(t *testing.T) {
 	m := NewContextAuthMiddleware(nil)
 	assert.NotNil(t, m)

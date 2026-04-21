@@ -144,6 +144,11 @@ func createAdminRouter(
 		adminServiceTargets = extensionruntime.NewRegistry(c)
 	}
 
+	// principalAuth is hoisted up here (rather than only near the agent API
+	// routes further below) so it can back the dual-auth gate on the
+	// /extensions/* group. See ADR 0028 and RFC-0015.
+	principalAuth := middleware.NewPrincipalAuthMiddleware(c.Store.Agents())
+
 	// Health check endpoint (public, unauthenticated)
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "admin"})
@@ -169,7 +174,7 @@ func createAdminRouter(
 	}
 
 	adminExtensionRoutes := router.Group("/extensions")
-	adminExtensionRoutes.Use(contextAuthMiddleware.AuthRequired())
+	adminExtensionRoutes.Use(contextAuthMiddleware.AuthRequiredForSessionOrAgent(principalAuth))
 	adminExtensionRoutes.Use(contextAuthMiddleware.RequireOperationalAccess())
 	adminExtensionRoutes.Use(adminFeatureMiddleware)
 	adminExtensionRoutes.Any("/*extensionPath", func(ctx *gin.Context) {
