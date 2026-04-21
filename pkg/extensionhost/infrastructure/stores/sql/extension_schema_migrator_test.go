@@ -491,11 +491,16 @@ ALTER TABLE ${SCHEMA_NAME}.events
 
 	rawDB, err := concrete.GetSQLDB()
 	require.NoError(t, err)
+	// Corrupt the ledger with values that are NOT on the legacy-placeholder
+	// whitelist (see isLegacyPlaceholderChecksum). 'init' and 'rls_skipped'
+	// are now recognized as historical labels written by older platforms and
+	// get backfilled in-place; see TestExtensionSchemaMigrator_BackfillsLegacy*.
+	// Anything else must still be rejected as drift.
 	_, err = rawDB.ExecContext(ctx, `
 		UPDATE core_extension_runtime.schema_migration_history
 		SET checksum_sha256 = CASE version
-			WHEN '000001' THEN 'init'
-			WHEN '000002' THEN 'rls_skipped'
+			WHEN '000001' THEN 'deadbeef'
+			WHEN '000002' THEN 'cafebabe'
 			ELSE checksum_sha256
 		END
 		WHERE package_key = 'demandops/web-analytics'
@@ -505,6 +510,211 @@ ALTER TABLE ${SCHEMA_NAME}.events
 	err = concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "checksum drift")
+}
+
+// TestExtensionSchemaMigrator_BackfillsLegacyPlaceholderChecksums proves that
+// a ledger row carrying a legacy semantic checksum ("init", "rls_skipped")
+// does NOT trigger drift, and is instead upgraded in-place to the real
+// content-derived sha256. This mirrors the state of pre-existing instances
+// (including mbr.demandops.com) whose migration history rows were seeded by
+// older platform releases that predated the sha256 ledger convention.
+func TestExtensionSchemaMigrator_BackfillsLegacyPlaceholderChecksums(t *testing.T) {
+	store, cleanup := testutil.SetupTestPostgresStore(t)
+	defer cleanup()
+
+	concrete, ok := store.(*sqlstore.Store)
+	require.True(t, ok)
+
+	service := platformservices.NewExtensionService(
+		store.Extensions(),
+		store.Workspaces(),
+		store.Queues(),
+		store.Forms(),
+		store.Rules(),
+		store,
+	)
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
+		WorkspaceID:  workspace.ID,
+		LicenseToken: "lic_legacy_backfill",
+		Manifest: platformdomain.ExtensionManifest{
+			SchemaVersion: 1,
+			Slug:          "web-analytics",
+			Name:          "Web Analytics",
+			Version:       "1.0.0",
+			Publisher:     "DemandOps",
+			Kind:          platformdomain.ExtensionKindOperational,
+			Scope:         platformdomain.ExtensionScopeWorkspace,
+			Risk:          platformdomain.ExtensionRiskStandard,
+			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
+			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
+			Schema: platformdomain.ExtensionSchemaManifest{
+				Name:            "ext_demandops_web_analytics",
+				PackageKey:      "demandops/web-analytics",
+				TargetVersion:   "000001",
+				MigrationEngine: "postgres_sql",
+			},
+			Endpoints: []platformdomain.ExtensionEndpoint{
+				{
+					Name:          "runtime-health",
+					Class:         platformdomain.ExtensionEndpointClassHealth,
+					MountPath:     "/extensions/web-analytics/health",
+					Methods:       []string{"GET"},
+					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
+					ServiceTarget: "web-analytics.runtime.health",
+				},
+			},
+			Runtime: platformdomain.ExtensionRuntimeSpec{
+				Protocol:     "unix_socket_http",
+				OCIReference: "registry.example.com/mbr/web-analytics:1.0.0",
+				Digest:       "sha256:abc123",
+			},
+		},
+		Migrations: []platformservices.ExtensionMigrationInput{
+			{
+				Path: "000001_init.up.sql",
+				Content: []byte(`
+CREATE TABLE ${SCHEMA_NAME}.properties (
+    id TEXT PRIMARY KEY,
+    domain TEXT NOT NULL
+);`),
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed))
+
+	rawDB, err := concrete.GetSQLDB()
+	require.NoError(t, err)
+
+	// Simulate a legacy ledger row: a platform predating content-derived
+	// checksums wrote "init" for this version.
+	_, err = rawDB.ExecContext(ctx,
+		`UPDATE core_extension_runtime.schema_migration_history
+		 SET checksum_sha256 = 'init'
+		 WHERE package_key = 'demandops/web-analytics' AND version = '000001'`,
+	)
+	require.NoError(t, err)
+
+	// Reconciling again must succeed (placeholder accepted, not treated as
+	// drift) and must upgrade the stored checksum to the real sha256.
+	require.NoError(t, concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed))
+
+	var stored string
+	require.NoError(t, rawDB.QueryRowContext(ctx,
+		`SELECT checksum_sha256 FROM core_extension_runtime.schema_migration_history
+		 WHERE package_key = 'demandops/web-analytics' AND version = '000001'`,
+	).Scan(&stored))
+	assert.NotEqual(t, "init", stored, "legacy placeholder must be backfilled")
+	assert.Len(t, stored, 64, "real sha256 is 64 hex chars")
+
+	// A second reconcile must now leave the ledger unchanged — normal drift
+	// detection has resumed.
+	require.NoError(t, concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed))
+
+	var second string
+	require.NoError(t, rawDB.QueryRowContext(ctx,
+		`SELECT checksum_sha256 FROM core_extension_runtime.schema_migration_history
+		 WHERE package_key = 'demandops/web-analytics' AND version = '000001'`,
+	).Scan(&second))
+	assert.Equal(t, stored, second, "normal drift check holds after backfill")
+}
+
+// TestExtensionSchemaMigrator_BackfillsRLSSkippedPlaceholder covers the
+// "rls_skipped" variant of the legacy placeholder: older platforms wrote
+// this value for RLS-policy migrations that were short-circuited.
+func TestExtensionSchemaMigrator_BackfillsRLSSkippedPlaceholder(t *testing.T) {
+	store, cleanup := testutil.SetupTestPostgresStore(t)
+	defer cleanup()
+
+	concrete, ok := store.(*sqlstore.Store)
+	require.True(t, ok)
+
+	service := platformservices.NewExtensionService(
+		store.Extensions(),
+		store.Workspaces(),
+		store.Queues(),
+		store.Forms(),
+		store.Rules(),
+		store,
+	)
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+
+	installed, err := service.InstallExtension(ctx, platformservices.InstallExtensionParams{
+		WorkspaceID:  workspace.ID,
+		LicenseToken: "lic_rls_placeholder",
+		Manifest: platformdomain.ExtensionManifest{
+			SchemaVersion: 1,
+			Slug:          "error-tracking",
+			Name:          "Error Tracking",
+			Version:       "1.0.0",
+			Publisher:     "DemandOps",
+			Kind:          platformdomain.ExtensionKindOperational,
+			Scope:         platformdomain.ExtensionScopeWorkspace,
+			Risk:          platformdomain.ExtensionRiskStandard,
+			RuntimeClass:  platformdomain.ExtensionRuntimeClassServiceBacked,
+			StorageClass:  platformdomain.ExtensionStorageClassOwnedSchema,
+			Schema: platformdomain.ExtensionSchemaManifest{
+				Name:            "ext_demandops_error_tracking",
+				PackageKey:      "demandops/error-tracking",
+				TargetVersion:   "000001",
+				MigrationEngine: "postgres_sql",
+			},
+			Endpoints: []platformdomain.ExtensionEndpoint{
+				{
+					Name:          "runtime-health",
+					Class:         platformdomain.ExtensionEndpointClassHealth,
+					MountPath:     "/extensions/error-tracking/health",
+					Methods:       []string{"GET"},
+					Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
+					ServiceTarget: "error-tracking.runtime.health",
+				},
+			},
+			Runtime: platformdomain.ExtensionRuntimeSpec{
+				Protocol:     "unix_socket_http",
+				OCIReference: "registry.example.com/mbr/error-tracking:1.0.0",
+				Digest:       "sha256:def456",
+			},
+		},
+		Migrations: []platformservices.ExtensionMigrationInput{
+			{
+				Path: "000001_init.up.sql",
+				Content: []byte(`
+CREATE TABLE ${SCHEMA_NAME}.issues (
+    id TEXT PRIMARY KEY
+);`),
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed))
+
+	rawDB, err := concrete.GetSQLDB()
+	require.NoError(t, err)
+
+	_, err = rawDB.ExecContext(ctx,
+		`UPDATE core_extension_runtime.schema_migration_history
+		 SET checksum_sha256 = 'rls_skipped'
+		 WHERE package_key = 'demandops/error-tracking' AND version = '000001'`,
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, concrete.ExtensionSchemaMigrator().EnsureInstalledExtensionSchema(ctx, installed))
+
+	var stored string
+	require.NoError(t, rawDB.QueryRowContext(ctx,
+		`SELECT checksum_sha256 FROM core_extension_runtime.schema_migration_history
+		 WHERE package_key = 'demandops/error-tracking' AND version = '000001'`,
+	).Scan(&stored))
+	assert.NotEqual(t, "rls_skipped", stored, "legacy placeholder must be backfilled")
+	assert.Len(t, stored, 64, "real sha256 is 64 hex chars")
 }
 
 func TestExtensionSchemaMigrator_ReferenceExtensionBundlesApply(t *testing.T) {

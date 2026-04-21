@@ -226,6 +226,11 @@ type ExtensionRuntimeStore interface {
 	ListExtensionPackageRegistrations(ctx context.Context) ([]*platformdomain.ExtensionPackageRegistration, error)
 	CreateExtensionSchemaMigration(ctx context.Context, migration *platformdomain.ExtensionSchemaMigration) error
 	ListExtensionSchemaMigrations(ctx context.Context, packageKey string) ([]*platformdomain.ExtensionSchemaMigration, error)
+	// BackfillExtensionSchemaMigrationChecksum rewrites the stored checksum for an
+	// already-applied migration (identified by package_key + version) without
+	// creating a new history row. Used to upgrade legacy placeholder values in
+	// the ledger to content-derived sha256 hashes.
+	BackfillExtensionSchemaMigrationChecksum(ctx context.Context, packageKey, version, checksum string) error
 }
 
 // CaseCRUD handles basic case CRUD operations

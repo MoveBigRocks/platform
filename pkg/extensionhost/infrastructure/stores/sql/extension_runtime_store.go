@@ -85,6 +85,31 @@ func (s *ExtensionRuntimeStore) ListExtensionPackageRegistrations(ctx context.Co
 	return result, nil
 }
 
+// BackfillExtensionSchemaMigrationChecksum rewrites the stored checksum for an
+// already-applied migration (matched by package_key + version) to the caller-
+// supplied value. Used by the schema migrator to upgrade legacy placeholder
+// values ("init", "rls_skipped") in the ledger to real sha256 checksums
+// without creating a new history row. Returns an error if no matching row
+// exists.
+func (s *ExtensionRuntimeStore) BackfillExtensionSchemaMigrationChecksum(ctx context.Context, packageKey, version, checksum string) error {
+	query := fmt.Sprintf(
+		`UPDATE %s SET checksum_sha256 = ? WHERE package_key = ? AND version = ?`,
+		extensionSchemaMigrationHistoryTable,
+	)
+	result, err := s.db.Get(ctx).ExecContext(ctx, query, checksum, packageKey, version)
+	if err != nil {
+		return TranslateSqlxError(err, "schema_migration_history")
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return TranslateSqlxError(err, "schema_migration_history")
+	}
+	if rows == 0 {
+		return fmt.Errorf("no schema_migration_history row for package %q version %q", packageKey, version)
+	}
+	return nil
+}
+
 func (s *ExtensionRuntimeStore) CreateExtensionSchemaMigration(ctx context.Context, migration *platformdomain.ExtensionSchemaMigration) error {
 	model, err := s.mapMigrationToModel(migration)
 	if err != nil {

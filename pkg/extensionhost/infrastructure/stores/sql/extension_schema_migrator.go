@@ -102,7 +102,19 @@ func (m *ExtensionSchemaMigrator) EnsureInstalledExtensionSchema(ctx context.Con
 		for _, migration := range migrations {
 			if checksum, ok := applied[migration.Version]; ok {
 				if checksum != migration.Checksum {
-					return fmt.Errorf("extension schema migration checksum drift for version %s", migration.Version)
+					if !isLegacyPlaceholderChecksum(checksum) {
+						return fmt.Errorf("extension schema migration checksum drift for version %s", migration.Version)
+					}
+					// Backfill legacy placeholder checksums in-place: the
+					// migration is considered already applied (the schema
+					// objects exist from the original run) but the stored
+					// value is a semantic placeholder ("init", "rls_skipped")
+					// written by an older platform that predated real sha256
+					// ledger entries. Replace with the real checksum so the
+					// normal drift check protects future upgrades.
+					if err := m.runtimeStore.BackfillExtensionSchemaMigrationChecksum(txCtx, registration.PackageKey, migration.Version, migration.Checksum); err != nil {
+						return err
+					}
 				}
 				registration.CurrentSchemaVersion = migration.Version
 				continue
@@ -203,6 +215,23 @@ func (m *ExtensionSchemaMigrator) ensureSchemaExists(ctx context.Context, schema
 		return fmt.Errorf("ensure schema %s: %w", schemaName, err)
 	}
 	return nil
+}
+
+// legacyPlaceholderChecksums enumerates the semantic labels that older
+// platform releases stored in core_extension_runtime.schema_migration_history
+// before the ledger switched to content-derived sha256 hashes. Rows that
+// carry these values represent migrations that were successfully applied
+// against the extension schema; the placeholder is not a real drift signal.
+// The migrator upgrades these rows in-place on first contact with a newer
+// platform so the normal drift check remains load-bearing going forward.
+var legacyPlaceholderChecksums = map[string]struct{}{
+	"init":        {},
+	"rls_skipped": {},
+}
+
+func isLegacyPlaceholderChecksum(value string) bool {
+	_, ok := legacyPlaceholderChecksums[strings.TrimSpace(value)]
+	return ok
 }
 
 func (m *ExtensionSchemaMigrator) readAppliedSchemaMigrations(ctx context.Context, packageKey string) (map[string]string, error) {
