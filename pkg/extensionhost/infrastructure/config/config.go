@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -262,26 +263,35 @@ type Config struct {
 	Database             DatabaseConfig
 	TestDatabaseAdminDSN string
 	ExtensionRuntimeDir  string
-	DatabasePool         DatabasePoolConfig
-	Storage              StorageConfig
-	Auth                 AuthConfig
-	Security             SecurityConfig
-	Email                EmailConfig
-	Notification         NotificationConfig
-	Audit                AuditConfig
-	Limits               LimitsConfig
-	WebSocket            WebSocketConfig
-	Cache                CacheConfig
-	Integrations         IntegrationsConfig
-	Tracing              TracingConfig
-	Features             FeaturesConfig
-	Admin                AdminConfig
-	ExtensionTrust       ExtensionTrustConfig
-	EnterpriseAccess     EnterpriseAccessConfig
-	EventBus             EventBusConfig
-	Outbox               OutboxConfig
-	ErrorProcessing      ErrorProcessingConfig
-	GeoIPDBPath          string
+	// Slot is the deployment slot this process is running under
+	// ("blue" / "green"). When non-empty, slot-scoped paths are derived from
+	// it: the extension runtime socket directory becomes
+	// ExtensionRuntimeDir/<Slot>, and ExtensionRuntimeManifestPath points at
+	// the active runtime manifest. Set via MBR_SLOT env var by the blue and
+	// green systemd units. See RFC-0016.
+	Slot                         string
+	ExtensionRuntimeBinaryDir    string
+	ExtensionRuntimeManifestPath string
+	DatabasePool                 DatabasePoolConfig
+	Storage                      StorageConfig
+	Auth                         AuthConfig
+	Security                     SecurityConfig
+	Email                        EmailConfig
+	Notification                 NotificationConfig
+	Audit                        AuditConfig
+	Limits                       LimitsConfig
+	WebSocket                    WebSocketConfig
+	Cache                        CacheConfig
+	Integrations                 IntegrationsConfig
+	Tracing                      TracingConfig
+	Features                     FeaturesConfig
+	Admin                        AdminConfig
+	ExtensionTrust               ExtensionTrustConfig
+	EnterpriseAccess             EnterpriseAccessConfig
+	EventBus                     EventBusConfig
+	Outbox                       OutboxConfig
+	ErrorProcessing              ErrorProcessingConfig
+	GeoIPDBPath                  string
 }
 
 // Load loads configuration from environment variables
@@ -338,8 +348,11 @@ func Load() (*Config, error) {
 		Database: DatabaseConfig{
 			DSN: strings.TrimSpace(getEnv("DATABASE_DSN", "")),
 		},
-		TestDatabaseAdminDSN: getEnv("TEST_DATABASE_ADMIN_DSN", ""),
-		ExtensionRuntimeDir:  getEnv("EXTENSION_RUNTIME_DIR", "./tmp/extensions"),
+		TestDatabaseAdminDSN:         getEnv("TEST_DATABASE_ADMIN_DSN", ""),
+		ExtensionRuntimeDir:          getEnv("EXTENSION_RUNTIME_DIR", "./tmp/extensions"),
+		Slot:                         strings.TrimSpace(getEnv("MBR_SLOT", "")),
+		ExtensionRuntimeBinaryDir:    getEnv("EXTENSION_RUNTIME_BINARY_DIR", "./extensions-runtime/bin"),
+		ExtensionRuntimeManifestPath: getEnv("EXTENSION_RUNTIME_MANIFEST_PATH", "./extensions/runtime-manifest.json"),
 
 		Storage: StorageConfig{
 			Type:              getEnv("STORAGE_TYPE", "s3"),
@@ -557,6 +570,13 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("invalid STORAGE_ENCRYPTION_KEY: %w", err)
 		}
 		cfg.Storage.EncryptionKey = encKey
+	}
+
+	// Apply slot-scoping to the extension runtime socket directory so blue
+	// and green use disjoint paths and can run simultaneously during a
+	// blue-green cutover. See RFC-0016.
+	if cfg.Slot != "" {
+		cfg.ExtensionRuntimeDir = filepath.Join(cfg.ExtensionRuntimeDir, cfg.Slot)
 	}
 
 	// Validate configuration

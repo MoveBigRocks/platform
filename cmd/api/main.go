@@ -158,6 +158,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Spawn and supervise extension runtime processes as children of this
+	// slot. See RFC-0016. If the runtime manifest is absent (fresh install
+	// before reconcile has run, or host lacks extensions), skip supervision
+	// silently — the socket dispatcher will simply find nothing to talk to.
+	extensionSupervisor, err := newExtensionSupervisor(cfg, c.Logger)
+	if err != nil {
+		c.Logger.Error("Failed to configure extension runtime supervisor", "error", err)
+		os.Exit(1)
+	}
+	if extensionSupervisor != nil {
+		if err := extensionSupervisor.Start(ctx); err != nil {
+			c.Logger.Error("Failed to start extension runtime supervisor", "error", err)
+			os.Exit(1)
+		}
+	}
+
 	// Create HTTP server
 	srv := &http.Server{
 		Addr:              os.Getenv("HOST") + ":" + cfg.Server.Port,
@@ -184,6 +200,13 @@ func main() {
 	<-quit
 
 	c.Logger.Info("Shutting down server...")
+	if extensionSupervisor != nil {
+		supervisorStopCtx, supervisorCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		if err := extensionSupervisor.Stop(supervisorStopCtx); err != nil {
+			c.Logger.Error("Error stopping extension runtime supervisor", "error", err)
+		}
+		supervisorCancel()
+	}
 	if runtime != nil {
 		runtime.Stop()
 	}
