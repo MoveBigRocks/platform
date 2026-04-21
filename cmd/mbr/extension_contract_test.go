@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 	"github.com/movebigrocks/platform/pkg/extensionhost/testutil"
 )
 
@@ -453,5 +455,124 @@ func testExtensionDetail(id, slug, name string) map[string]any {
 			"scheduledJobs":   []map[string]any{},
 		},
 		"assets": []map[string]any{},
+	}
+}
+
+func TestDeriveExtensionContractFromManifestSplitsAgentAndAdminPaths(t *testing.T) {
+	t.Parallel()
+
+	manifest := platformdomain.ExtensionManifest{
+		SchemaVersion: 1,
+		Slug:          "split-paths",
+		Endpoints: []platformdomain.ExtensionEndpoint{
+			{
+				Name:             "admin-page",
+				Class:            platformdomain.ExtensionEndpointClassAdminPage,
+				MountPath:        "/extensions/split-paths",
+				Auth:             platformdomain.ExtensionEndpointAuthSession,
+				WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingFromSession,
+			},
+			{
+				Name:             "session-properties",
+				Class:            platformdomain.ExtensionEndpointClassExtensionAPI,
+				MountPath:        "/extensions/split-paths/api/properties",
+				Auth:             platformdomain.ExtensionEndpointAuthSession,
+				WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingFromSession,
+			},
+			{
+				Name:             "agent-properties",
+				Class:            platformdomain.ExtensionEndpointClassExtensionAPI,
+				MountPath:        "/extensions/split-paths/api/agent/properties",
+				Auth:             platformdomain.ExtensionEndpointAuthAgentToken,
+				WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingFromAgentToken,
+			},
+			{
+				Name:      "public-home",
+				Class:     platformdomain.ExtensionEndpointClassPublicPage,
+				MountPath: "/split-paths",
+				Auth:      platformdomain.ExtensionEndpointAuthPublic,
+			},
+		},
+	}
+
+	contract := deriveExtensionContractFromManifest(manifest)
+
+	expectedAdmin := []string{
+		"/extensions/split-paths",
+		"/extensions/split-paths/api/properties",
+	}
+	if !reflect.DeepEqual(contract.AdminPaths, expectedAdmin) {
+		t.Fatalf("AdminPaths = %v, want %v", contract.AdminPaths, expectedAdmin)
+	}
+
+	expectedAgent := []string{"/extensions/split-paths/api/agent/properties"}
+	if !reflect.DeepEqual(contract.AgentPaths, expectedAgent) {
+		t.Fatalf("AgentPaths = %v, want %v", contract.AgentPaths, expectedAgent)
+	}
+
+	expectedPublic := []string{"/split-paths"}
+	if !reflect.DeepEqual(contract.PublicPaths, expectedPublic) {
+		t.Fatalf("PublicPaths = %v, want %v", contract.PublicPaths, expectedPublic)
+	}
+
+	for _, agentPath := range contract.AgentPaths {
+		for _, adminPath := range contract.AdminPaths {
+			if agentPath == adminPath {
+				t.Fatalf("agent path %q must not also appear in AdminPaths", agentPath)
+			}
+		}
+	}
+}
+
+func TestDeriveExtensionContractFromManifestEmitsNoAgentPathsWhenAllSession(t *testing.T) {
+	t.Parallel()
+
+	manifest := platformdomain.ExtensionManifest{
+		SchemaVersion: 1,
+		Slug:          "no-agent",
+		Endpoints: []platformdomain.ExtensionEndpoint{
+			{
+				Name:             "session-properties",
+				Class:            platformdomain.ExtensionEndpointClassExtensionAPI,
+				MountPath:        "/extensions/no-agent/api/properties",
+				Auth:             platformdomain.ExtensionEndpointAuthSession,
+				WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingFromSession,
+			},
+		},
+	}
+
+	contract := deriveExtensionContractFromManifest(manifest)
+	if len(contract.AgentPaths) != 0 {
+		t.Fatalf("expected no agent paths, got %v", contract.AgentPaths)
+	}
+	if !reflect.DeepEqual(contract.AdminPaths, []string{"/extensions/no-agent/api/properties"}) {
+		t.Fatalf("AdminPaths = %v, want session endpoint to remain in admin paths", contract.AdminPaths)
+	}
+}
+
+func TestCompareExtensionContractDetectsAgentPathsDrift(t *testing.T) {
+	t.Parallel()
+
+	declared := extensionContractFile{
+		SchemaVersion: extensionContractSchemaV1,
+		ExtensionSlug: "drift",
+		AgentPaths:    []string{"/extensions/drift/api/agent/resources"},
+	}
+	actual := extensionContractFile{
+		SchemaVersion: extensionContractSchemaV1,
+		ExtensionSlug: "drift",
+		AgentPaths: []string{
+			"/extensions/drift/api/agent/resources",
+			"/extensions/drift/api/agent/resources/:id",
+		},
+	}
+
+	problems := compareExtensionContract(declared, actual)
+	if len(problems) == 0 {
+		t.Fatalf("expected drift to be reported when declared agentPaths omits a manifest-derived path")
+	}
+	joined := strings.Join(problems, " | ")
+	if !strings.Contains(joined, "agentPaths") {
+		t.Fatalf("expected problems to mention agentPaths, got %s", joined)
 	}
 }

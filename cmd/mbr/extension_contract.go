@@ -32,6 +32,7 @@ type extensionContractFile struct {
 	SeededAutomationRules    []string                           `json:"seededAutomationRules,omitempty"`
 	PublicPaths              []string                           `json:"publicPaths,omitempty"`
 	AdminPaths               []string                           `json:"adminPaths,omitempty"`
+	AgentPaths               []string                           `json:"agentPaths,omitempty"`
 	HealthPaths              []string                           `json:"healthPaths,omitempty"`
 	Commands                 []string                           `json:"commands,omitempty"`
 	AgentSkills              []string                           `json:"agentSkills,omitempty"`
@@ -253,6 +254,7 @@ func deriveExtensionContractFromManifest(manifest platformdomain.ExtensionManife
 		SeededAutomationRules:    sortedUniqueStrings(contractSeededAutomationRules(manifest)),
 		PublicPaths:              sortedUniqueStrings(contractPublicPaths(manifest)),
 		AdminPaths:               sortedUniqueStrings(contractAdminPaths(manifest)),
+		AgentPaths:               sortedUniqueStrings(contractAgentPaths(manifest)),
 		HealthPaths:              sortedUniqueStrings(contractHealthPaths(manifest)),
 		Commands:                 sortedUniqueStrings(contractCommands(manifest)),
 		AgentSkills:              sortedUniqueStrings(contractAgentSkills(manifest)),
@@ -272,6 +274,7 @@ func deriveExtensionContractFromDetail(detail extensionDetailOutput) extensionCo
 		SeededAutomationRules:    sortedUniqueStrings(detailSeededAutomationRuleKeys(detail)),
 		PublicPaths:              sortedUniqueStrings(detailPublicPaths(detail)),
 		AdminPaths:               sortedUniqueStrings(detailAdminPaths(detail)),
+		AgentPaths:               sortedUniqueStrings(detailAgentPaths(detail)),
 		HealthPaths:              sortedUniqueStrings(detailHealthPaths(detail)),
 		Commands:                 sortedUniqueStrings(detailCommandNames(detail)),
 		AgentSkills:              sortedUniqueStrings(detailAgentSkillNames(detail)),
@@ -303,6 +306,7 @@ func compareExtensionContract(contract, actual extensionContractFile) []string {
 	problems = append(problems, compareContractStringSlice("seededAutomationRules", contract.SeededAutomationRules, actual.SeededAutomationRules)...)
 	problems = append(problems, compareContractStringSlice("publicPaths", contract.PublicPaths, actual.PublicPaths)...)
 	problems = append(problems, compareContractStringSlice("adminPaths", contract.AdminPaths, actual.AdminPaths)...)
+	problems = append(problems, compareContractStringSlice("agentPaths", contract.AgentPaths, actual.AgentPaths)...)
 	problems = append(problems, compareContractStringSlice("healthPaths", contract.HealthPaths, actual.HealthPaths)...)
 	problems = append(problems, compareContractStringSlice("commands", contract.Commands, actual.Commands)...)
 	problems = append(problems, compareContractStringSlice("agentSkills", contract.AgentSkills, actual.AgentSkills)...)
@@ -350,6 +354,7 @@ func normalizeExtensionContract(contract *extensionContractFile) {
 	contract.SeededAutomationRules = normalizeContractStringSlice(contract.SeededAutomationRules)
 	contract.PublicPaths = normalizeContractStringSlice(contract.PublicPaths)
 	contract.AdminPaths = normalizeContractStringSlice(contract.AdminPaths)
+	contract.AgentPaths = normalizeContractStringSlice(contract.AgentPaths)
 	contract.HealthPaths = normalizeContractStringSlice(contract.HealthPaths)
 	contract.Commands = normalizeContractStringSlice(contract.Commands)
 	contract.AgentSkills = normalizeContractStringSlice(contract.AgentSkills)
@@ -489,8 +494,22 @@ func contractAdminPaths(manifest platformdomain.ExtensionManifest) []string {
 	for _, endpoint := range manifest.Endpoints {
 		switch endpoint.Class {
 		case platformdomain.ExtensionEndpointClassAdminPage,
-			platformdomain.ExtensionEndpointClassAdminAction,
-			platformdomain.ExtensionEndpointClassExtensionAPI:
+			platformdomain.ExtensionEndpointClassAdminAction:
+			items = append(items, endpoint.MountPath)
+		case platformdomain.ExtensionEndpointClassExtensionAPI:
+			if endpoint.Auth != platformdomain.ExtensionEndpointAuthAgentToken {
+				items = append(items, endpoint.MountPath)
+			}
+		}
+	}
+	return items
+}
+
+func contractAgentPaths(manifest platformdomain.ExtensionManifest) []string {
+	items := []string{}
+	for _, endpoint := range manifest.Endpoints {
+		if endpoint.Class == platformdomain.ExtensionEndpointClassExtensionAPI &&
+			endpoint.Auth == platformdomain.ExtensionEndpointAuthAgentToken {
 			items = append(items, endpoint.MountPath)
 		}
 	}
@@ -599,8 +618,22 @@ func detailAdminPaths(detail extensionDetailOutput) []string {
 	for _, endpoint := range detail.Endpoints {
 		switch endpoint.Class {
 		case string(platformdomain.ExtensionEndpointClassAdminPage),
-			string(platformdomain.ExtensionEndpointClassAdminAction),
-			string(platformdomain.ExtensionEndpointClassExtensionAPI):
+			string(platformdomain.ExtensionEndpointClassAdminAction):
+			items = append(items, endpoint.MountPath)
+		case string(platformdomain.ExtensionEndpointClassExtensionAPI):
+			if endpoint.Auth != string(platformdomain.ExtensionEndpointAuthAgentToken) {
+				items = append(items, endpoint.MountPath)
+			}
+		}
+	}
+	return items
+}
+
+func detailAgentPaths(detail extensionDetailOutput) []string {
+	items := []string{}
+	for _, endpoint := range detail.Endpoints {
+		if endpoint.Class == string(platformdomain.ExtensionEndpointClassExtensionAPI) &&
+			endpoint.Auth == string(platformdomain.ExtensionEndpointAuthAgentToken) {
 			items = append(items, endpoint.MountPath)
 		}
 	}
