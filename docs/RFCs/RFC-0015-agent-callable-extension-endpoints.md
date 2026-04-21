@@ -83,6 +83,27 @@ This keeps `adminPaths` pure (browser-session surface) and introduces
 `agentPaths` as the canonical inventory of agent-callable paths for that
 extension.
 
+### Runtime: dual-auth gate on `/extensions/*`
+
+The `/extensions/*` route group was previously gated by
+`ContextAuthMiddleware.AuthRequired()`, which is session-only and redirects
+to login. Declared `auth: agent_token` endpoints under that prefix were
+runtime-inert: the gate rejected agent tokens before
+`enforceExtensionEndpointAuth` ever ran.
+
+ADR 0028 formalises the fix: a `ContextAuthMiddleware.AuthRequiredForSessionOrAgent`
+dual-auth gate that accepts either a session cookie or an `Authorization:
+Bearer ...` token. Bearer requests go through
+`PrincipalAuthMiddleware.AuthenticateAgent()`; cookie requests take the
+existing session path. Both populate `auth_context` so downstream middleware
+(`RequireOperationalAccess`) and the endpoint-level
+`enforceExtensionEndpointAuth` behave identically.
+
+`enforceExtensionEndpointAuth` remains the per-endpoint enforcement point.
+A session caller hitting `auth: agent_token` is rejected with `401`, and
+vice versa. The declared auth mode in the manifest is still the source of
+truth for who can call a given endpoint.
+
 ### Changes Required
 
 1. **`platform/cmd/mbr/extension_contract.go`**
@@ -96,7 +117,21 @@ extension.
    - Tests in `extension_contract_test.go` (or equivalent) for derivation
      and lint comparison
 
-2. **`extensions/web-analytics/manifest.json`**
+2. **`platform/pkg/extensionhost/infrastructure/middleware/context_auth.go`**
+   - Add `AuthRequiredForSessionOrAgent(principalAuth)` that detects a
+     `Bearer` Authorization header and delegates to
+     `PrincipalAuthMiddleware.AuthenticateAgent()`, otherwise falls through
+     to the session-cookie path used by `AuthRequired`.
+
+3. **`platform/cmd/api/routers.go`**
+   - Replace `AuthRequired()` with `AuthRequiredForSessionOrAgent(principalAuth)`
+     on the `/extensions/*` route group.
+   - The admin extension handler continues to use
+     `resolvedAdminRouteWorkspaceID(ctx)`; for agent callers that falls back
+     to `auth_context.WorkspaceID` which is seeded by the agent-token
+     workspace binding.
+
+4. **`extensions/web-analytics/manifest.json`**
    - Add 5 new endpoints pointing to existing `serviceTarget` values:
      - `GET /extensions/web-analytics/api/agent/properties`
      - `POST /extensions/web-analytics/api/agent/properties`
@@ -109,11 +144,11 @@ extension.
      `.get`, `.update`, `.delete`
    - Extend `agentSkills` with `manage-properties`
 
-3. **`extensions/web-analytics/assets/agent-skills/manage-properties.md`**
+5. **`extensions/web-analytics/assets/agent-skills/manage-properties.md`**
    New bundled skill documenting the agent workflow: mint agent token, discover
    endpoints via contract, call the agent surface, verify.
 
-4. **`extensions/web-analytics/extension.contract.json`**
+6. **`extensions/web-analytics/extension.contract.json`**
    Regenerate to include the new `agentPaths` entries.
 
 ### What Does NOT Change
@@ -134,7 +169,9 @@ extension.
 |-----------|-------|------------|
 | RFC-0002 | Agent Access and CLI Authentication | This RFC extends the agent-token surface to extension endpoints, honouring the `workspace_from_agent_token` binding. |
 | RFC-0004 | Extension System | First concrete use of the declarative `agent_token` auth mode defined for extensions. |
-| ADR on Handler → Service → Domain → Store | — | No architectural changes. Handlers remain thin and auth-agnostic. |
+| ADR 0016 | CLI and Agent Authentication Guidelines | Agent token (`hat_*`) flow is reused unchanged; no new credential shape introduced. |
+| ADR 0026 | Extension Host Lifecycle and Public Extension SDK Boundary | No handler, service, or store code is touched below the manifest layer; only declarative endpoints and a platform-level middleware change are required. |
+| ADR 0028 | Dual-Auth Gate for Extension Endpoints | This RFC specifies the declarative and contract-level changes; ADR 0028 specifies the runtime gate that accepts either session or agent-token auth on `/extensions/*`. |
 
 ## Alternatives Considered
 
@@ -239,3 +276,4 @@ is the canonical inventory; it should reflect the distinction.
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-04-21 | @adrianmcphee | Initial draft |
+| 2026-04-21 | @adrianmcphee | Document dual-auth gate on `/extensions/*` after discovering declared agent endpoints were runtime-inert behind the session-only middleware; split implementation into manifest-side (PR 1/2) and router-side (PR 3) atomic changes; cross-reference ADR 0028. |
