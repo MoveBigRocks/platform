@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"mime"
 	"net/http"
 	"path"
@@ -425,53 +424,26 @@ func (s *ExtensionService) resolveServiceRoute(
 
 	var best *ResolvedExtensionServiceRoute
 	bestScore := -1
-	debug := strings.Contains(requestPath, "/api/agent/")
 	for _, extension := range extensions {
 		if extension == nil {
 			continue
 		}
 		for _, endpoint := range extension.Manifest.Endpoints {
 			if !isServiceEndpointInScope(scope, endpoint) {
-				if debug {
-					slog.Info("resolveServiceRoute skip: scope",
-						"requestPath", requestPath, "method", method,
-						"extension", extension.Manifest.Slug,
-						"endpoint", endpoint.Name, "class", string(endpoint.Class),
-						"scope", string(scope))
-				}
 				continue
 			}
 			if endpoint.ServiceTarget == "" {
-				if debug {
-					slog.Info("resolveServiceRoute skip: empty service target",
-						"requestPath", requestPath, "endpoint", endpoint.Name)
-				}
 				continue
 			}
 			params, matched := matchServiceEndpointPath(endpoint.MountPath, requestPath)
 			if !matched {
-				if debug {
-					slog.Info("resolveServiceRoute skip: path mismatch",
-						"requestPath", requestPath, "endpoint", endpoint.Name,
-						"mountPath", endpoint.MountPath)
-				}
 				continue
 			}
 			if !isEndpointMethodAllowed(endpoint, method) {
-				if debug {
-					slog.Info("resolveServiceRoute skip: method not allowed",
-						"requestPath", requestPath, "method", method,
-						"endpoint", endpoint.Name, "methods", endpoint.Methods)
-				}
 				continue
 			}
 			score := serviceEndpointSpecificity(endpoint.MountPath)
 			if best != nil && score <= bestScore {
-				if debug {
-					slog.Info("resolveServiceRoute skip: lower specificity",
-						"requestPath", requestPath, "endpoint", endpoint.Name,
-						"score", score, "bestScore", bestScore)
-				}
 				continue
 			}
 			best = &ResolvedExtensionServiceRoute{
@@ -481,18 +453,7 @@ func (s *ExtensionService) resolveServiceRoute(
 				RouteParams: params,
 			}
 			bestScore = score
-			if debug {
-				slog.Info("resolveServiceRoute match",
-					"requestPath", requestPath, "endpoint", endpoint.Name, "score", score)
-			}
 		}
-	}
-
-	if debug && best == nil {
-		slog.Info("resolveServiceRoute no match",
-			"requestPath", requestPath, "method", method,
-			"scope", string(scope), "workspaceID", workspaceID,
-			"extensionCount", len(extensions))
 	}
 
 	return best, nil
