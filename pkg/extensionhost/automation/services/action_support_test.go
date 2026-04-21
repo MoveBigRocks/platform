@@ -127,12 +127,12 @@ func TestRuleActionExecutorExecutesIssueActionWithoutExtensionSlugDependency(t *
 		},
 	}
 
-		result, err := executor.ExecuteActions(ctx, actions, &RuleContext{
-			Issue: &IssueContextData{
-				ID:          id.New(),
-				WorkspaceID: workspace.ID,
-				ProjectID:   "proj_123",
-				Title:       "Production issue",
+	result, err := executor.ExecuteActions(ctx, actions, &RuleContext{
+		Issue: &IssueContextData{
+			ID:          id.New(),
+			WorkspaceID: workspace.ID,
+			ProjectID:   "proj_123",
+			Title:       "Production issue",
 			Level:       "error",
 			FirstSeen:   time.Now(),
 			LastSeen:    time.Now(),

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -178,4 +179,64 @@ func TestGitServiceRelativeRootDoesNotCreateNestedRepo(t *testing.T) {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("stat unexpected nested repo: %v", err)
 	}
+}
+
+// TestGitServiceIsolatesFromInheritedGitEnv verifies that GitService does not
+// escape into a parent GIT_DIR. Git hooks (pre-commit, post-commit, etc.) set
+// GIT_DIR, GIT_WORK_TREE, and GIT_INDEX_FILE in the child process environment.
+// Without sanitisation, a child `git commit` invoked via GitService would
+// ignore cmd.Dir and land its commit in the hook-owning repository instead of
+// the test's isolated temp repo, corrupting branch refs in the host repo.
+func TestGitServiceIsolatesFromInheritedGitEnv(t *testing.T) {
+	foreignDir := t.TempDir()
+	if _, err := newForeignBareRepo(t, foreignDir); err != nil {
+		t.Fatalf("init foreign bare repo: %v", err)
+	}
+	foreignGitDir := filepath.Join(foreignDir, ".git")
+
+	t.Setenv("GIT_DIR", foreignGitDir)
+	t.Setenv("GIT_WORK_TREE", foreignDir)
+	t.Setenv("GIT_INDEX_FILE", filepath.Join(foreignGitDir, "index"))
+
+	service := NewGitService(t.TempDir())
+	ctx := context.Background()
+	repository := WorkspaceRepository("ws_isolate")
+
+	result, err := service.Write(ctx, WriteParams{
+		Repository:    repository,
+		RelativePath:  "knowledge/teams/team_test/private/notes.md",
+		Content:       []byte("# Notes\n"),
+		CommitMessage: "knowledge create notes",
+		ActorID:       "tester",
+	})
+	if err != nil {
+		t.Fatalf("write under foreign GIT_DIR: %v", err)
+	}
+	if !result.Changed || strings.TrimSpace(result.Ref) == "" {
+		t.Fatalf("expected a commit in the service's temp repo, got %#v", result)
+	}
+
+	// The foreign repo must be untouched: no refs, no commits.
+	// Use an explicit GIT_DIR on sanitized env so neither the outer hook
+	// context nor the test's t.Setenv GIT_DIR can lead the assertion astray.
+	cmd := exec.Command("git", "for-each-ref", "--format=%(refname)")
+	cmd.Env = append(sanitizedGitEnv(os.Environ()), "GIT_DIR="+foreignGitDir)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("for-each-ref foreign repo: %v (output=%s)", err, strings.TrimSpace(string(out)))
+	}
+	refs := strings.TrimSpace(string(out))
+	if refs != "" {
+		t.Fatalf("foreign repo was polluted: refs %q landed in %s", refs, foreignGitDir)
+	}
+}
+
+func newForeignBareRepo(t *testing.T, dir string) (string, error) {
+	t.Helper()
+	cmd := exec.Command("git", "init", "-b", "main", dir)
+	cmd.Env = append(sanitizedGitEnv(os.Environ()), "GIT_CONFIG_NOSYSTEM=1")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", errors.New(strings.TrimSpace(string(out)) + ": " + err.Error())
+	}
+	return dir, nil
 }

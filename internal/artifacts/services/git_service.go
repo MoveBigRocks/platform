@@ -517,6 +517,7 @@ func (s *GitService) currentRef(ctx context.Context, repoDir string) (string, er
 func (s *GitService) hasAnyStagedChanges(ctx context.Context, repoDir string) (bool, error) {
 	cmd := exec.CommandContext(ctx, "git", "diff", "--cached", "--quiet")
 	cmd.Dir = repoDir
+	cmd.Env = sanitizedGitEnv(os.Environ())
 	if err := cmd.Run(); err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
@@ -544,10 +545,52 @@ func (s *GitService) moveTrackedPath(ctx context.Context, repoDir, previousPath,
 	return nil
 }
 
+// inheritedGitEnvPrefixes lists parent-process git env vars that would hijack
+// an isolated child git invocation by pinning it to a different repo/index/worktree.
+// When GitService runs under a git hook (pre-commit, post-commit, etc.) the
+// parent git process sets GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, and related
+// vars. Passing them through to child git commands makes cmd.Dir a no-op and
+// causes commits to land in the host repo. Strip them so child git commands
+// resolve their repo from cmd.Dir alone.
+var inheritedGitEnvPrefixes = []string{
+	"GIT_DIR",
+	"GIT_WORK_TREE",
+	"GIT_INDEX_FILE",
+	"GIT_OBJECT_DIRECTORY",
+	"GIT_ALTERNATE_OBJECT_DIRECTORIES",
+	"GIT_COMMON_DIR",
+	"GIT_NAMESPACE",
+	"GIT_PREFIX",
+	"GIT_INTERNAL_",
+}
+
+func sanitizedGitEnv(parent []string) []string {
+	sanitized := make([]string, 0, len(parent))
+	for _, entry := range parent {
+		eq := strings.IndexByte(entry, '=')
+		if eq <= 0 {
+			sanitized = append(sanitized, entry)
+			continue
+		}
+		key := entry[:eq]
+		drop := false
+		for _, prefix := range inheritedGitEnvPrefixes {
+			if key == prefix || strings.HasPrefix(key, prefix) {
+				drop = true
+				break
+			}
+		}
+		if !drop {
+			sanitized = append(sanitized, entry)
+		}
+	}
+	return sanitized
+}
+
 func (s *GitService) runGit(ctx context.Context, dir string, extraEnv []string, args ...string) (string, string, error) {
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), extraEnv...)
+	cmd.Env = append(sanitizedGitEnv(os.Environ()), extraEnv...)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
