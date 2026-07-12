@@ -416,7 +416,7 @@ func writeSandboxExportFile(path string, body []byte) (string, error) {
 	if err := os.MkdirAll(filepath.Dir(resolvedPath), 0o755); err != nil {
 		return "", fmt.Errorf("create export directory: %w", err)
 	}
-	if err := os.WriteFile(resolvedPath, body, 0o600); err != nil {
+	if err := os.WriteFile(resolvedPath, body, 0o600); err != nil { //nosec G703 -- resolvedPath is the operator-supplied CLI sandbox export path
 		return "", fmt.Errorf("write sandbox export: %w", err)
 	}
 	return resolvedPath, nil

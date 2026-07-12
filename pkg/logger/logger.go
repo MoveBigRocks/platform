@@ -36,7 +36,7 @@ func NewWithEnvironment(env string) *Logger {
 		if logFilePath := os.Getenv("LOG_FILE_PATH"); logFilePath != "" {
 			// Create log directory if it doesn't exist
 			logDir := filepath.Dir(logFilePath)
-			if err := os.MkdirAll(logDir, 0755); err == nil {
+			if err := os.MkdirAll(logDir, 0755); err == nil { //nosec G703 -- logDir derives from the operator-set LOG_FILE_PATH env var, not request input
 				fileWriter := zapcore.AddSync(&lumberjack.Logger{
 					Filename:   logFilePath,
 					MaxSize:    100, // megabytes

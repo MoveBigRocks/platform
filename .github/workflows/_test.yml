@@ -134,15 +134,19 @@ jobs:
         continue-on-error: true
 
       - name: Security scan with gosec
-        continue-on-error: true
         working-directory: platform
         run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
-          # Run gosec and fail on HIGH severity issues
-          # -severity=high: Only fail on high severity issues
-          # -confidence=high: Require high confidence to fail (reduces false positives)
-          # Exclude test files and generated code
-          gosec -severity=high -confidence=high -exclude-dir=tests -exclude-dir=testutil -fmt text ./...
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.27.1
+          # Hard gate on high-severity, high-confidence findings. The version is
+          # pinned so the gate stays deterministic. G703 and G704 are the
+          # taint-analysis path-traversal and SSRF rules; they flag operator-
+          # and admin-controlled paths (log paths, CLI output flags, sandbox
+          # export paths) and the admin-configured extension registry URL, all
+          # of which are intended in a server plus CLI. Each site carries a
+          # //nosec justification, and gosec's inline suppression does not apply
+          # to taint findings, so those two rules are excluded here. User-facing
+          # paths (attachments, artifact git service) keep explicit sanitization.
+          gosec -severity=high -confidence=high -exclude=G703,G704 -exclude-dir=tests -exclude-dir=testutil -fmt text ./...
 
       - name: Vulnerability scan with govulncheck
         continue-on-error: true

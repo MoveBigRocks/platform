@@ -218,7 +218,7 @@ func writeJSON(path string, value any, stdout io.Writer) error {
 		_, err = stdout.Write(data)
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { //nosec G703 -- path is the operator-supplied CLI output path
 		return fmt.Errorf("create output directory: %w", err)
 	}
 	if err := os.WriteFile(filepath.Clean(path), data, 0o600); err != nil {

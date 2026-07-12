@@ -638,7 +638,7 @@ func (r OCIReference) scheme() string {
 func doRegistryRequest(ctx context.Context, client *http.Client, req *http.Request, registryHost string, cfg ResolverConfig) (*http.Response, error) {
 	applyRegistryCredentials(req, cfg)
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nosec G704 -- registryHost is an instance-admin-configured OCI registry or marketplace URL; fetching from admin-specified registries, including private self-hosted ones, is the intended extension install path
 	if err != nil {
 		return nil, err
 	}
@@ -660,7 +660,7 @@ func doRegistryRequest(ctx context.Context, client *http.Client, req *http.Reque
 	retry := req.Clone(ctx)
 	applyRegistryCredentials(retry, cfg)
 	retry.Header.Set("Authorization", "Bearer "+token)
-	return client.Do(retry)
+	return client.Do(retry) //nosec G704 -- authenticated retry against the same admin-configured registry host as the initial request
 }
 
 func applyRegistryCredentials(req *http.Request, cfg ResolverConfig) {

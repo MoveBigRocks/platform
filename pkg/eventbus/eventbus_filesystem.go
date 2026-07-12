@@ -515,7 +515,7 @@ func (eb *FileEventBus) moveFile(src, dst string) error {
 			}
 			return err
 		}
-		if err := os.WriteFile(dst, data, 0644); err != nil {
+		if err := os.WriteFile(dst, data, 0644); err != nil { //nosec G703 -- dst is an internal event-spool path under the configured base directory, not request input
 			return err
 		}
 		if err := os.Remove(src); err != nil && !os.IsNotExist(err) {

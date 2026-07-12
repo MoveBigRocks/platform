@@ -49,7 +49,7 @@ func main() {
 		fmt.Printf("%s already up to date\n", path)
 		return
 	}
-	if err := os.WriteFile(path, []byte(updated), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(updated), 0o644); err != nil { //nosec G703 -- operator-run doc generator writing to a repo-relative path argument
 		fmt.Fprintf(os.Stderr, "write %s: %v\n", path, err)
 		os.Exit(1)
 	}
