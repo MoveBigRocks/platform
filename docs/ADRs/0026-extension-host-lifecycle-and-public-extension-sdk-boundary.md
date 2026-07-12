@@ -17,32 +17,24 @@ That promise is already reflected in the current operator model:
 - the platform owns route resolution, runtime supervision, health checks, and
   extension schema migration orchestration
 
-At the same time, the intended repo model says customers and first parties
-should be able to build real extension repos outside the core platform repo.
+Customers and first parties build real extension repositories outside the core
+platform repository. For that to hold, two boundaries are firm.
 
-Today the architecture is only partially there.
+The extension host is a distinct bounded context, not a sidecar hidden inside
+another package. Packaging, validation, activation, monitoring, supervision,
+route resolution, and schema-migration orchestration are one cohesive domain
+the platform owns.
 
-The platform has a real extension host implementation, but the public runtime
-authoring path is still entangled with core internals:
+The public extension SDK is the only platform surface an extension repository
+depends on. An extension builds against a curated, importable SDK, never against
+core store, service, or handler implementations and never against
+`platform/internal/...`.
 
-- host lifecycle logic lives under `internal/platform/...` even though it is a
-  distinct domain
-- first-party service-backed extension runtimes import `platform/internal/...`
-  packages for config, database access, and runtime helpers
-- the current `extension-sdk` is primarily a source template and testing helper,
-  not a complete public runtime SDK
-- the public examples therefore do not prove that an external extension repo can
-  stay cleanly outside the platform internals
-
-This creates the wrong seam:
-
-- extensions look externally installable at the product level
-- but the implementation pattern still assumes build-time access to core
-  internals
-
-That is not acceptable for the long-term architecture. It weakens the DDD
-boundary, makes private extension repos awkward, and encourages accidental
-coupling between the platform host and extension runtimes.
+An extension that reaches into core internals for convenience is a coupling
+defect: it looks externally installable at the product level while depending on
+build-time access to core. That seam weakens the domain boundary, makes private
+extension repositories awkward, and encourages accidental coupling between the
+platform host and extension runtimes.
 
 ## Decision
 
@@ -177,12 +169,11 @@ Cross-boundary interaction must go through sanctioned contracts such as:
 This ADR does not rename the human-visible lifecycle or require a database
 rename as part of the boundary fix.
 
-For now:
+The boundary does not rename the human-visible lifecycle or the persisted schema:
 
-- the operator surface remains `mbr extensions ...`
-- existing route-mounting and supervision behavior remains host-owned
-- the persisted extension runtime ledger in `core_extension_runtime` remains in
-  place
+- the operator surface is `mbr extensions ...`
+- route mounting and runtime supervision are host-owned
+- the persisted extension runtime ledger lives in `core_extension_runtime`
 
 If later we decide that the persisted schema should be renamed to align more
 closely with `extensionhost`, that should be a separate ADR because it carries
@@ -216,20 +207,18 @@ This ADR does not:
 
 ### Negative
 
-- the platform must invest in a real public SDK instead of relying on internal
-  helpers
-- some existing first-party extension runtimes will need refactoring
-- there will be an interim period where old and new runtime helper paths
-  coexist
-- some capabilities currently available only through internal packages will need
-  new public host-facing contracts before affected extensions can migrate
+- the platform carries a real public SDK rather than leaning on internal helpers
+- a first-party extension runtime that depends on copied core stores or services
+  does not satisfy this boundary and is a defect to fix
+- a capability an extension needs from core is exposed through a public
+  host-facing contract, not through direct access to core packages
 
 ### Neutral
 
-- the current `extension-sdk` may evolve from "mostly template" into a real
-  importable SDK plus template assets
-- some package names in the platform repo may move even if external CLI and API
-  behavior stays unchanged
+- the `extension-sdk` is a real importable SDK plus template assets, not only a
+  source template
+- some package names in the platform repo may move even when external CLI and
+  API behavior stays unchanged
 
 ## Compliance
 

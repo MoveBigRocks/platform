@@ -144,6 +144,43 @@ func (s *CaseStore) GetCaseInWorkspace(ctx context.Context, workspaceID, caseID 
 }
 ```
 
+### Database Row-Level Security
+
+Beneath the application layers, PostgreSQL row-level security enforces the same
+workspace boundary inside the database, so a query path that forgets a
+`workspace_id` filter still cannot read or write another workspace's rows.
+
+Every tenant-scoped core table enables and forces row-level security with a
+`tenant_isolation` policy:
+
+```sql
+CREATE POLICY tenant_isolation ON core_service.cases
+    FOR ALL USING (workspace_id = public.current_workspace_id());
+```
+
+`public.current_workspace_id()` reads the `app.current_workspace_id` session
+setting and returns NULL when it is unset, so a query with no workspace context
+matches no rows rather than every row. The application connects as a role that
+does not bypass row-level security. Each tenant request runs inside a
+transaction that first sets the workspace context with transaction scope, so it
+cannot leak across pooled connections:
+
+```sql
+SELECT set_config('app.current_workspace_id', $1, true);
+```
+
+Legitimate cross-workspace work (background workers, the admin portal,
+cross-workspace email routing) runs through `WithAdminContext`, which switches
+the transaction to the `mbr_admin` role, granted `BYPASSRLS`. Because the
+policies force row-level security on the table owner as well, the connecting
+role is subject to them even though it owns the tables.
+
+Row-level security is the backstop, not the primary control: the application
+layers above still validate ownership and return a consistent not-found error.
+The database layer exists so a single missing filter is contained rather than
+exploitable. The activation scripts and the enforcement proof live in
+`deploy/rls/` and `rls_enforcement_postgres_test.go`.
+
 ### S3 Isolation
 
 Attachments use workspace-prefixed paths:
@@ -223,7 +260,8 @@ func TestCaseWorkspaceIsolation(t *testing.T) {
 
 ## References
 
-- Workspace middleware: `internal/infrastructure/middleware/`
-- Store layer: `internal/infrastructure/stores/sql/`
-- GraphQL context helpers: `internal/graph/shared/context.go`
-- Service layer: `internal/*/services/`
+- Tenant context middleware: `pkg/extensionhost/infrastructure/middleware/tenant_context.go`
+- Admin context middleware: `pkg/extensionhost/infrastructure/middleware/admin_context.go`
+- Store layer and tenant context: `pkg/extensionhost/infrastructure/stores/sql/store.go`
+- Row-level security policies: `migrations/postgres/000011_core_rls.up.sql`, `deploy/rls/`
+- GraphQL context helpers: `pkg/extensionhost/graph/shared/context.go`
