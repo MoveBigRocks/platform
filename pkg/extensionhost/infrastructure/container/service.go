@@ -120,19 +120,25 @@ func NewServiceContainer(deps ServiceContainerDeps) (*ServiceContainer, error) {
 	c.Email = emailService
 	c.Notification = serviceapp.NewNotificationService(deps.Store, c.Email, deps.Logger)
 
-	// AttachmentService (optional, requires S3 config)
-	if deps.Config.Storage.Attachments.Bucket != "" {
+	// AttachmentService is optional and only enabled for S3-backed attachment
+	// storage. Filesystem-only deployments expose no upload service rather than
+	// accepting files without durable quarantine and malware scanning.
+	if deps.Config.Storage.Type == "s3" && deps.Config.Storage.Attachments.Bucket != "" {
 		attachmentService, err := serviceapp.NewAttachmentService(serviceapp.AttachmentServiceConfig{
-			S3Endpoint:    deps.Config.Storage.Operational.Endpoint,
-			S3Region:      deps.Config.Storage.Operational.Region,
-			S3Bucket:      deps.Config.Storage.Attachments.Bucket,
-			S3AccessKey:   deps.Config.Storage.Operational.AccessKey,
-			S3SecretKey:   deps.Config.Storage.Operational.SecretKey,
-			ClamAVAddr:    deps.Config.Integrations.ClamAVAddr,
-			ClamAVTimeout: deps.Config.Integrations.ClamAVTimeout,
-			Logger:        deps.Logger,
+			S3Endpoint:              deps.Config.Storage.Operational.Endpoint,
+			S3Region:                deps.Config.Storage.Operational.Region,
+			S3Bucket:                deps.Config.Storage.Attachments.Bucket,
+			S3AccessKey:             deps.Config.Storage.Operational.AccessKey,
+			S3SecretKey:             deps.Config.Storage.Operational.SecretKey,
+			ClamAVAddr:              deps.Config.Integrations.ClamAVAddr,
+			ClamAVTimeout:           deps.Config.Integrations.ClamAVTimeout,
+			MalwareScanningRequired: deps.Config.Server.Environment == "production",
+			Logger:                  deps.Logger,
 		})
 		if err != nil {
+			if deps.Config.Server.Environment == "production" {
+				return nil, fmt.Errorf("attachment service: %w", err)
+			}
 			deps.Logger.WithError(err).Warn("Failed to initialize attachment service")
 		} else {
 			c.Attachment = attachmentService

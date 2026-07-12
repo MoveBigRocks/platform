@@ -67,10 +67,10 @@ func main() {
 			log.Error("JWT secret must be set in production")
 			os.Exit(1)
 		}
-		// ClamAV is recommended when attachment storage is configured in production
-		// to prevent malware from being uploaded via email or forms
-		if cfg.Storage.Attachments.Bucket != "" && cfg.Integrations.ClamAVAddr == "" {
-			log.Warn("ClamAV not configured - attachments will not be scanned for malware. Set CLAMAV_ADDR to enable scanning.")
+		// Attachment uploads fail startup in production unless malware scanning is
+		// configured; log the actionable cause before container construction exits.
+		if cfg.Storage.Type == "s3" && cfg.Storage.Attachments.Bucket != "" && cfg.Integrations.ClamAVAddr == "" {
+			log.Error("ClamAV is required for production attachment uploads. Set CLAMAV_ADDR or disable S3 attachment storage.")
 		}
 		gin.SetMode(gin.ReleaseMode)
 	}

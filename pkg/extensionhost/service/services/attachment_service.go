@@ -37,8 +37,9 @@ type AttachmentServiceConfig struct {
 	S3SecretKey string
 
 	// ClamAV configuration
-	ClamAVAddr    string // "host:port", empty to disable scanning
-	ClamAVTimeout time.Duration
+	ClamAVAddr              string // "host:port", empty to disable scanning
+	ClamAVTimeout           time.Duration
+	MalwareScanningRequired bool // Fail construction when no real scanner is configured.
 
 	// Logger
 	Logger *logger.Logger
@@ -46,6 +47,10 @@ type AttachmentServiceConfig struct {
 
 // NewAttachmentService creates a new attachment service
 func NewAttachmentService(cfg AttachmentServiceConfig) (*AttachmentService, error) {
+	if cfg.MalwareScanningRequired && cfg.ClamAVAddr == "" {
+		return nil, fmt.Errorf("ClamAV must be configured when malware scanning is required")
+	}
+
 	// Build S3 client options
 	var awsOpts []func(*config.LoadOptions) error
 
@@ -82,7 +87,8 @@ func NewAttachmentService(cfg AttachmentServiceConfig) (*AttachmentService, erro
 			Timeout: cfg.ClamAVTimeout,
 		})
 	} else {
-		// Use mock scanner that always returns clean (for development)
+		// The permissive scanner is only available when the caller has explicitly
+		// allowed development/test behavior. Production callers require ClamAV.
 		scanner = antivirus.NewMockScanner(true)
 		if cfg.Logger != nil {
 			cfg.Logger.Warn("ClamAV not configured, using mock scanner (all files pass)")
@@ -120,9 +126,17 @@ func (s *AttachmentService) Upload(ctx context.Context, attachment *servicedomai
 	hasher := sha256.New()
 	tee := io.TeeReader(reader, hasher)
 
-	if _, err := io.Copy(&buf, tee); err != nil {
+	limited := io.LimitReader(tee, servicedomain.MaxAttachmentSize+1)
+	if _, err := io.Copy(&buf, limited); err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
+	if int64(buf.Len()) > servicedomain.MaxAttachmentSize {
+		attachment.MarkError("attachment exceeds maximum size")
+		return fmt.Errorf("attachment size exceeds maximum %d bytes", servicedomain.MaxAttachmentSize)
+	}
+	// Persist and scan based on the bytes actually received, not a caller- or
+	// provider-supplied Content-Length value.
+	attachment.Size = int64(buf.Len())
 
 	// Calculate hash
 	attachment.SHA256Hash = hex.EncodeToString(hasher.Sum(nil))
