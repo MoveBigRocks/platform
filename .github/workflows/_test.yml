@@ -107,7 +107,7 @@ jobs:
           CACHE_ENABLED: true
         run: |
           go test -v ./pkg/extensionhost/infrastructure/stores/sql \
-            -run 'TestStoreContractPostgres|TestExtensionSchemaMigrator|TestNewDBWithConfigRejectsDirtyPostgresMigrationLedger|TestOutboxStoreGetPendingOutboxEventsOnPostgres|TestIdempotencyStoreMarkProcessedOnPostgres|TestRuleStoreIncrementRuleStatsOnPostgres|TestErrorMonitoringStoreDeleteProjectOnPostgres|TestCaseStoreLinkCaseToKBArticleOnPostgres' \
+            -run 'TestStoreContractPostgres|TestExtensionSchemaMigrator|TestNewDBWithConfigRejectsDirtyPostgresMigrationLedger|TestOutboxStoreGetPendingOutboxEventsOnPostgres|TestIdempotencyStoreMarkProcessedOnPostgres|TestRuleStoreIncrementRuleStatsOnPostgres|TestErrorMonitoringStoreDeleteProjectOnPostgres|TestCaseStoreLinkCaseToKBArticleOnPostgres|TestRowLevelSecurity|TestCoreRLSEnforcedUnderNonBypassingRole' \
             -count=1
 
       - name: Run deadcode on production packages only

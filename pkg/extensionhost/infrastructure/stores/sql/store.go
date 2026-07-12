@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/lib/pq"
+
 	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared"
 )
 
@@ -36,7 +38,20 @@ type Store struct {
 	agentStore             *AgentStore
 	idempotencyStore       *IdempotencyStore
 	auditStore             *AuditStore
+
+	// adminRole is the BYPASSRLS database role the store switches to for
+	// cross-workspace operations, or "" when no such role is available to the
+	// connecting user. It is resolved once at construction. When empty,
+	// WithAdminContext runs in the connecting role, which is correct while
+	// row-level security is not enforced.
+	adminRole string
 }
+
+// adminRoleName is the database role that bypasses row-level security for
+// legitimate cross-workspace work (workers, admin portal, cross-tenant email
+// routing). Migration 000011 provisions it as BYPASSRLS and grants it to the
+// application role. It is a fixed identifier, never user input.
+const adminRoleName = "mbr_admin"
 
 // NewStore creates a new SQL-based Store
 func NewStore(db *DB) (*Store, error) {
@@ -72,7 +87,32 @@ func NewStore(db *DB) (*Store, error) {
 		agentStore:             NewAgentStore(sqlxDB),
 		idempotencyStore:       NewIdempotencyStore(sqlxDB),
 		auditStore:             NewAuditStore(sqlxDB),
+		adminRole:              detectAdminRole(sqlxDB),
 	}, nil
+}
+
+// detectAdminRole reports the cross-workspace admin role the connecting user
+// may assume, or "" when none is available. It checks that adminRoleName exists
+// and that the current user is a member, so WithAdminContext can switch to it
+// only when the switch will succeed. A missing role (an older database where
+// the RLS rollout has not provisioned it) yields "", leaving admin operations
+// in the connecting role. The result is stable for a given role, so it is
+// resolved once; provisioning the role later takes effect on the next start.
+func detectAdminRole(db *SqlxDB) string {
+	if db == nil || db.driver != "postgres" {
+		return ""
+	}
+	var role string
+	err := db.DB.QueryRowxContext(
+		context.Background(),
+		`SELECT rolname FROM pg_roles
+		 WHERE rolname = $1 AND pg_has_role(current_user, oid, 'USAGE')`,
+		adminRoleName,
+	).Scan(&role)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(role)
 }
 
 func (s *Store) Users() shared.UserStore {
@@ -245,10 +285,33 @@ func (s *Store) SetTenantContext(ctx context.Context, workspaceID string) error 
 }
 
 // WithAdminContext executes a function for cross-workspace operations inside a
-// transaction. It intentionally does not set app.current_workspace_id, so under
-// a role that bypasses row-level security the function sees all workspaces.
-// Under a non-bypassing role this would need to switch to a BYPASSRLS admin
-// role; that is part of the enforcement rollout referenced in SetTenantContext.
+// transaction. It does not set app.current_workspace_id; instead it switches to
+// the BYPASSRLS admin role for the duration of the transaction, so the function
+// sees every workspace even when the connecting role is subject to row-level
+// security. SET LOCAL ROLE is transaction-scoped and reset at commit or
+// rollback. When no admin role is available (adminRole is ""), it runs in the
+// connecting role, which is correct while RLS is not enforced.
 func (s *Store) WithAdminContext(ctx context.Context, fn func(ctx context.Context) error) error {
-	return s.WithTransaction(ctx, fn)
+	return s.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := s.enterAdminRole(txCtx); err != nil {
+			return err
+		}
+		return fn(txCtx)
+	})
+}
+
+// enterAdminRole switches the current transaction to the admin role when one is
+// available. It must run inside a transaction so the switch is local; Get(ctx)
+// returns the transaction connection in that case.
+func (s *Store) enterAdminRole(ctx context.Context) error {
+	if s.adminRole == "" || s.sqlxDB.driver != "postgres" {
+		return nil
+	}
+	// adminRole is resolved from pg_roles at construction and is a fixed
+	// identifier, not user input, so it is safe to interpolate. SET ROLE does
+	// not accept bind parameters.
+	if _, err := s.sqlxDB.Get(ctx).ExecContext(ctx, "SET LOCAL ROLE "+pq.QuoteIdentifier(s.adminRole)); err != nil {
+		return fmt.Errorf("enter admin role %s: %w", s.adminRole, err)
+	}
+	return nil
 }
