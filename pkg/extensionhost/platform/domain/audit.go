@@ -86,11 +86,16 @@ const (
 	AuditActionBulkDelete AuditAction = "bulk_delete"
 
 	// System actions
-	AuditActionSettingsChanged     AuditAction = "settings_changed"
-	AuditActionIntegrationEnabled  AuditAction = "integration_enabled"
-	AuditActionIntegrationDisabled AuditAction = "integration_disabled"
-	AuditActionWebhookCreated      AuditAction = "webhook_created"
-	AuditActionWebhookDeleted      AuditAction = "webhook_deleted"
+	AuditActionSettingsChanged      AuditAction = "settings_changed"
+	AuditActionIntegrationEnabled   AuditAction = "integration_enabled"
+	AuditActionIntegrationDisabled  AuditAction = "integration_disabled"
+	AuditActionWebhookCreated       AuditAction = "webhook_created"
+	AuditActionWebhookDeleted       AuditAction = "webhook_deleted"
+	AuditActionExtensionInstalled   AuditAction = "extension_installed"
+	AuditActionExtensionActivated   AuditAction = "extension_activated"
+	AuditActionExtensionUpgraded    AuditAction = "extension_upgraded"
+	AuditActionExtensionDeactivated AuditAction = "extension_deactivated"
+	AuditActionExtensionUninstalled AuditAction = "extension_uninstalled"
 )
 
 // FieldChange represents a single field change
@@ -348,13 +353,14 @@ type SecurityEvent struct {
 type SecurityEventType string
 
 const (
-	SecurityEventTypeBruteForce          SecurityEventType = "brute_force"
-	SecurityEventTypeUnauthorizedAccess  SecurityEventType = "unauthorized_access"
-	SecurityEventTypeSuspiciousActivity  SecurityEventType = "suspicious_activity"
-	SecurityEventTypeDataExfiltration    SecurityEventType = "data_exfiltration"
-	SecurityEventTypeMaliciousPayload    SecurityEventType = "malicious_payload"
-	SecurityEventTypeAccountTakeover     SecurityEventType = "account_takeover"
-	SecurityEventTypePrivilegeEscalation SecurityEventType = "privilege_escalation"
+	SecurityEventTypeBruteForce            SecurityEventType = "brute_force"
+	SecurityEventTypeUnauthorizedAccess    SecurityEventType = "unauthorized_access"
+	SecurityEventTypeSuspiciousActivity    SecurityEventType = "suspicious_activity"
+	SecurityEventTypeDataExfiltration      SecurityEventType = "data_exfiltration"
+	SecurityEventTypeMaliciousPayload      SecurityEventType = "malicious_payload"
+	SecurityEventTypeAccountTakeover       SecurityEventType = "account_takeover"
+	SecurityEventTypePrivilegeEscalation   SecurityEventType = "privilege_escalation"
+	SecurityEventTypeAuthenticationFailure SecurityEventType = "authentication_failure"
 )
 
 // SecuritySeverity represents the severity of a security event

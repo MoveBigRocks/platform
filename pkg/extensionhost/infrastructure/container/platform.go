@@ -12,6 +12,7 @@ import (
 // PlatformContainer holds platform domain services.
 // Platform services have no dependencies on other domain services.
 type PlatformContainer struct {
+	Audit     *platformservices.AuditService
 	Session   *platformservices.SessionService
 	CLILogin  *platformservices.CLILoginService
 	Stats     *platformservices.AdminStatsService
@@ -30,6 +31,7 @@ func NewPlatformContainer(
 	cfg *config.Config,
 	log *logger.Logger,
 ) *PlatformContainer {
+	auditService := platformservices.NewAuditService(store.Audits(), store)
 	extensionOptions := []platformservices.ExtensionServiceOption{}
 	if sqlBackedStore, ok := store.(*sqlstore.Store); ok {
 		extensionOptions = append(extensionOptions, platformservices.WithExtensionSchemaRuntime(sqlBackedStore.ExtensionSchemaMigrator()))
@@ -40,6 +42,7 @@ func NewPlatformContainer(
 		log.Warn("Failed to initialize extension bundle trust verifier", "error", err)
 	}
 	extensionOptions = append(extensionOptions, platformservices.WithExtensionArtifactService(artifactservices.NewGitService(cfg.Storage.Artifacts.Path)))
+	extensionOptions = append(extensionOptions, platformservices.WithExtensionAuditService(auditService))
 
 	statsService := platformservices.NewAdminStatsService(
 		store,
@@ -58,6 +61,7 @@ func NewPlatformContainer(
 	statsService.SetExtensionGate(extensionService)
 
 	return &PlatformContainer{
+		Audit: auditService,
 		Session: platformservices.NewSessionService(
 			store.Users(),
 			store.Workspaces(),

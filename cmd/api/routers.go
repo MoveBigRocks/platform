@@ -75,6 +75,7 @@ func createAdminRouter(
 		adminEmails,
 		cfg.Auth.CookieDomain,
 	).WithCLILogin(cfg.Server.AdminBaseURL, c.Platform.CLILogin)
+	authHandler.WithAuditService(c.Platform.Audit)
 
 	// Create context-aware auth middleware (with store for workspace slug lookups)
 	contextAuthMiddleware := middleware.NewContextAuthMiddleware(c.Platform.Session).
@@ -374,6 +375,7 @@ func createAPIRouter(
 		nil,
 		cfg.Auth.CookieDomain,
 	).WithCLILogin(cfg.Server.AdminBaseURL, c.Platform.CLILogin)
+	authHandler.WithAuditService(c.Platform.Audit)
 
 	// Liveness check - simple check that the service is running
 	router.GET("/health/live", func(c *gin.Context) {
@@ -503,6 +505,7 @@ func createPublicRouter(
 	sandboxService *platformservices.SandboxService,
 	adminEmails []string,
 	version, gitCommit, buildDate string,
+	auditServices ...*platformservices.AuditService,
 ) *gin.Engine {
 	router := gin.New()
 	configureTrustedProxies(router, cfg, logger.New().WithField("router", "public"), "public")
@@ -525,6 +528,9 @@ func createPublicRouter(
 		adminEmails,
 		cfg.Auth.CookieDomain,
 	).WithCLILogin(cfg.Server.AdminBaseURL, cliLoginService)
+	if len(auditServices) > 0 {
+		authHandler.WithAuditService(auditServices[0])
+	}
 
 	// Create context-aware auth middleware
 	contextAuthMiddleware := middleware.NewContextAuthMiddleware(sessionService).

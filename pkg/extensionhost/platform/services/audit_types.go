@@ -13,25 +13,41 @@ import (
 type LogActivityRequest struct {
 	WorkspaceID  string
 	ActorID      string
+	ActorEmail   string
+	ActorName    string
 	Action       string
 	ResourceType string
 	ResourceID   string
+	ResourceName string
 	Details      shareddomain.Metadata
 	Outcome      string // "success" or "failure"
+	ErrorMessage string
 	UserAgent    string
 	IPAddress    string
+	SessionID    string
+	RequestID    string
+	APIKeyID     string
+	Tags         []string
 }
 
 // LogSecurityEventRequest contains parameters for logging a security event
 type LogSecurityEventRequest struct {
-	WorkspaceID string
-	ActorID     string
-	EventType   string
-	Severity    string // "critical", "high", "medium", "low", "info"
-	Description string
-	Details     shareddomain.Metadata
-	UserAgent   string
-	IPAddress   string
+	WorkspaceID     string
+	ActorID         string
+	EventType       string
+	Severity        string // "critical", "high", "medium", "low", "info"
+	Description     string
+	Details         shareddomain.Metadata
+	UserAgent       string
+	IPAddress       string
+	ResourceType    string
+	ResourceID      string
+	DetectionMethod string
+	RiskScore       int
+	Indicators      []string
+	AutoBlocked     bool
+	RequiresReview  bool
+	OccurredAt      time.Time
 }
 
 // AuditLogQuery contains filter parameters for querying audit logs

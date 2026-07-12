@@ -1,6 +1,7 @@
 package platformhandlers
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -17,6 +18,7 @@ import (
 	"github.com/movebigrocks/platform/pkg/extensionhost/platform/handlers/dtos"
 	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
 	"github.com/movebigrocks/platform/pkg/extensionhost/shared/contracts"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
 	"github.com/movebigrocks/platform/pkg/logger"
 )
 
@@ -31,6 +33,12 @@ type AuthHandler struct {
 	cliLogin       *platformservices.CLILoginService
 	emailService   *platformservices.AdminEmailService
 	logger         *logger.Logger
+	audit          authAuditLogger
+}
+
+type authAuditLogger interface {
+	LogActivity(ctx context.Context, req platformservices.LogActivityRequest) error
+	LogSecurityEvent(ctx context.Context, req platformservices.LogSecurityEventRequest) error
 }
 
 // NewAuthHandler creates a new auth handler
@@ -65,6 +73,12 @@ func (h *AuthHandler) WithCLILogin(adminBaseURL string, cliLogin *platformservic
 // WithEmailService sets the email service for magic link delivery
 func (h *AuthHandler) WithEmailService(svc *platformservices.AdminEmailService) *AuthHandler {
 	h.emailService = svc
+	return h
+}
+
+// WithAuditService enables best-effort durable authentication auditing.
+func (h *AuthHandler) WithAuditService(audit authAuditLogger) *AuthHandler {
+	h.audit = audit
 	return h
 }
 
@@ -205,12 +219,14 @@ func (h *AuthHandler) VerifyMagicLink(c *gin.Context) {
 	if err := h.SessionService.ValidateMagicLinkToken(magicLink); err != nil {
 		// Log detailed error for debugging, but return generic message to prevent information leakage
 		h.logger.WithError(err).Warn("Magic link validation failed", "ip", c.ClientIP())
+		h.recordLoginFailure(c, magicLink.UserID, "magic_link_validation_failed")
 		middleware.RespondWithError(c, http.StatusUnauthorized, "Invalid or expired magic link")
 		return
 	}
 
 	// Mark magic link as used (atomic check-and-set to prevent race conditions)
 	if err := h.SessionService.MarkMagicLinkUsed(c.Request.Context(), token); err != nil {
+		h.recordLoginFailure(c, magicLink.UserID, "magic_link_consumption_failed")
 		if contracts.IsAlreadyUsed(err) {
 			// Token was already used by another concurrent request
 			middleware.RespondWithError(c, http.StatusUnauthorized, "Invalid or expired magic link")
@@ -233,6 +249,7 @@ func (h *AuthHandler) VerifyMagicLink(c *gin.Context) {
 	userAgent := c.Request.UserAgent()
 	session, sessionToken, err := h.SessionService.CreateSession(c.Request.Context(), user, ipAddress, userAgent)
 	if err != nil {
+		h.recordLoginFailure(c, user.ID, "session_creation_failed")
 		middleware.RespondWithError(c, http.StatusInternalServerError, "Failed to create session")
 		return
 	}
@@ -255,6 +272,7 @@ func (h *AuthHandler) VerifyMagicLink(c *gin.Context) {
 
 	// Determine redirect based on default context
 	redirectURL := h.getRedirectURLForContext(session.CurrentContext)
+	h.recordLoginSuccess(c, session)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Authentication successful",
@@ -438,18 +456,25 @@ func (h *AuthHandler) GetCurrentContext(c *gin.Context) {
 // Logout invalidates the user's session
 // POST /auth/logout
 func (h *AuthHandler) Logout(c *gin.Context) {
+	var session *platformdomain.Session
+	var logoutErr error
 	// Get session token from cookie
 	token, err := c.Cookie("mbr_session")
-	if err == nil && token != "" {
+	if err == nil && token != "" && h.SessionService != nil {
 		// Hash the token to find and delete the session
 		hash := sha256.Sum256([]byte(token))
 		tokenHash := hex.EncodeToString(hash[:])
+		session, _ = h.SessionService.GetSessionByHash(c.Request.Context(), tokenHash)
 
 		// Invalidate session by hash
 		if err := h.SessionService.DeleteSessionByHash(c.Request.Context(), tokenHash); err != nil {
+			logoutErr = err
 			// Log error but continue with logout
 			h.logger.WithError(err).Warn("Failed to delete session during logout")
 		}
+	}
+	if session != nil {
+		h.recordLogout(c, session, logoutErr)
 	}
 
 	// Clear session cookie with secure flag based on environment
@@ -470,6 +495,116 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logged out successfully",
 	})
+}
+
+func (h *AuthHandler) recordLoginSuccess(c *gin.Context, session *platformdomain.Session) {
+	workspaceID := authAuditWorkspaceID(session)
+	if h.audit == nil || workspaceID == "" {
+		return
+	}
+	if err := h.audit.LogActivity(c.Request.Context(), platformservices.LogActivityRequest{
+		WorkspaceID:  workspaceID,
+		ActorID:      session.UserID,
+		ActorEmail:   session.Email,
+		ActorName:    session.Name,
+		Action:       string(platformdomain.AuditActionLogin),
+		ResourceType: "session",
+		ResourceID:   session.ID,
+		Outcome:      "success",
+		UserAgent:    c.Request.UserAgent(),
+		IPAddress:    c.ClientIP(),
+		SessionID:    session.ID,
+		RequestID:    c.GetString("request_id"),
+		Tags:         []string{"authentication"},
+	}); err != nil {
+		h.logger.WithError(err).Warn("Failed to record login audit event")
+	}
+}
+
+func (h *AuthHandler) recordLoginFailure(c *gin.Context, userID, reason string) {
+	if h.audit == nil || h.SessionService == nil || strings.TrimSpace(userID) == "" {
+		return
+	}
+	workspaceID, err := h.SessionService.ResolveAuditWorkspaceID(c.Request.Context(), userID)
+	if err != nil || workspaceID == "" {
+		return
+	}
+	details := shareddomain.NewMetadata()
+	details.SetString("reason", reason)
+	requestID := c.GetString("request_id")
+	if requestID != "" {
+		details.SetString("request_id", requestID)
+	}
+	activity := platformservices.LogActivityRequest{
+		WorkspaceID:  workspaceID,
+		ActorID:      userID,
+		Action:       string(platformdomain.AuditActionLoginFailed),
+		ResourceType: "session",
+		Details:      details,
+		Outcome:      "failure",
+		ErrorMessage: reason,
+		UserAgent:    c.Request.UserAgent(),
+		IPAddress:    c.ClientIP(),
+		RequestID:    requestID,
+		Tags:         []string{"authentication", "security"},
+	}
+	if err := h.audit.LogActivity(c.Request.Context(), activity); err != nil {
+		h.logger.WithError(err).Warn("Failed to record login failure audit event")
+	}
+	if err := h.audit.LogSecurityEvent(c.Request.Context(), platformservices.LogSecurityEventRequest{
+		WorkspaceID:     workspaceID,
+		ActorID:         userID,
+		EventType:       string(platformdomain.SecurityEventTypeAuthenticationFailure),
+		Severity:        string(platformdomain.SecuritySeverityLow),
+		Description:     "A workspace user authentication attempt failed",
+		Details:         details,
+		UserAgent:       c.Request.UserAgent(),
+		IPAddress:       c.ClientIP(),
+		ResourceType:    "session",
+		DetectionMethod: "authentication_flow",
+		RiskScore:       20,
+		RequiresReview:  false,
+	}); err != nil {
+		h.logger.WithError(err).Warn("Failed to record login failure security event")
+	}
+}
+
+func (h *AuthHandler) recordLogout(c *gin.Context, session *platformdomain.Session, logoutErr error) {
+	workspaceID := authAuditWorkspaceID(session)
+	if h.audit == nil || workspaceID == "" {
+		return
+	}
+	outcome := "success"
+	errorMessage := ""
+	if logoutErr != nil {
+		outcome = "failure"
+		errorMessage = "session_deletion_failed"
+	}
+	if err := h.audit.LogActivity(c.Request.Context(), platformservices.LogActivityRequest{
+		WorkspaceID:  workspaceID,
+		ActorID:      session.UserID,
+		ActorEmail:   session.Email,
+		ActorName:    session.Name,
+		Action:       string(platformdomain.AuditActionLogout),
+		ResourceType: "session",
+		ResourceID:   session.ID,
+		Outcome:      outcome,
+		ErrorMessage: errorMessage,
+		UserAgent:    c.Request.UserAgent(),
+		IPAddress:    c.ClientIP(),
+		SessionID:    session.ID,
+		RequestID:    c.GetString("request_id"),
+		Tags:         []string{"authentication"},
+	}); err != nil {
+		h.logger.WithError(err).Warn("Failed to record logout audit event")
+	}
+}
+
+func authAuditWorkspaceID(session *platformdomain.Session) string {
+	if session == nil || session.CurrentContext.Type != platformdomain.ContextTypeWorkspace || session.CurrentContext.WorkspaceID == nil {
+		return ""
+	}
+	return strings.TrimSpace(*session.CurrentContext.WorkspaceID)
 }
 
 // Helper: Determine redirect URL based on context

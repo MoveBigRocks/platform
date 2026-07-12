@@ -1,6 +1,7 @@
 package platformhandlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,21 @@ import (
 	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 	platformservices "github.com/movebigrocks/platform/pkg/extensionhost/platform/services"
 )
+
+type authAuditSpy struct {
+	activities     []platformservices.LogActivityRequest
+	securityEvents []platformservices.LogSecurityEventRequest
+}
+
+func (s *authAuditSpy) LogActivity(_ context.Context, req platformservices.LogActivityRequest) error {
+	s.activities = append(s.activities, req)
+	return nil
+}
+
+func (s *authAuditSpy) LogSecurityEvent(_ context.Context, req platformservices.LogSecurityEventRequest) error {
+	s.securityEvents = append(s.securityEvents, req)
+	return nil
+}
 
 func init() {
 	gin.SetMode(gin.TestMode)
@@ -288,6 +304,51 @@ func TestAuthHandler_Logout(t *testing.T) {
 	assert.NotNil(t, sessionCookie)
 	assert.Equal(t, "", sessionCookie.Value)
 	assert.Less(t, sessionCookie.MaxAge, 0) // MaxAge < 0 means delete
+}
+
+func TestAuthHandlerRecordsWorkspaceLoginAndLogoutAudit(t *testing.T) {
+	workspaceID := "workspace-1"
+	audit := &authAuditSpy{}
+	handler := NewAuthHandler(nil, "http://localhost:8080", "development", nil, "").WithAuditService(audit)
+	session := &platformdomain.Session{
+		ID:     "session-1",
+		UserID: "user-1",
+		Email:  "user@example.com",
+		Name:   "User One",
+		CurrentContext: platformdomain.Context{
+			Type:        platformdomain.ContextTypeWorkspace,
+			WorkspaceID: &workspaceID,
+		},
+	}
+	request := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+	request.Header.Set("User-Agent", "audit-test")
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = request
+	c.Set("request_id", "request-1")
+
+	handler.recordLoginSuccess(c, session)
+	handler.recordLogout(c, session, nil)
+
+	require.Len(t, audit.activities, 2)
+	assert.Equal(t, string(platformdomain.AuditActionLogin), audit.activities[0].Action)
+	assert.Equal(t, string(platformdomain.AuditActionLogout), audit.activities[1].Action)
+	assert.Equal(t, workspaceID, audit.activities[0].WorkspaceID)
+	assert.Equal(t, "request-1", audit.activities[0].RequestID)
+	assert.Equal(t, "audit-test", audit.activities[1].UserAgent)
+}
+
+func TestAuthHandlerDoesNotMisattributeInstanceLoginToWorkspace(t *testing.T) {
+	audit := &authAuditSpy{}
+	handler := NewAuthHandler(nil, "http://localhost:8080", "development", nil, "").WithAuditService(audit)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodGet, "/auth/verify-magic-link", nil)
+
+	handler.recordLoginSuccess(c, &platformdomain.Session{
+		UserID:         "instance-admin",
+		CurrentContext: platformdomain.Context{Type: platformdomain.ContextTypeInstance},
+	})
+
+	assert.Empty(t, audit.activities)
 }
 
 func TestAuthHandler_StartCLILogin(t *testing.T) {

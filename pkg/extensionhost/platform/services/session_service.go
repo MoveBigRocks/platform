@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -571,6 +572,38 @@ func (s *SessionService) GetUserByEmail(ctx context.Context, email string) (*pla
 // GetUserByID retrieves a user by ID
 func (s *SessionService) GetUserByID(ctx context.Context, userID string) (*platformdomain.User, error) {
 	return s.userStore.GetUser(ctx, userID)
+}
+
+// ResolveAuditWorkspaceID returns the workspace to which a user's
+// authentication event can be truthfully attributed. Instance-level users are
+// intentionally left unattributed because the current audit schema requires a
+// workspace and has no instance-event representation.
+func (s *SessionService) ResolveAuditWorkspaceID(ctx context.Context, userID string) (string, error) {
+	user, err := s.userStore.GetUser(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	contexts, err := s.buildAvailableContexts(ctx, user)
+	if err != nil {
+		return "", err
+	}
+	for _, available := range contexts {
+		if available.Type == platformdomain.ContextTypeInstance {
+			return "", nil
+		}
+	}
+	for _, available := range contexts {
+		if available.Type == platformdomain.ContextTypeWorkspace && available.WorkspaceID != nil {
+			return strings.TrimSpace(*available.WorkspaceID), nil
+		}
+	}
+	return "", nil
+}
+
+// GetSessionByHash retrieves a session for security-sensitive lifecycle work
+// such as recording logout before the session is deleted.
+func (s *SessionService) GetSessionByHash(ctx context.Context, tokenHash string) (*platformdomain.Session, error) {
+	return s.userStore.GetSessionByHash(ctx, tokenHash)
 }
 
 // DeleteSessionByHash invalidates a session by token hash

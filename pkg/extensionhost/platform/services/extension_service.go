@@ -40,6 +40,11 @@ type ExtensionService struct {
 	artifacts          extensionArtifactService
 	tx                 contracts.TransactionRunner
 	logger             *logger.Logger
+	audit              extensionAuditLogger
+}
+
+type extensionAuditLogger interface {
+	LogActivity(ctx context.Context, req LogActivityRequest) error
 }
 
 type ExtensionSchemaRuntime interface {
@@ -126,6 +131,12 @@ func WithPrivilegedExtensionPolicy(policy PrivilegedExtensionPolicy) ExtensionSe
 func WithExtensionArtifactService(artifacts extensionArtifactService) ExtensionServiceOption {
 	return func(service *ExtensionService) {
 		service.artifacts = artifacts
+	}
+}
+
+func WithExtensionAuditService(audit extensionAuditLogger) ExtensionServiceOption {
+	return func(service *ExtensionService) {
+		service.audit = audit
 	}
 }
 
@@ -390,6 +401,7 @@ func (s *ExtensionService) InstallExtension(ctx context.Context, params InstallE
 	if err := s.extensionStore.UpdateInstalledExtension(ctx, installation); err != nil {
 		return nil, apierrors.DatabaseError("update extension validation", err)
 	}
+	s.recordExtensionLifecycle(ctx, installation, params.InstalledByID, platformdomain.AuditActionExtensionInstalled, "")
 	return installation, nil
 }
 
@@ -460,7 +472,12 @@ func (s *ExtensionService) ActivateExtension(ctx context.Context, extensionID st
 			return nil, apierrors.DatabaseError("activate extension", err)
 		}
 	}
-	return s.CheckExtensionHealth(ctx, extension.ID)
+	activated, err := s.CheckExtensionHealth(ctx, extension.ID)
+	if err != nil {
+		return nil, err
+	}
+	s.recordExtensionLifecycle(ctx, activated, "", platformdomain.AuditActionExtensionActivated, "")
+	return activated, nil
 }
 
 func (s *ExtensionService) UpgradeExtension(ctx context.Context, params UpgradeExtensionParams) (*platformdomain.InstalledExtension, error) {
@@ -603,6 +620,7 @@ func (s *ExtensionService) UpgradeExtension(ctx context.Context, params UpgradeE
 	if err := s.extensionStore.UpdateInstalledExtension(ctx, &upgraded); err != nil {
 		return nil, apierrors.DatabaseError("update upgraded extension", err)
 	}
+	s.recordExtensionLifecycle(ctx, &upgraded, params.InstalledByID, platformdomain.AuditActionExtensionUpgraded, "")
 	if upgraded.Status == platformdomain.ExtensionStatusActive {
 		return s.CheckExtensionHealth(ctx, upgraded.ID)
 	}
@@ -627,6 +645,7 @@ func (s *ExtensionService) DeactivateExtension(ctx context.Context, extensionID,
 			)
 		}
 	}
+	s.recordExtensionLifecycle(ctx, extension, "", platformdomain.AuditActionExtensionDeactivated, reason)
 	return extension, nil
 }
 
@@ -646,9 +665,50 @@ func (s *ExtensionService) UninstallExtension(ctx context.Context, extensionID s
 		return nil
 	}
 	if s.tx != nil {
-		return s.tx.WithTransaction(ctx, deleteInstalled)
+		err = s.tx.WithTransaction(ctx, deleteInstalled)
+	} else {
+		err = deleteInstalled(ctx)
 	}
-	return deleteInstalled(ctx)
+	if err != nil {
+		return err
+	}
+	s.recordExtensionLifecycle(ctx, extension, "", platformdomain.AuditActionExtensionUninstalled, "")
+	return nil
+}
+
+func (s *ExtensionService) recordExtensionLifecycle(
+	ctx context.Context,
+	extension *platformdomain.InstalledExtension,
+	actorID string,
+	action platformdomain.AuditAction,
+	reason string,
+) {
+	if s.audit == nil || extension == nil || strings.TrimSpace(extension.WorkspaceID) == "" {
+		return
+	}
+	details := shareddomain.NewMetadata()
+	details.SetString("slug", extension.Slug)
+	details.SetString("version", extension.Version)
+	details.SetString("status", string(extension.Status))
+	if strings.TrimSpace(reason) != "" {
+		details.SetString("reason", strings.TrimSpace(reason))
+	}
+	if err := s.audit.LogActivity(ctx, LogActivityRequest{
+		WorkspaceID:  extension.WorkspaceID,
+		ActorID:      actorID,
+		Action:       string(action),
+		ResourceType: "extension",
+		ResourceID:   extension.ID,
+		ResourceName: extension.Name,
+		Details:      details,
+		Outcome:      "success",
+		Tags:         []string{"extension_lifecycle"},
+	}); err != nil {
+		s.logger.WithError(err).Warn("Failed to record extension lifecycle audit event",
+			"extension_id", extension.ID,
+			"action", action,
+		)
+	}
 }
 
 func (s *ExtensionService) ValidateExtension(ctx context.Context, extensionID string) (*platformdomain.InstalledExtension, error) {

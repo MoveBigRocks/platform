@@ -49,6 +49,7 @@ type Store interface {
 	Outbox() OutboxStore
 	Idempotency() IdempotencyStore
 	Notifications() NotificationStore
+	Audits() AuditStore
 
 	// WithTransaction executes a function within a transaction context.
 	// If the function returns an error, all staged operations are abandoned.
@@ -75,6 +76,14 @@ type Store interface {
 	// For SQLite, this simply runs the function within a transaction.
 	// SECURITY: Only use this for legitimate cross-tenant administrative operations.
 	WithAdminContext(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
+// AuditStore persists append-only governance records. Deliberately exposing no
+// update or delete methods keeps audit and security history immutable through
+// the application store contract.
+type AuditStore interface {
+	CreateAuditLog(ctx context.Context, auditLog *platformdomain.AuditLog) error
+	CreateSecurityEvent(ctx context.Context, event *platformdomain.SecurityEvent) error
 }
 
 // UserCRUD handles basic user CRUD operations

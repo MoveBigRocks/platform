@@ -34,6 +34,7 @@ type Store struct {
 	knowledgeResourceStore *KnowledgeResourceStore
 	agentStore             *AgentStore
 	idempotencyStore       *IdempotencyStore
+	auditStore             *AuditStore
 }
 
 // NewStore creates a new SQL-based Store
@@ -69,6 +70,7 @@ func NewStore(db *DB) (*Store, error) {
 		knowledgeResourceStore: NewKnowledgeResourceStore(sqlxDB),
 		agentStore:             NewAgentStore(sqlxDB),
 		idempotencyStore:       NewIdempotencyStore(sqlxDB),
+		auditStore:             NewAuditStore(sqlxDB),
 	}, nil
 }
 
@@ -180,6 +182,10 @@ func (s *Store) KnowledgeResources() shared.KnowledgeResourceStore {
 
 func (s *Store) Agents() shared.AgentStore {
 	return s.agentStore
+}
+
+func (s *Store) Audits() shared.AuditStore {
+	return s.auditStore
 }
 
 // WithTransaction executes a function within a transaction context using sqlx

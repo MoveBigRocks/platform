@@ -123,7 +123,7 @@ func main() {
 	// Create routers
 	adminRouter := createAdminRouter(cfg, c, cfg.Admin.Emails, serviceTargets)
 	apiRouter := createAPIRouter(cfg, c, postmarkHandlers, publicFormHandler, publicConversationHandler, serviceTargets)
-	publicRouter := createPublicRouter(cfg, c.Platform.Session, c.Platform.Extension, c.Platform.CLILogin, c.Platform.Sandbox, cfg.Admin.Emails, Version, GitCommit, BuildDate)
+	publicRouter := createPublicRouter(cfg, c.Platform.Session, c.Platform.Extension, c.Platform.CLILogin, c.Platform.Sandbox, cfg.Admin.Emails, Version, GitCommit, BuildDate, c.Platform.Audit)
 
 	// Workspace router factory
 	workspaceRouterFactory := routing.NewDefaultWorkspaceRouterFactory(
