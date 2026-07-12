@@ -345,10 +345,14 @@ func createAdminRouter(
 	gqlLimits := configuredGraphQLLimits(cfg)
 	gqlServer := graph.MustParseSchema(gqlResolver, gqlLimits)
 
-	// GraphQL endpoint for admin portal (session auth, instance access required)
+	// GraphQL endpoint for admin portal (session auth, instance access required).
+	// The admin portal is cross-workspace, so it runs in the admin context,
+	// which opens a transaction and switches to the bypass role under enforced
+	// row-level security. Matches the other instance-admin routes above.
 	gqlProtected := router.Group("")
 	gqlProtected.Use(contextAuthMiddleware.AuthRequired())
 	gqlProtected.Use(contextAuthMiddleware.RequireInstanceAccess())
+	gqlProtected.Use(adminContextMiddleware.WithAdminContext())
 	gqlProtected.POST("/graphql", graph.GinHandler(gqlServer, gqlLimits.RequestTimeout))
 
 	// GraphQL playground (development only)
@@ -497,11 +501,17 @@ func createAPIRouter(
 
 	attachmentUploadHandler := servicehandlers.NewAttachmentUploadHandler(c.Service.Attachment, c.Store.Cases())
 
+	// Agents are scoped to a single workspace, so their requests run in that
+	// workspace's tenant context: AuthenticateAgent sets workspace_id and this
+	// middleware opens a transaction that applies it, which is what enforces
+	// row-level security on the agent GraphQL and upload paths.
+	agentTenantContext := middleware.NewTenantContextMiddleware(c.Store, nil)
+
 	// Attachment upload endpoint for agents and non-interactive tooling.
-	router.POST("/attachments", principalAuth.AuthenticateAgent(), attachmentUploadHandler.HandleAgentUpload)
+	router.POST("/attachments", principalAuth.AuthenticateAgent(), agentTenantContext.SetTenantContext(), attachmentUploadHandler.HandleAgentUpload)
 
 	// GraphQL endpoint for agents and command-line tooling.
-	router.POST("/graphql", principalAuth.AuthenticateAgent(), graph.GinHandler(apiGqlServer, gqlLimits.RequestTimeout))
+	router.POST("/graphql", principalAuth.AuthenticateAgent(), agentTenantContext.SetTenantContext(), graph.GinHandler(apiGqlServer, gqlLimits.RequestTimeout))
 
 	// GraphQL playground (development only, no auth required)
 	if cfg.Server.Environment != "production" {
