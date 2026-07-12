@@ -90,6 +90,7 @@ func TestLoadPostgresMigrationsMatchesResetBaseline(t *testing.T) {
 		"postgres/000014_core_concept_specs.up.sql",
 		"postgres/000015_core_sandboxes.up.sql",
 		"postgres/000016_core_sandbox_expiry.up.sql",
+		"postgres/000017_form_access_token_hashes.up.sql",
 	}
 
 	if !slices.Equal(got, want) {

@@ -155,6 +155,21 @@ func (h *FormPublicHandler) SubmitPublicForm(c *gin.Context) {
 		return
 	}
 
+	validationErrors, err := form.ValidateSubmission(data)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to validate form submission", "form_id", form.ID)
+		middleware.RespondWithError(c, http.StatusInternalServerError, "Form validation is temporarily unavailable")
+		return
+	}
+	if len(validationErrors) > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success":           false,
+			"error":             "Submission validation failed",
+			"validation_errors": validationErrors,
+		})
+		return
+	}
+
 	// Extract submitter info
 	submitterEmail := ""
 	submitterName := ""
@@ -176,7 +191,7 @@ func (h *FormPublicHandler) SubmitPublicForm(c *gin.Context) {
 		UserAgent:      c.GetHeader("User-Agent"),
 		Referrer:       c.GetHeader("Referer"),
 		Status:         servicedomain.SubmissionStatusPending,
-		IsValid:        true,
+		IsValid:        len(validationErrors) == 0,
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
@@ -413,18 +428,13 @@ func extractFormFields(form *servicedomain.FormSchema) []map[string]interface{} 
 func (h *FormPublicHandler) FormAPITokenMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.Next()
+		authParts := strings.Fields(authHeader)
+		if len(authParts) != 2 || !strings.EqualFold(authParts[0], "Bearer") || authParts[1] == "" {
+			middleware.RespondWithErrorAndAbort(c, http.StatusUnauthorized, "Bearer API token required")
 			return
 		}
 
-		// Extract Bearer token
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			c.Next()
-			return
-		}
-
-		token := strings.TrimPrefix(authHeader, "Bearer ")
+		token := authParts[1]
 
 		// Validate token
 		apiToken, err := h.formService.GetFormAPIToken(c.Request.Context(), token)
@@ -445,6 +455,16 @@ func (h *FormPublicHandler) FormAPITokenMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		form, err := h.formService.GetFormByCryptoID(c.Request.Context(), c.Param(publicFormCryptoParam))
+		if err != nil {
+			middleware.RespondWithErrorAndAbort(c, http.StatusUnauthorized, "API token is not valid for this form")
+			return
+		}
+		if apiToken.FormID != form.ID || apiToken.WorkspaceID != form.WorkspaceID {
+			middleware.RespondWithErrorAndAbort(c, http.StatusForbidden, "API token is not valid for this form")
+			return
+		}
+
 		// Check host whitelist
 		if len(apiToken.AllowedHosts) > 0 {
 			clientIP := c.ClientIP()
@@ -459,6 +479,12 @@ func (h *FormPublicHandler) FormAPITokenMiddleware() gin.HandlerFunc {
 				middleware.RespondWithErrorAndAbort(c, http.StatusForbidden, "Host not allowed")
 				return
 			}
+		}
+
+		if err := h.formService.MarkFormAPITokenUsed(c.Request.Context(), apiToken.ID, time.Now()); err != nil {
+			h.logger.WithError(err).Error("Failed to record form API token use", "token_id", apiToken.ID)
+			middleware.RespondWithErrorAndAbort(c, http.StatusServiceUnavailable, "API token validation temporarily unavailable")
+			return
 		}
 
 		// Set form ID in context
@@ -636,10 +662,17 @@ var PublicFormTemplate = template.Must(template.New("form_public").Funcs(templat
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submitting...';
 
-            var formData = new FormData(form);
             var data = {};
-            formData.forEach(function(value, key) {
-                data[key] = value;
+            Array.prototype.forEach.call(form.elements, function(element) {
+                if (!element.name || element.disabled) return;
+                if (element.type === 'radio' && !element.checked) return;
+                if (element.type === 'checkbox') {
+                    data[element.name] = element.checked;
+                } else if (element.type === 'number' && element.value !== '') {
+                    data[element.name] = Number(element.value);
+                } else {
+                    data[element.name] = element.value;
+                }
             });
 
             fetch(window.location.pathname + '/submit', {

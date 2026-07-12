@@ -4,6 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"math"
+	"regexp"
 	"time"
 
 	shared "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
@@ -468,4 +471,98 @@ func (fs *FormSchema) GetFieldSchema(fieldName string) (*JSONFieldSchema, bool) 
 
 	fieldSchema, exists := schema.Properties[fieldName]
 	return &fieldSchema, exists
+}
+
+// ValidateSubmission validates untrusted public form data against the form's
+// field specification before it can be persisted or emitted as an event.
+func (fs *FormSchema) ValidateSubmission(data map[string]interface{}) ([]string, error) {
+	schema, err := fs.ParseSchemaData()
+	if err != nil {
+		return nil, fmt.Errorf("parse form schema: %w", err)
+	}
+
+	var validationErrors []string
+	for _, name := range schema.Required {
+		value, exists := data[name]
+		if !exists || value == nil {
+			validationErrors = append(validationErrors, fmt.Sprintf("%s is required", name))
+		}
+	}
+
+	for name, value := range data {
+		field, exists := schema.Properties[name]
+		if !exists {
+			continue
+		}
+
+		if !matchesJSONFieldType(value, field.Type) {
+			validationErrors = append(validationErrors, fmt.Sprintf("%s must be of type %s", name, field.Type))
+			continue
+		}
+
+		if text, ok := value.(string); ok {
+			if field.MinLength > 0 && len([]rune(text)) < field.MinLength {
+				validationErrors = append(validationErrors, fmt.Sprintf("%s must be at least %d characters", name, field.MinLength))
+			}
+			if field.MaxLength > 0 && len([]rune(text)) > field.MaxLength {
+				validationErrors = append(validationErrors, fmt.Sprintf("%s must be at most %d characters", name, field.MaxLength))
+			}
+			if field.Pattern != "" {
+				pattern, compileErr := regexp.Compile(field.Pattern)
+				if compileErr != nil {
+					return nil, fmt.Errorf("invalid pattern for field %q: %w", name, compileErr)
+				}
+				if !pattern.MatchString(text) {
+					validationErrors = append(validationErrors, fmt.Sprintf("%s has an invalid format", name))
+				}
+			}
+		}
+
+		if len(field.Enum) > 0 {
+			text, ok := value.(string)
+			if !ok || !containsString(field.Enum, text) {
+				validationErrors = append(validationErrors, fmt.Sprintf("%s must be one of the allowed values", name))
+			}
+		}
+	}
+
+	return validationErrors, nil
+}
+
+func matchesJSONFieldType(value interface{}, fieldType string) bool {
+	switch fieldType {
+	case "", "any":
+		return true
+	case "string":
+		_, ok := value.(string)
+		return ok
+	case "number":
+		_, ok := value.(float64)
+		return ok
+	case "integer":
+		number, ok := value.(float64)
+		return ok && !math.IsNaN(number) && !math.IsInf(number, 0) && math.Trunc(number) == number
+	case "boolean":
+		_, ok := value.(bool)
+		return ok
+	case "array":
+		_, ok := value.([]interface{})
+		return ok
+	case "object":
+		_, ok := value.(map[string]interface{})
+		return ok
+	case "null":
+		return value == nil
+	default:
+		return false
+	}
+}
+
+func containsString(values []string, candidate string) bool {
+	for _, value := range values {
+		if value == candidate {
+			return true
+		}
+	}
+	return false
 }

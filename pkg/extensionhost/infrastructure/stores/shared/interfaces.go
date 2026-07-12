@@ -454,6 +454,7 @@ type FormStore interface {
 	// Public form API tokens
 	CreateFormAPIToken(ctx context.Context, token *servicedomain.FormAPIToken) error
 	GetFormAPIToken(ctx context.Context, token string) (*servicedomain.FormAPIToken, error)
+	MarkFormAPITokenUsed(ctx context.Context, tokenID string, usedAt time.Time) error
 }
 
 // RuleStore handles automation rules and workflows

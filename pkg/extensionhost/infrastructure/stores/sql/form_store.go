@@ -85,7 +85,7 @@ type formAccessTokenRow struct {
 	ID           string         `db:"id"`
 	WorkspaceID  string         `db:"workspace_id"`
 	FormSpecID   string         `db:"form_spec_id"`
-	Token        string         `db:"token"`
+	TokenHash    string         `db:"token_hash"`
 	Name         string         `db:"name"`
 	IsActive     bool           `db:"is_active"`
 	ExpiresAt    *time.Time     `db:"expires_at"`
@@ -256,7 +256,7 @@ func (s *FormStore) CreateFormAPIToken(ctx context.Context, token *servicedomain
 	}
 	query := `
 		INSERT INTO core_service.form_access_tokens (
-			id, workspace_id, form_spec_id, token, name, is_active, expires_at,
+			id, workspace_id, form_spec_id, token_hash, name, is_active, expires_at,
 			allowed_hosts, last_used_at, created_at, updated_at
 		) VALUES (
 			COALESCE(NULLIF(?, '')::uuid, uuidv7()), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
@@ -267,7 +267,7 @@ func (s *FormStore) CreateFormAPIToken(ctx context.Context, token *servicedomain
 		token.ID,
 		token.WorkspaceID,
 		nullableUUIDValue(token.FormID),
-		token.Token,
+		servicedomain.HashFormAPIToken(token.Token),
 		token.Name,
 		token.IsActive,
 		token.ExpiresAt,
@@ -281,8 +281,8 @@ func (s *FormStore) CreateFormAPIToken(ctx context.Context, token *servicedomain
 
 func (s *FormStore) GetFormAPIToken(ctx context.Context, tokenValue string) (*servicedomain.FormAPIToken, error) {
 	var row formAccessTokenRow
-	query := `SELECT * FROM core_service.form_access_tokens WHERE token = ? AND is_active = TRUE`
-	if err := s.db.Get(ctx).GetContext(ctx, &row, query, tokenValue); err != nil {
+	query := `SELECT * FROM core_service.form_access_tokens WHERE token_hash = ? AND is_active = TRUE`
+	if err := s.db.Get(ctx).GetContext(ctx, &row, query, servicedomain.HashFormAPIToken(tokenValue)); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, shared.ErrNotFound
 		}
@@ -293,7 +293,7 @@ func (s *FormStore) GetFormAPIToken(ctx context.Context, tokenValue string) (*se
 		ID:           row.ID,
 		WorkspaceID:  row.WorkspaceID,
 		FormID:       row.FormSpecID,
-		Token:        row.Token,
+		Token:        "",
 		Name:         row.Name,
 		IsActive:     row.IsActive,
 		ExpiresAt:    row.ExpiresAt,
@@ -302,6 +302,24 @@ func (s *FormStore) GetFormAPIToken(ctx context.Context, tokenValue string) (*se
 		CreatedAt:    row.CreatedAt,
 		UpdatedAt:    row.UpdatedAt,
 	}, nil
+}
+
+func (s *FormStore) MarkFormAPITokenUsed(ctx context.Context, tokenID string, usedAt time.Time) error {
+	result, err := s.db.Get(ctx).ExecContext(ctx, `
+		UPDATE core_service.form_access_tokens
+		SET last_used_at = ?, updated_at = ?
+		WHERE id = ? AND is_active = TRUE`, usedAt, usedAt, tokenID)
+	if err != nil {
+		return TranslateSqlxError(err, "form_access_tokens")
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return shared.ErrNotFound
+	}
+	return nil
 }
 
 func mapFormSchemaToFormSpec(form *servicedomain.FormSchema) *servicedomain.FormSpec {

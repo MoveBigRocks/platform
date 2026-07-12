@@ -263,6 +263,14 @@ func (s *FormService) GetFormAPIToken(ctx context.Context, token string) (*servi
 	return apiToken, nil
 }
 
+// MarkFormAPITokenUsed records successful use of a form API credential.
+func (s *FormService) MarkFormAPITokenUsed(ctx context.Context, tokenID string, usedAt time.Time) error {
+	if tokenID == "" {
+		return apierrors.NewValidationErrors(apierrors.NewValidationError("token_id", "required"))
+	}
+	return s.formStore.MarkFormAPITokenUsed(ctx, tokenID, usedAt)
+}
+
 // CreatePublicSubmission creates a form submission with tenant context.
 // This is used for public form endpoints that bypass normal RLS middleware.
 // It handles setting up the tenant context and transaction internally.

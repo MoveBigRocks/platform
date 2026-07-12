@@ -22,6 +22,7 @@ import (
 	automationservices "github.com/movebigrocks/platform/pkg/extensionhost/automation/services"
 	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores"
 	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared"
+	sqlstore "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/sql"
 	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
 	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
 	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
@@ -224,6 +225,20 @@ func TestSubmitPublicForm(t *testing.T) {
 		})
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("rejects submission data that does not match the server schema", func(t *testing.T) {
+		form := createPublicForm(t, store, "ws_submit", "Schema Form", "schema-form")
+		body := `{"name": 42, "email": "test@example.com"}`
+		w := performFormRequest(router, http.MethodPost, "/v1/forms/"+form.CryptoID+"/submit", bytes.NewBufferString(body), map[string]string{
+			"Content-Type": "application/json",
+		})
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "validation_errors")
+		submissions, err := store.Forms().ListFormSubmissions(context.Background(), form.ID)
+		require.NoError(t, err)
+		assert.Empty(t, submissions)
 	})
 
 	t.Run("accepts valid submission", func(t *testing.T) {
@@ -467,7 +482,7 @@ func TestFormAPITokenMiddleware(t *testing.T) {
 
 	form := createPublicForm(t, store, "ws_token", "Token Form", "token-form")
 
-	t.Run("passes through without auth header", func(t *testing.T) {
+	t.Run("returns 401 without auth header", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request, _ = http.NewRequest(http.MethodPost, "/forms/api/submit", nil)
@@ -475,7 +490,20 @@ func TestFormAPITokenMiddleware(t *testing.T) {
 		middleware := handler.FormAPITokenMiddleware()
 		middleware(c)
 
-		assert.False(t, c.IsAborted())
+		assert.True(t, c.IsAborted())
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("returns 401 for a non-Bearer authorization header", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request, _ = http.NewRequest(http.MethodPost, "/forms/api/submit", nil)
+		c.Request.Header.Set("Authorization", "Basic abc123")
+
+		handler.FormAPITokenMiddleware()(c)
+
+		assert.True(t, c.IsAborted())
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 
 	t.Run("returns 401 for invalid token", func(t *testing.T) {
@@ -556,6 +584,7 @@ func TestFormAPITokenMiddleware(t *testing.T) {
 		c.Request, _ = http.NewRequest(http.MethodPost, "/forms/api/submit", nil)
 		c.Request.Header.Set("Authorization", "Bearer "+hostToken)
 		c.Request.RemoteAddr = "10.0.0.1:12345"
+		c.Params = gin.Params{{Key: publicFormCryptoParam, Value: form.CryptoID}}
 
 		middleware := handler.FormAPITokenMiddleware()
 		middleware(c)
@@ -574,17 +603,33 @@ func TestFormAPITokenMiddleware(t *testing.T) {
 			IsActive:    true,
 		}
 		require.NoError(t, store.Forms().CreateFormAPIToken(context.Background(), token))
+		concreteStore, ok := store.(*sqlstore.Store)
+		require.True(t, ok)
+		var persistedHash string
+		require.NoError(t, concreteStore.SqlxDB().Get(context.Background()).GetContext(
+			context.Background(),
+			&persistedHash,
+			`SELECT token_hash FROM core_service.form_access_tokens WHERE id = ?`,
+			token.ID,
+		))
+		assert.Equal(t, servicedomain.HashFormAPIToken(validToken), persistedHash)
+		assert.NotEqual(t, validToken, persistedHash)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request, _ = http.NewRequest(http.MethodPost, "/forms/api/submit", nil)
 		c.Request.Header.Set("Authorization", "Bearer "+validToken)
+		c.Params = gin.Params{{Key: publicFormCryptoParam, Value: form.CryptoID}}
 
 		middleware := handler.FormAPITokenMiddleware()
 		middleware(c)
 
 		assert.False(t, c.IsAborted())
 		assert.Equal(t, form.ID, c.GetString("form_id"))
+		stored, err := store.Forms().GetFormAPIToken(context.Background(), validToken)
+		require.NoError(t, err)
+		require.NotNil(t, stored.LastUsedAt)
+		assert.Empty(t, stored.Token)
 	})
 
 	t.Run("accepts wildcard host", func(t *testing.T) {
@@ -604,11 +649,32 @@ func TestFormAPITokenMiddleware(t *testing.T) {
 		c.Request, _ = http.NewRequest(http.MethodPost, "/forms/api/submit", nil)
 		c.Request.Header.Set("Authorization", "Bearer "+wildcardToken)
 		c.Request.RemoteAddr = "10.0.0.99:54321"
+		c.Params = gin.Params{{Key: publicFormCryptoParam, Value: form.CryptoID}}
 
 		middleware := handler.FormAPITokenMiddleware()
 		middleware(c)
 
 		assert.False(t, c.IsAborted())
+	})
+
+	t.Run("rejects a token bound to another form", func(t *testing.T) {
+		otherForm := createPublicForm(t, store, "ws_token", "Other Token Form", "other-token-form")
+		plaintext := testutil.UniqueID("wrong_form_token")
+		token := &servicedomain.FormAPIToken{
+			ID:          testutil.UniqueID("token_wrong_form"),
+			WorkspaceID: form.WorkspaceID,
+			FormID:      form.ID,
+			Token:       plaintext,
+			IsActive:    true,
+		}
+		require.NoError(t, store.Forms().CreateFormAPIToken(context.Background(), token))
+
+		w := performFormRequest(setupPublicFormRouter(handler), http.MethodPost, "/v1/forms/"+otherForm.CryptoID+"/api/submit", bytes.NewBufferString(`{"name":"Test","email":"test@example.com"}`), map[string]string{
+			"Authorization": "Bearer " + plaintext,
+			"Content-Type":  "application/json",
+		})
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
 	})
 }
 

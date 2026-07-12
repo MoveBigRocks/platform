@@ -294,6 +294,73 @@ func TestFormSchemaSchemaHelpers(t *testing.T) {
 	require.Empty(t, emptySchema.GetRequiredFields())
 }
 
+func TestFormSchemaValidateSubmission(t *testing.T) {
+	form := NewFormSchema("workspace-1", "Validated Form", "validated-form", "user-1")
+	form.SchemaData = shared.TypedSchemaFromMap(map[string]interface{}{
+		"type":     "object",
+		"required": []string{"name", "priority"},
+		"properties": map[string]interface{}{
+			"name": map[string]interface{}{
+				"type":      "string",
+				"minLength": 3,
+				"maxLength": 20,
+				"pattern":   "^[A-Za-z ]+$",
+			},
+			"priority": map[string]interface{}{
+				"type": "string",
+				"enum": []string{"low", "high"},
+			},
+			"count": map[string]interface{}{
+				"type": "integer",
+			},
+			"subscribed": map[string]interface{}{
+				"type": "boolean",
+			},
+		},
+	})
+
+	t.Run("accepts data matching the schema", func(t *testing.T) {
+		errors, err := form.ValidateSubmission(map[string]interface{}{
+			"name":       "Ada Lovelace",
+			"priority":   "high",
+			"count":      float64(2),
+			"subscribed": true,
+		})
+		require.NoError(t, err)
+		assert.Empty(t, errors)
+	})
+
+	t.Run("reports required type enum length and pattern violations", func(t *testing.T) {
+		errors, err := form.ValidateSubmission(map[string]interface{}{
+			"name":       "x1",
+			"count":      2.5,
+			"subscribed": "yes",
+			"priority":   "urgent",
+		})
+		require.NoError(t, err)
+		assert.Contains(t, errors, "name must be at least 3 characters")
+		assert.Contains(t, errors, "name has an invalid format")
+		assert.Contains(t, errors, "count must be of type integer")
+		assert.Contains(t, errors, "subscribed must be of type boolean")
+		assert.Contains(t, errors, "priority must be one of the allowed values")
+
+		errors, err = form.ValidateSubmission(map[string]interface{}{"name": "A valid name"})
+		require.NoError(t, err)
+		assert.Contains(t, errors, "priority is required")
+	})
+
+	t.Run("rejects an invalid schema pattern", func(t *testing.T) {
+		invalid := NewFormSchema("workspace-1", "Invalid", "invalid", "user-1")
+		invalid.SchemaData = shared.TypedSchemaFromMap(map[string]interface{}{
+			"properties": map[string]interface{}{
+				"value": map[string]interface{}{"type": "string", "pattern": "["},
+			},
+		})
+		_, err := invalid.ValidateSubmission(map[string]interface{}{"value": "anything"})
+		assert.Error(t, err)
+	})
+}
+
 // TestFormField tests form field structure
 func TestFormField(t *testing.T) {
 	field := FormField{
