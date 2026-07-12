@@ -141,6 +141,43 @@ func TestGitServiceDelete(t *testing.T) {
 	}
 }
 
+func TestGitServiceRejectsOptionInjectionRevisions(t *testing.T) {
+	service := NewGitService(t.TempDir())
+	ctx := context.Background()
+	repository := WorkspaceRepository("ws_123")
+
+	if _, err := service.Write(ctx, WriteParams{
+		Repository:    repository,
+		RelativePath:  "knowledge/teams/team_123/private/playbook.md",
+		Content:       []byte("# Playbook\n\nDraft\n"),
+		CommitMessage: "knowledge create playbook",
+		ActorID:       "user_123",
+	}); err != nil {
+		t.Fatalf("seed write: %v", err)
+	}
+
+	pwned := filepath.Join(t.TempDir(), "pwned")
+	maliciousRef := "--output=" + pwned
+
+	if _, _, _, err := service.Diff(ctx, repository, "knowledge/teams/team_123/private/playbook.md", maliciousRef, ""); err == nil {
+		t.Fatalf("expected diff to reject a revision starting with '-'")
+	}
+	if _, _, _, err := service.Diff(ctx, repository, "knowledge/teams/team_123/private/playbook.md", "", maliciousRef); err == nil {
+		t.Fatalf("expected diff to reject a toRef starting with '-'")
+	}
+	if _, err := service.Read(ctx, ReadParams{
+		Repository:   repository,
+		RelativePath: "knowledge/teams/team_123/private/playbook.md",
+		Ref:          maliciousRef,
+	}); err == nil {
+		t.Fatalf("expected read to reject a ref starting with '-'")
+	}
+
+	if _, err := os.Stat(pwned); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("option injection wrote a file at %s (err=%v)", pwned, err)
+	}
+}
+
 func TestGitServiceRelativeRootDoesNotCreateNestedRepo(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
