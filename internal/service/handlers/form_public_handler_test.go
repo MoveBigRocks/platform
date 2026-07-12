@@ -7,9 +7,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -92,8 +94,14 @@ func setupPublicFormRouter(handler *FormPublicHandler) *gin.Engine {
 	return router
 }
 
+var formRequestClientSeq atomic.Uint32
+
 func performFormRequest(router *gin.Engine, method, path string, body io.Reader, headers map[string]string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, path, body)
+	// Assign a distinct client IP per request so the per-IP submission rate
+	// limit does not accumulate across independent subtests sharing this router.
+	n := formRequestClientSeq.Add(1)
+	req.RemoteAddr = fmt.Sprintf("198.51.%d.%d:12345", (n>>8)&0xff, n&0xff)
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
