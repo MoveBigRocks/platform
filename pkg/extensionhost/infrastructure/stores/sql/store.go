@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared"
 )
@@ -217,18 +218,37 @@ func (s *Store) GetSQLDB() (*sql.DB, error) {
 	return s.db.GetSQLDB()
 }
 
-// SetTenantContext is a no-op for SQLite.
-// SQLite doesn't support session variables.
-// Tenant isolation is enforced at the application level via workspace_id checks in queries.
+// SetTenantContext sets the workspace used by the core row-level-security
+// policies for the current transaction. Migration 000011 filters every
+// tenant-scoped table by workspace_id = public.current_workspace_id(), which
+// reads the app.current_workspace_id session variable and returns no rows when
+// it is unset. This sets that variable with transaction scope via set_config,
+// so it must be called inside a transaction (Get(ctx) returns the transaction
+// connection); called outside one it has no effect.
+//
+// RLS only changes query results when the application connects as a database
+// role that does not bypass row-level security. Until that role is in place and
+// every read path sets this context, this is correct plumbing that is inert in
+// production. See docs/ADRs/0003 for the enforcement rollout.
 func (s *Store) SetTenantContext(ctx context.Context, workspaceID string) error {
-	// No-op for SQLite - tenant isolation is enforced by query-level workspace_id filters
+	if s.sqlxDB.driver != "postgres" {
+		return nil
+	}
+	if _, err := s.sqlxDB.Get(ctx).ExecContext(
+		ctx,
+		`SELECT set_config('app.current_workspace_id', $1, true)`,
+		strings.TrimSpace(workspaceID),
+	); err != nil {
+		return fmt.Errorf("set tenant context: %w", err)
+	}
 	return nil
 }
 
-// WithAdminContext executes a function for cross-workspace operations.
-// For SQLite, this simply runs the function within a transaction.
-// Tenant isolation is enforced at the application level, so admin operations
-// are trusted to use appropriate workspace filtering.
+// WithAdminContext executes a function for cross-workspace operations inside a
+// transaction. It intentionally does not set app.current_workspace_id, so under
+// a role that bypasses row-level security the function sees all workspaces.
+// Under a non-bypassing role this would need to switch to a BYPASSRLS admin
+// role; that is part of the enforcement rollout referenced in SetTenantContext.
 func (s *Store) WithAdminContext(ctx context.Context, fn func(ctx context.Context) error) error {
 	return s.WithTransaction(ctx, fn)
 }
