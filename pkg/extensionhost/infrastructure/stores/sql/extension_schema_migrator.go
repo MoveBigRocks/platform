@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -248,11 +249,145 @@ func (m *ExtensionSchemaMigrator) readAppliedSchemaMigrations(ctx context.Contex
 }
 
 func (m *ExtensionSchemaMigrator) applyExtensionSchemaMigration(ctx context.Context, schemaName string, migration sqlMigration) error {
+	if err := validateExtensionMigrationContainment(migration.SQL); err != nil {
+		return fmt.Errorf("extension schema migration %s: %w", migration.Path, err)
+	}
 	sqlText := strings.ReplaceAll(migration.SQL, "${SCHEMA_NAME}", pq.QuoteIdentifier(schemaName))
 	if _, err := m.db.Get(ctx).ExecContext(ctx, sqlText); err != nil {
 		return fmt.Errorf("apply extension schema migration %s: %w", migration.Path, err)
 	}
 	return nil
+}
+
+// protectedSchemaTarget matches a write or DDL statement that targets a core,
+// public, or catalog schema. Extension bundles own their ${SCHEMA_NAME} schema
+// and may reference core tables for foreign keys or reads, but must never
+// create, alter, drop, truncate, or write rows into a schema they do not own.
+var protectedSchemaTarget = regexp.MustCompile(
+	`(?:DROP|ALTER|TRUNCATE)\s+(?:TABLE|INDEX|VIEW|MATERIALIZED\s+VIEW|SEQUENCE|SCHEMA|TYPE|FUNCTION|TRIGGER|CONSTRAINT|POLICY)?\s*(?:IF\s+EXISTS\s+)?"?(?:CORE_[A-Z0-9_]+|PUBLIC|PG_[A-Z0-9_]+|INFORMATION_SCHEMA)"?\.` +
+		`|(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:ONLY\s+)?"?(?:CORE_[A-Z0-9_]+|PUBLIC|PG_[A-Z0-9_]+|INFORMATION_SCHEMA)"?\.`,
+)
+
+// forbiddenMigrationOps are operations no owned-schema extension migration
+// legitimately needs, and which a malicious bundle could use to escalate
+// privilege, disable tenant controls, or run host commands.
+var forbiddenMigrationOps = []string{
+	"ALTER SYSTEM",
+	"CREATE ROLE", "DROP ROLE", "ALTER ROLE",
+	"CREATE USER", "DROP USER", "ALTER USER",
+	"SET ROLE", "RESET ROLE",
+	"CREATE EXTENSION", "DROP EXTENSION",
+	"SECURITY DEFINER",
+	"FROM PROGRAM", "TO PROGRAM",
+}
+
+var grantOrRevoke = regexp.MustCompile(`(?:^|[^A-Z_])(GRANT|REVOKE)\s`)
+
+// validateExtensionMigrationContainment rejects bundle migration SQL that would
+// operate outside the extension's own schema in a dangerous way. It is a
+// defense-in-depth check on top of bundle signing: it stops the obvious
+// destructive and privilege-escalating statements (for example
+// "DROP TABLE core_service.cases" or "ALTER TABLE core_platform.workspaces
+// DISABLE ROW LEVEL SECURITY"), while still allowing foreign-key references to
+// and reads from core tables. It does not replace per-extension database roles,
+// which remain the complete isolation mechanism.
+func validateExtensionMigrationContainment(sqlText string) error {
+	normalized := strings.ToUpper(stripSQLNoise(sqlText))
+	for _, op := range forbiddenMigrationOps {
+		if strings.Contains(normalized, op) {
+			return fmt.Errorf("contains a forbidden operation %q", op)
+		}
+	}
+	if grantOrRevoke.MatchString(normalized) {
+		return fmt.Errorf("changes privileges with GRANT or REVOKE")
+	}
+	if loc := protectedSchemaTarget.FindString(normalized); loc != "" {
+		return fmt.Errorf("writes to a protected schema: %s", strings.TrimSpace(loc))
+	}
+	return nil
+}
+
+// stripSQLNoise removes comments and string, quoted-identifier, and
+// dollar-quoted literals so that keyword scanning cannot be fooled by keywords
+// that appear inside comments or string data.
+func stripSQLNoise(sqlText string) string {
+	var out strings.Builder
+	runes := []rune(sqlText)
+	for i := 0; i < len(runes); {
+		switch {
+		case runes[i] == '-' && i+1 < len(runes) && runes[i+1] == '-':
+			for i < len(runes) && runes[i] != '\n' {
+				i++
+			}
+		case runes[i] == '/' && i+1 < len(runes) && runes[i+1] == '*':
+			i += 2
+			for i < len(runes) && !(runes[i] == '*' && i+1 < len(runes) && runes[i+1] == '/') {
+				i++
+			}
+			i += 2
+			out.WriteByte(' ')
+		case runes[i] == '\'':
+			i++
+			for i < len(runes) {
+				if runes[i] == '\'' {
+					if i+1 < len(runes) && runes[i+1] == '\'' {
+						i += 2
+						continue
+					}
+					i++
+					break
+				}
+				i++
+			}
+			out.WriteByte(' ')
+		case runes[i] == '$':
+			if tag, closed := dollarTag(runes, i); tag != "" {
+				end := indexRunes(runes, closed, tag)
+				if end < 0 {
+					return out.String()
+				}
+				i = end + len(tag)
+				out.WriteByte(' ')
+				continue
+			}
+			out.WriteRune(runes[i])
+			i++
+		default:
+			out.WriteRune(runes[i])
+			i++
+		}
+	}
+	return out.String()
+}
+
+// dollarTag returns the opening dollar-quote tag starting at i (for example
+// "$$" or "$body$") and the index just past it, or "" if i does not start one.
+func dollarTag(runes []rune, i int) (string, int) {
+	if runes[i] != '$' {
+		return "", i
+	}
+	j := i + 1
+	for j < len(runes) && (runes[j] == '_' || isIdentRune(runes[j])) {
+		j++
+	}
+	if j < len(runes) && runes[j] == '$' {
+		return string(runes[i : j+1]), j + 1
+	}
+	return "", i
+}
+
+func indexRunes(runes []rune, from int, tag string) int {
+	tagRunes := []rune(tag)
+	for i := from; i+len(tagRunes) <= len(runes); i++ {
+		if string(runes[i:i+len(tagRunes)]) == tag {
+			return i
+		}
+	}
+	return -1
+}
+
+func isIdentRune(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
 }
 
 func decodeExtensionSchemaMigrations(bundlePayload []byte) ([]sqlMigration, error) {
