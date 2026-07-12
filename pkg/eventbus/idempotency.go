@@ -2,13 +2,17 @@ package eventbus
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/metrics"
 )
 
 // IdempotencyStore interface for database-backed idempotency.
 type IdempotencyStore interface {
+	ClaimProcessing(ctx context.Context, eventID, handlerGroup string, lease time.Duration) (bool, error)
 	MarkProcessed(ctx context.Context, eventID, handlerGroup string) error
+	ReleaseProcessingClaim(ctx context.Context, eventID, handlerGroup string) error
 	IsProcessed(ctx context.Context, eventID, handlerGroup string) (bool, error)
 }
 
@@ -20,19 +24,20 @@ func WithDBIdempotency(store IdempotencyStore, handlerGroup string, handler Hand
 			return err
 		}
 
-		processed, err := store.IsProcessed(ctx, hdr.EventID, handlerGroup)
+		claimed, err := store.ClaimProcessing(ctx, hdr.EventID, handlerGroup, 2*time.Minute)
 		if err != nil {
 			metrics.IdempotencyCheckErrors.WithLabelValues(handlerGroup).Inc()
-			// Log error but continue - better to potentially duplicate than drop
-			return handler(ctx, data)
+			// Fail closed so a transient database outage cannot turn into concurrent
+			// duplicate side effects. Returning an error lets the bus retry safely.
+			return fmt.Errorf("claim idempotency lease: %w", err)
 		}
-
-		if processed {
+		if !claimed {
 			metrics.EventsDeduplicated.WithLabelValues(handlerGroup).Inc()
-			return nil // Already processed, skip
+			return nil // Already processed or leased by another worker.
 		}
 
 		if err := handler(ctx, data); err != nil {
+			_ = store.ReleaseProcessingClaim(ctx, hdr.EventID, handlerGroup)
 			return err
 		}
 

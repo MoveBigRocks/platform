@@ -16,6 +16,7 @@ type OutboxEvent struct {
 	Status        string     `db:"status"`
 	Attempts      int        `db:"attempts"`
 	CreatedAt     time.Time  `db:"created_at"`
+	ClaimedAt     *time.Time `db:"claimed_at"`
 	PublishedAt   *time.Time `db:"published_at"`
 	LastError     string     `db:"last_error"`
 	NextRetry     *time.Time `db:"next_retry"`

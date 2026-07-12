@@ -228,40 +228,18 @@ func (s *Service) retryWorker() {
 	}
 }
 
-// processPendingEvents retrieves and processes pending events.
-// SQLite uses a single-writer model which prevents concurrent event processing.
-// For multi-instance deployments, only one instance should run the outbox processor.
+// processPendingEvents atomically claims and processes pending events. Claims
+// use PostgreSQL SKIP LOCKED so overlapping blue/green instances can safely run
+// workers at the same time.
 func (s *Service) processPendingEvents() {
 	ctx := context.Background()
-	eventsToProcess := make([]*shared.OutboxEvent, 0, s.batchSize)
-
-	// Claim events within a transaction to prevent duplicate dispatch.
-	// SQLite uses one writable connection, so we keep the lock window small
-	// and dispatch is intentionally done after this transaction commits.
-	err := s.store.WithTransaction(ctx, func(txCtx context.Context) error {
-		events, err := s.store.Outbox().GetPendingOutboxEvents(txCtx, s.batchSize)
-		if err != nil {
-			return fmt.Errorf("get pending events: %w", err)
-		}
-
-		if len(events) > 0 {
-			s.logger.Debug("Processing pending events", "count", len(events))
-		}
-
-		for _, event := range events {
-			event.Status = "publishing"
-			if err := s.store.Outbox().UpdateOutboxEvent(txCtx, event); err != nil {
-				return fmt.Errorf("mark event as publishing: %w", err)
-			}
-			eventsToProcess = append(eventsToProcess, event)
-		}
-
-		return nil
-	})
-
+	eventsToProcess, err := s.store.Outbox().ClaimPendingOutboxEvents(ctx, s.batchSize)
 	if err != nil {
-		s.logger.WithError(err).Error("Failed to process pending events")
+		s.logger.WithError(err).Error("Failed to claim pending events")
 		return
+	}
+	if len(eventsToProcess) > 0 {
+		s.logger.Debug("Processing pending events", "count", len(eventsToProcess))
 	}
 
 	for _, event := range eventsToProcess {
@@ -311,11 +289,14 @@ func (s *Service) retryPublish(ctx context.Context, event *shared.OutboxEvent) {
 		return
 	}
 
-	// Phase 1: Mark as "publishing" to claim the event and prevent duplicates
-	event.Status = "publishing"
-	if err := s.store.Outbox().UpdateOutboxEvent(ctx, event); err != nil {
-		s.logger.Warnw("failed to mark event as publishing", "error", err, "event_id", event.ID)
-		return
+	// Direct callers may provide a pending event. The background worker already
+	// receives atomically claimed events from ClaimPendingOutboxEvents.
+	if event.Status != "publishing" {
+		event.Status = "publishing"
+		if err := s.store.Outbox().UpdateOutboxEvent(ctx, event); err != nil {
+			s.logger.Warnw("failed to mark event as publishing", "error", err, "event_id", event.ID)
+			return
+		}
 	}
 
 	stream := eventbus.StreamFromString(event.Stream)

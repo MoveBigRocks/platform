@@ -66,15 +66,54 @@ func (s *OutboxStore) GetPendingOutboxEvents(ctx context.Context, limit int) ([]
 	return events, nil
 }
 
+// ClaimPendingOutboxEvents atomically selects and marks a batch using
+// PostgreSQL row locks. SKIP LOCKED lets blue/green or horizontally scaled
+// workers make progress without dispatching the same event concurrently.
+func (s *OutboxStore) ClaimPendingOutboxEvents(ctx context.Context, limit int) ([]*shared.OutboxEvent, error) {
+	if limit <= 0 {
+		return []*shared.OutboxEvent{}, nil
+	}
+
+	var dbEvents []models.OutboxEvent
+	now := time.Now().UTC()
+	query := `WITH candidates AS (
+		SELECT id
+		FROM core_infra.outbox_events
+		WHERE status = 'pending'
+		  AND (next_retry IS NULL OR next_retry <= ?)
+		ORDER BY created_at ASC
+		LIMIT ?
+		FOR UPDATE SKIP LOCKED
+	)
+	UPDATE core_infra.outbox_events AS event
+	SET status = 'publishing', claimed_at = ?, last_error = ''
+	FROM candidates
+	WHERE event.id = candidates.id
+	RETURNING event.*`
+
+	if err := s.db.Get(ctx).SelectContext(ctx, &dbEvents, query, now, limit, now); err != nil {
+		return nil, TranslateSqlxError(err, "outbox_events")
+	}
+	events := make([]*shared.OutboxEvent, len(dbEvents))
+	for i := range dbEvents {
+		events[i] = s.mapToShared(&dbEvents[i])
+	}
+	return events, nil
+}
+
 func (s *OutboxStore) UpdateOutboxEvent(ctx context.Context, event *shared.OutboxEvent) error {
 	query := `UPDATE core_infra.outbox_events SET
 		stream = ?, event_type = ?, event_data = ?, status = ?, attempts = ?,
+		claimed_at = CASE
+			WHEN ? = 'publishing' THEN COALESCE(claimed_at, NOW())
+			ELSE NULL
+		END,
 		published_at = ?, last_error = ?, next_retry = ?
 		WHERE id = ?`
 
 	_, err := s.db.Get(ctx).ExecContext(ctx, query,
 		event.Stream, event.EventType, event.EventData, event.Status,
-		event.Attempts, event.PublishedAt, event.LastError, event.NextRetry, event.ID,
+		event.Attempts, event.Status, event.PublishedAt, event.LastError, event.NextRetry, event.ID,
 	)
 	return TranslateSqlxError(err, "outbox_events")
 }
@@ -88,8 +127,8 @@ func (s *OutboxStore) DeletePublishedOutboxEvents(ctx context.Context, before ti
 func (s *OutboxStore) RecoverStalePublishingEvents(ctx context.Context, staleThreshold time.Duration) (int, error) {
 	cutoff := time.Now().Add(-staleThreshold)
 	query := `UPDATE core_infra.outbox_events SET status = 'pending', attempts = attempts + 1,
-		last_error = 'recovered from stale publishing state'
-		WHERE status = 'publishing' AND created_at < ?`
+		claimed_at = NULL, last_error = 'recovered from stale publishing state'
+		WHERE status = 'publishing' AND (claimed_at IS NULL OR claimed_at < ?)`
 	result, err := s.db.Get(ctx).ExecContext(ctx, query, cutoff)
 	if err != nil {
 		return 0, TranslateSqlxError(err, "outbox_events")
@@ -111,6 +150,7 @@ func (s *OutboxStore) mapToShared(e *models.OutboxEvent) *shared.OutboxEvent {
 		Status:      e.Status,
 		Attempts:    e.Attempts,
 		CreatedAt:   e.CreatedAt,
+		ClaimedAt:   e.ClaimedAt,
 		PublishedAt: e.PublishedAt,
 		LastError:   e.LastError,
 		NextRetry:   e.NextRetry,

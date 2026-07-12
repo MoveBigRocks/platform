@@ -491,6 +491,9 @@ type OutboxStore interface {
 	SaveOutboxEvent(ctx context.Context, event *OutboxEvent) error
 	GetOutboxEvent(ctx context.Context, eventID string) (*OutboxEvent, error)
 	GetPendingOutboxEvents(ctx context.Context, limit int) ([]*OutboxEvent, error)
+	// ClaimPendingOutboxEvents atomically leases pending events to one worker.
+	// Concurrent workers must never receive the same event from this call.
+	ClaimPendingOutboxEvents(ctx context.Context, limit int) ([]*OutboxEvent, error)
 	UpdateOutboxEvent(ctx context.Context, event *OutboxEvent) error
 	DeletePublishedOutboxEvents(ctx context.Context, before time.Time) error
 	// RecoverStalePublishingEvents reverts events stuck in "publishing" status back to "pending"
@@ -499,7 +502,11 @@ type OutboxStore interface {
 
 // IdempotencyStore tracks processed events to prevent duplicate handling
 type IdempotencyStore interface {
+	// ClaimProcessing atomically acquires a handler lease. It returns false when
+	// the event was already processed or another live worker owns the lease.
+	ClaimProcessing(ctx context.Context, eventID, handlerGroup string, lease time.Duration) (bool, error)
 	MarkProcessed(ctx context.Context, eventID, handlerGroup string) error
+	ReleaseProcessingClaim(ctx context.Context, eventID, handlerGroup string) error
 	IsProcessed(ctx context.Context, eventID, handlerGroup string) (bool, error)
 }
 
@@ -515,6 +522,7 @@ type OutboxEvent struct {
 	Status        string     `json:"status"`
 	Attempts      int        `json:"attempts"`
 	CreatedAt     time.Time  `json:"created_at"`
+	ClaimedAt     *time.Time `json:"claimed_at,omitempty"`
 	PublishedAt   *time.Time `json:"published_at,omitempty"`
 	LastError     string     `json:"last_error,omitempty"`
 	NextRetry     *time.Time `json:"next_retry,omitempty"`
