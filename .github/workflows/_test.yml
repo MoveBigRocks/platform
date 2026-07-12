@@ -56,7 +56,6 @@ jobs:
 
       - name: Run linter
         uses: golangci/golangci-lint-action@v9
-        continue-on-error: true
         with:
           version: v1.64.8
           working-directory: platform
