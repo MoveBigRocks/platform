@@ -537,6 +537,14 @@ func TestConfig_Security(t *testing.T) {
 	t.Setenv("RATE_LIMIT_PER_MIN", "100")
 	t.Setenv("RATE_LIMIT_BURST", "20")
 	t.Setenv("DEFAULT_USER_ROLE", "viewer")
+	t.Setenv("GRAPHQL_MAX_DEPTH", "9")
+	t.Setenv("GRAPHQL_MAX_PARALLELISM", "4")
+	t.Setenv("GRAPHQL_MAX_QUERY_BYTES", "32768")
+	t.Setenv("GRAPHQL_OVERLAP_VALIDATION_LIMIT", "2500")
+	t.Setenv("GRAPHQL_REQUEST_TIMEOUT", "7s")
+	t.Setenv("SANDBOX_CREATE_LIMIT", "2")
+	t.Setenv("SANDBOX_CREATE_WINDOW", "30m")
+	t.Setenv("SANDBOX_CREATE_BLOCK", "2h")
 	defer clearEnv()
 
 	cfg, err := Load()
@@ -556,6 +564,18 @@ func TestConfig_Security(t *testing.T) {
 	if cfg.Security.DefaultUserRole != "viewer" {
 		t.Errorf("Expected default user role 'viewer', got '%s'", cfg.Security.DefaultUserRole)
 	}
+	if cfg.Security.GraphQLMaxDepth != 9 || cfg.Security.GraphQLMaxParallelism != 4 {
+		t.Errorf("unexpected GraphQL execution limits: %#v", cfg.Security)
+	}
+	if cfg.Security.GraphQLMaxQueryBytes != 32768 || cfg.Security.GraphQLOverlapValidationLimit != 2500 {
+		t.Errorf("unexpected GraphQL validation limits: %#v", cfg.Security)
+	}
+	if cfg.Security.GraphQLRequestTimeout != 7*time.Second {
+		t.Errorf("unexpected GraphQL request timeout: %s", cfg.Security.GraphQLRequestTimeout)
+	}
+	if cfg.Security.SandboxCreateLimit != 2 || cfg.Security.SandboxCreateWindow != 30*time.Minute || cfg.Security.SandboxCreateBlock != 2*time.Hour {
+		t.Errorf("unexpected sandbox create limits: %#v", cfg.Security)
+	}
 }
 
 // Helper function to clear all environment variables used in tests
@@ -567,6 +587,9 @@ func clearEnv() {
 		"ENABLE_SIGNUP", "ENABLE_MAGIC_LINK",
 		"NOTIFICATION_CHANNELS", "SLACK_WEBHOOK_URL", "NOTIFICATION_RETENTION_DAYS",
 		"RATE_LIMIT_ENABLED", "RATE_LIMIT_PER_MIN", "RATE_LIMIT_BURST", "DEFAULT_USER_ROLE",
+		"GRAPHQL_MAX_DEPTH", "GRAPHQL_MAX_PARALLELISM", "GRAPHQL_MAX_QUERY_BYTES",
+		"GRAPHQL_OVERLAP_VALIDATION_LIMIT", "GRAPHQL_REQUEST_TIMEOUT",
+		"SANDBOX_CREATE_LIMIT", "SANDBOX_CREATE_WINDOW", "SANDBOX_CREATE_BLOCK",
 	}
 
 	for _, v := range envVars {

@@ -3,8 +3,11 @@ package platformservices
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
+	"net/mail"
 	"slices"
 	"strings"
 	"time"
@@ -14,8 +17,9 @@ import (
 )
 
 type SandboxCreateParams struct {
-	Email string
-	Name  string
+	Email    string
+	Name     string
+	ClientIP string
 }
 
 type SandboxCreateResult struct {
@@ -52,6 +56,24 @@ type SandboxProvisioner interface {
 	Export(ctx context.Context, sandbox *platformdomain.Sandbox) (SandboxExportBundle, error)
 }
 
+type SandboxCreateRateLimiter interface {
+	CheckRateLimit(ctx context.Context, key string, maxAttempts int, window, blockDuration time.Duration) (bool, time.Duration, error)
+}
+
+type SandboxCreateRateLimitError struct {
+	RetryAfter time.Duration
+}
+
+func (e *SandboxCreateRateLimitError) Error() string {
+	return "too many sandbox creation requests"
+}
+
+type SandboxCreateRateLimitUnavailableError struct{}
+
+func (e *SandboxCreateRateLimitUnavailableError) Error() string {
+	return "sandbox creation is temporarily unavailable"
+}
+
 type SandboxServiceConfig struct {
 	PublicBaseURL       string
 	RuntimeDomain       string
@@ -60,6 +82,9 @@ type SandboxServiceConfig struct {
 	ExtensionTTL        time.Duration
 	VerificationPath    string
 	PublicBundleCatalog []SandboxPublicBundleCatalogEntry
+	CreateLimit         int
+	CreateWindow        time.Duration
+	CreateBlock         time.Duration
 }
 
 type SandboxPublicBundleCatalogEntry struct {
@@ -70,9 +95,10 @@ type SandboxPublicBundleCatalogEntry struct {
 type SandboxServiceOption func(*SandboxService)
 
 type SandboxService struct {
-	store       shared.SandboxStore
-	config      SandboxServiceConfig
-	provisioner SandboxProvisioner
+	store             shared.SandboxStore
+	config            SandboxServiceConfig
+	provisioner       SandboxProvisioner
+	createRateLimiter SandboxCreateRateLimiter
 }
 
 type SandboxBootstrapPolicy struct {
@@ -151,6 +177,12 @@ func WithSandboxProvisioner(provisioner SandboxProvisioner) SandboxServiceOption
 	}
 }
 
+func WithSandboxCreateRateLimiter(rateLimiter SandboxCreateRateLimiter) SandboxServiceOption {
+	return func(s *SandboxService) {
+		s.createRateLimiter = rateLimiter
+	}
+}
+
 func NewSandboxService(store shared.SandboxStore, cfg SandboxServiceConfig, opts ...SandboxServiceOption) *SandboxService {
 	if cfg.ActivationTTL <= 0 {
 		cfg.ActivationTTL = 24 * time.Hour
@@ -163,6 +195,15 @@ func NewSandboxService(store shared.SandboxStore, cfg SandboxServiceConfig, opts
 	}
 	if strings.TrimSpace(cfg.VerificationPath) == "" {
 		cfg.VerificationPath = "/sandbox/verify"
+	}
+	if cfg.CreateLimit <= 0 {
+		cfg.CreateLimit = 3
+	}
+	if cfg.CreateWindow <= 0 {
+		cfg.CreateWindow = time.Hour
+	}
+	if cfg.CreateBlock <= 0 {
+		cfg.CreateBlock = time.Hour
 	}
 	svc := &SandboxService{
 		store:  store,
@@ -195,8 +236,15 @@ func (s *SandboxService) CreateSandbox(ctx context.Context, params SandboxCreate
 	if email == "" {
 		return nil, fmt.Errorf("email is required")
 	}
+	parsedEmail, err := mail.ParseAddress(email)
+	if err != nil || !strings.EqualFold(parsedEmail.Address, email) {
+		return nil, fmt.Errorf("valid email is required")
+	}
 	if s.provisioner == nil {
 		return nil, fmt.Errorf("sandbox provisioner is not configured")
+	}
+	if err := s.checkCreateRateLimit(ctx, strings.TrimSpace(params.ClientIP), email); err != nil {
+		return nil, err
 	}
 	verificationToken, verificationHash, err := platformdomain.GenerateSandboxToken("sbv")
 	if err != nil {
@@ -215,14 +263,43 @@ func (s *SandboxService) CreateSandbox(ctx context.Context, params SandboxCreate
 	if err := s.store.CreateSandbox(ctx, sandbox); err != nil {
 		return nil, fmt.Errorf("create sandbox: %w", err)
 	}
-	if _, err := s.provisionSandbox(ctx, sandbox); err != nil {
-		return nil, err
-	}
 	return &SandboxCreateResult{
 		Sandbox:         sandbox,
 		ManageToken:     manageToken,
 		VerificationURL: s.verificationURL(verificationToken),
 	}, nil
+}
+
+func (s *SandboxService) checkCreateRateLimit(ctx context.Context, clientIP, email string) error {
+	if s.createRateLimiter == nil {
+		return nil
+	}
+	keys := make([]string, 0, 2)
+	if clientIP != "" {
+		keys = append(keys, "sandbox:create:ip:"+sandboxRateLimitDigest(clientIP))
+	}
+	keys = append(keys, "sandbox:create:email:"+sandboxRateLimitDigest(email))
+	for _, key := range keys {
+		allowed, retryAfter, err := s.createRateLimiter.CheckRateLimit(
+			ctx,
+			key,
+			s.config.CreateLimit,
+			s.config.CreateWindow,
+			s.config.CreateBlock,
+		)
+		if err != nil {
+			return &SandboxCreateRateLimitUnavailableError{}
+		}
+		if !allowed {
+			return &SandboxCreateRateLimitError{RetryAfter: retryAfter}
+		}
+	}
+	return nil
+}
+
+func sandboxRateLimitDigest(value string) string {
+	digest := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(value))))
+	return hex.EncodeToString(digest[:])
 }
 
 func (s *SandboxService) GetSandbox(ctx context.Context, sandboxID, manageToken string) (*platformdomain.Sandbox, error) {

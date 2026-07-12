@@ -3,6 +3,7 @@ package graph
 import (
 	"html/template"
 	"net/http"
+	"time"
 
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
@@ -10,15 +11,63 @@ import (
 	"github.com/movebigrocks/platform/internal/graphql/schema"
 )
 
+// Limits bounds the parser, validator, and executor work accepted for one
+// GraphQL request. Zero values are replaced with conservative defaults.
+type Limits struct {
+	MaxDepth               int
+	MaxParallelism         int
+	MaxQueryBytes          int
+	OverlapValidationLimit int
+	RequestTimeout         time.Duration
+}
+
+func DefaultLimits() Limits {
+	return Limits{
+		MaxDepth:               12,
+		MaxParallelism:         8,
+		MaxQueryBytes:          64 << 10,
+		OverlapValidationLimit: 5_000,
+		RequestTimeout:         15 * time.Second,
+	}
+}
+
+func (l Limits) withDefaults() Limits {
+	defaults := DefaultLimits()
+	if l.MaxDepth <= 0 {
+		l.MaxDepth = defaults.MaxDepth
+	}
+	if l.MaxParallelism <= 0 {
+		l.MaxParallelism = defaults.MaxParallelism
+	}
+	if l.MaxQueryBytes <= 0 {
+		l.MaxQueryBytes = defaults.MaxQueryBytes
+	}
+	if l.OverlapValidationLimit <= 0 {
+		l.OverlapValidationLimit = defaults.OverlapValidationLimit
+	}
+	if l.RequestTimeout <= 0 {
+		l.RequestTimeout = defaults.RequestTimeout
+	}
+	return l
+}
+
 // MustParseSchema parses the GraphQL schema and panics on error.
 // This should only be called during application startup.
 // Returns an http.Handler ready to use with gin.WrapH or directly as ServeHTTP.
-func MustParseSchema(resolver *RootResolver) http.Handler {
+func MustParseSchema(resolver *RootResolver, configured ...Limits) http.Handler {
+	limits := DefaultLimits()
+	if len(configured) > 0 {
+		limits = configured[0].withDefaults()
+	}
 	s := graphql.MustParseSchema(
 		schema.SchemaString,
 		resolver,
 		graphql.UseFieldResolvers(),
 		graphql.UseStringDescriptions(),
+		graphql.MaxDepth(limits.MaxDepth),
+		graphql.MaxParallelism(limits.MaxParallelism),
+		graphql.MaxQueryLength(limits.MaxQueryBytes),
+		graphql.OverlapValidationLimit(limits.OverlapValidationLimit),
 	)
 	return &relay.Handler{Schema: s}
 }

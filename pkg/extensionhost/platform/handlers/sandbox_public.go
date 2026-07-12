@@ -1,8 +1,11 @@
 package platformhandlers
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -38,10 +41,23 @@ func (h *SandboxPublicHandler) CreateSandbox(c *gin.Context) {
 		return
 	}
 	result, err := h.service.CreateSandbox(c.Request.Context(), platformservices.SandboxCreateParams{
-		Email: req.Email,
-		Name:  req.Name,
+		Email:    req.Email,
+		Name:     req.Name,
+		ClientIP: c.ClientIP(),
 	})
 	if err != nil {
+		var rateLimitErr *platformservices.SandboxCreateRateLimitError
+		if errors.As(err, &rateLimitErr) {
+			retryAfter := max(1, int64((rateLimitErr.RetryAfter+time.Second-1)/time.Second))
+			c.Header("Retry-After", strconv.FormatInt(retryAfter, 10))
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": rateLimitErr.Error()})
+			return
+		}
+		var unavailableErr *platformservices.SandboxCreateRateLimitUnavailableError
+		if errors.As(err, &unavailableErr) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": unavailableErr.Error()})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -176,6 +192,12 @@ func wantsJSON(c *gin.Context) bool {
 func sandboxCreateNextSteps(sandbox *platformdomain.Sandbox) []string {
 	if sandbox == nil {
 		return nil
+	}
+	if sandbox.Status == platformdomain.SandboxStatusPendingVerification {
+		return []string{
+			"Verify the sandbox request before the activation deadline.",
+			"Provisioning starts only after verification succeeds.",
+		}
 	}
 	if strings.TrimSpace(sandbox.RuntimeURL) == "" {
 		return []string{

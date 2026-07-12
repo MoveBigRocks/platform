@@ -25,6 +25,15 @@ type sandboxMemoryStore struct {
 	byVerificationHashes map[string]string
 }
 
+type sandboxRouterRateLimiter struct {
+	allowed    bool
+	retryAfter time.Duration
+}
+
+func (s sandboxRouterRateLimiter) CheckRateLimit(_ context.Context, _ string, _ int, _, _ time.Duration) (bool, time.Duration, error) {
+	return s.allowed, s.retryAfter, nil
+}
+
 func newSandboxMemoryStore() *sandboxMemoryStore {
 	return &sandboxMemoryStore{
 		byID:                 map[string]*platformdomain.Sandbox{},
@@ -114,14 +123,26 @@ func TestCreatePublicRouter_SandboxLifecycle(t *testing.T) {
 	require.NoError(t, json.Unmarshal(createW.Body.Bytes(), &created))
 	sandboxID, _ := created["id"].(string)
 	manageToken, _ := created["manage_token"].(string)
+	verificationURL, _ := created["verification_url"].(string)
 	status, _ := created["status"].(string)
 	runtimeURL, _ := created["runtime_url"].(string)
 	loginURL, _ := created["login_url"].(string)
 	require.NotEmpty(t, sandboxID)
 	require.NotEmpty(t, manageToken)
-	require.Equal(t, "ready", status)
-	require.Contains(t, runtimeURL, ".movebigrocks.io")
-	require.Contains(t, loginURL, ".movebigrocks.io/login")
+	require.NotEmpty(t, verificationURL)
+	require.Equal(t, "pending_verification", status)
+	require.Empty(t, runtimeURL)
+	require.Empty(t, loginURL)
+
+	verificationPath := strings.TrimPrefix(verificationURL, cfg.Server.BaseURL)
+	verifyReq := httptest.NewRequest(http.MethodGet, verificationPath, nil)
+	verifyReq.Header.Set("Accept", "application/json")
+	verifyW := httptest.NewRecorder()
+	router.ServeHTTP(verifyW, verifyReq)
+
+	require.Equal(t, http.StatusOK, verifyW.Code)
+	assert.Contains(t, verifyW.Body.String(), `"status":"ready"`)
+	assert.Contains(t, verifyW.Body.String(), `.movebigrocks.io/login`)
 
 	showReq := httptest.NewRequest(http.MethodGet, "/api/public/sandboxes/"+sandboxID, nil)
 	showReq.Header.Set("Authorization", "Bearer "+manageToken)
@@ -142,6 +163,30 @@ func TestCreatePublicRouter_SandboxLifecycle(t *testing.T) {
 	assert.Contains(t, exportW.Body.String(), `"bundle"`)
 	assert.Contains(t, exportW.Body.String(), `"runtime_configuration"`)
 	assert.Contains(t, exportW.Body.String(), `"public_bundle_catalog"`)
+}
+
+func TestCreatePublicRouter_SandboxCreateRateLimit(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cfg := testutil.NewTestConfig(t)
+	service := platformservices.NewSandboxService(
+		newSandboxMemoryStore(),
+		platformservices.SandboxServiceConfig{RuntimeDomain: "movebigrocks.io"},
+		platformservices.WithSandboxCreateRateLimiter(sandboxRouterRateLimiter{
+			allowed:    false,
+			retryAfter: 75 * time.Second,
+		}),
+	)
+	router := createPublicRouter(cfg, nil, nil, nil, service, nil, "test", "abc123", "2026-03-13")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/public/sandboxes", strings.NewReader(`{"email":"ops@example.com"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusTooManyRequests, w.Code)
+	assert.Equal(t, "75", w.Header().Get("Retry-After"))
+	assert.Contains(t, w.Body.String(), "too many sandbox creation requests")
 }
 
 func TestCreatePublicRouter_ServesRuntimeBootstrapDocument(t *testing.T) {

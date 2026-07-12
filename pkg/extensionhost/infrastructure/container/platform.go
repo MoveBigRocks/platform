@@ -86,7 +86,11 @@ func NewPlatformContainer(
 			platformservices.SandboxServiceConfig{
 				PublicBaseURL: cfg.Server.BaseURL,
 				RuntimeDomain: "movebigrocks.io",
+				CreateLimit:   cfg.Security.SandboxCreateLimit,
+				CreateWindow:  cfg.Security.SandboxCreateWindow,
+				CreateBlock:   cfg.Security.SandboxCreateBlock,
 			},
+			platformservices.WithSandboxCreateRateLimiter(store.Users()),
 		),
 		Contact: platformservices.NewContactService(
 			store.Contacts(),

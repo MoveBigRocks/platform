@@ -83,10 +83,18 @@ type AuthConfig struct {
 
 // SecurityConfig holds security-related configuration
 type SecurityConfig struct {
-	DefaultUserRole  string
-	RateLimitEnabled bool
-	RateLimitPerMin  int
-	RateLimitBurst   int
+	DefaultUserRole               string
+	RateLimitEnabled              bool
+	RateLimitPerMin               int
+	RateLimitBurst                int
+	GraphQLMaxDepth               int
+	GraphQLMaxParallelism         int
+	GraphQLMaxQueryBytes          int
+	GraphQLOverlapValidationLimit int
+	GraphQLRequestTimeout         time.Duration
+	SandboxCreateLimit            int
+	SandboxCreateWindow           time.Duration
+	SandboxCreateBlock            time.Duration
 }
 
 // EmailConfig holds email configuration
@@ -400,10 +408,18 @@ func Load() (*Config, error) {
 		},
 
 		Security: SecurityConfig{
-			DefaultUserRole:  getEnv("DEFAULT_USER_ROLE", "user"),
-			RateLimitEnabled: getEnvBool("RATE_LIMIT_ENABLED", true),
-			RateLimitPerMin:  getEnvInt("RATE_LIMIT_PER_MIN", 60),
-			RateLimitBurst:   getEnvInt("RATE_LIMIT_BURST", 10),
+			DefaultUserRole:               getEnv("DEFAULT_USER_ROLE", "user"),
+			RateLimitEnabled:              getEnvBool("RATE_LIMIT_ENABLED", true),
+			RateLimitPerMin:               getEnvInt("RATE_LIMIT_PER_MIN", 60),
+			RateLimitBurst:                getEnvInt("RATE_LIMIT_BURST", 10),
+			GraphQLMaxDepth:               getEnvInt("GRAPHQL_MAX_DEPTH", 12),
+			GraphQLMaxParallelism:         getEnvInt("GRAPHQL_MAX_PARALLELISM", 8),
+			GraphQLMaxQueryBytes:          getEnvInt("GRAPHQL_MAX_QUERY_BYTES", 64<<10),
+			GraphQLOverlapValidationLimit: getEnvInt("GRAPHQL_OVERLAP_VALIDATION_LIMIT", 5000),
+			GraphQLRequestTimeout:         getEnvDuration("GRAPHQL_REQUEST_TIMEOUT", "15s"),
+			SandboxCreateLimit:            getEnvInt("SANDBOX_CREATE_LIMIT", 3),
+			SandboxCreateWindow:           getEnvDuration("SANDBOX_CREATE_WINDOW", "1h"),
+			SandboxCreateBlock:            getEnvDuration("SANDBOX_CREATE_BLOCK", "1h"),
 		},
 
 		Email: EmailConfig{

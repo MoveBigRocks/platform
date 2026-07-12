@@ -41,6 +41,19 @@ func configureTrustedProxies(router *gin.Engine, cfg *config.Config, log *logger
 	}
 }
 
+func configuredGraphQLLimits(cfg *config.Config) graph.Limits {
+	if cfg == nil {
+		return graph.DefaultLimits()
+	}
+	return graph.Limits{
+		MaxDepth:               cfg.Security.GraphQLMaxDepth,
+		MaxParallelism:         cfg.Security.GraphQLMaxParallelism,
+		MaxQueryBytes:          cfg.Security.GraphQLMaxQueryBytes,
+		OverlapValidationLimit: cfg.Security.GraphQLOverlapValidationLimit,
+		RequestTimeout:         cfg.Security.GraphQLRequestTimeout,
+	}
+}
+
 // createAdminRouter creates the instance admin router (admin.example.com)
 func createAdminRouter(
 	cfg *config.Config,
@@ -329,13 +342,14 @@ func createAdminRouter(
 			WorkspaceService: c.Platform.Workspace,
 		},
 	})
-	gqlServer := graph.MustParseSchema(gqlResolver)
+	gqlLimits := configuredGraphQLLimits(cfg)
+	gqlServer := graph.MustParseSchema(gqlResolver, gqlLimits)
 
 	// GraphQL endpoint for admin portal (session auth, instance access required)
 	gqlProtected := router.Group("")
 	gqlProtected.Use(contextAuthMiddleware.AuthRequired())
 	gqlProtected.Use(contextAuthMiddleware.RequireInstanceAccess())
-	gqlProtected.POST("/graphql", graph.GinHandler(gqlServer))
+	gqlProtected.POST("/graphql", graph.GinHandler(gqlServer, gqlLimits.RequestTimeout))
 
 	// GraphQL playground (development only)
 	if cfg.Server.Environment != "production" {
@@ -478,7 +492,8 @@ func createAPIRouter(
 			WorkspaceService: c.Platform.Workspace,
 		},
 	})
-	apiGqlServer := graph.MustParseSchema(apiGqlResolver)
+	gqlLimits := configuredGraphQLLimits(cfg)
+	apiGqlServer := graph.MustParseSchema(apiGqlResolver, gqlLimits)
 
 	attachmentUploadHandler := servicehandlers.NewAttachmentUploadHandler(c.Service.Attachment, c.Store.Cases())
 
@@ -486,7 +501,7 @@ func createAPIRouter(
 	router.POST("/attachments", principalAuth.AuthenticateAgent(), attachmentUploadHandler.HandleAgentUpload)
 
 	// GraphQL endpoint for agents and command-line tooling.
-	router.POST("/graphql", principalAuth.AuthenticateAgent(), graph.GinHandler(apiGqlServer))
+	router.POST("/graphql", principalAuth.AuthenticateAgent(), graph.GinHandler(apiGqlServer, gqlLimits.RequestTimeout))
 
 	// GraphQL playground (development only, no auth required)
 	if cfg.Server.Environment != "production" {

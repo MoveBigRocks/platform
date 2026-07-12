@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
@@ -56,6 +57,12 @@ func main() {
 	if err != nil {
 		failf("create sandbox: %v", err)
 	}
+	verificationToken := created.VerificationURL[strings.LastIndex(created.VerificationURL, "=")+1:]
+	verified, err := service.VerifySandbox(ctx, verificationToken)
+	if err != nil {
+		failf("verify sandbox: %v", err)
+	}
+	created.Sandbox = verified
 
 	exportBeforeExpiry, err := service.ExportSandbox(ctx, created.Sandbox.ID, created.ManageToken)
 	if err != nil {

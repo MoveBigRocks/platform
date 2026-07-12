@@ -2,6 +2,7 @@ package graph
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -12,8 +13,19 @@ import (
 
 // GinHandler wraps the GraphQL server for use with gin, bridging gin context to GraphQL context.
 // Supports both agent auth (auth_context) and session auth (session).
-func GinHandler(server http.Handler) gin.HandlerFunc {
+func GinHandler(server http.Handler, configuredTimeout ...time.Duration) gin.HandlerFunc {
+	requestTimeout := DefaultLimits().RequestTimeout
+	if len(configuredTimeout) > 0 && configuredTimeout[0] > 0 {
+		requestTimeout = configuredTimeout[0]
+	}
+	timedServer := http.TimeoutHandler(
+		server,
+		requestTimeout,
+		`{"errors":[{"message":"GraphQL request timed out"}]}`,
+	)
 	return func(c *gin.Context) {
+		c.Header("Content-Type", "application/json; charset=utf-8")
+
 		// Transfer auth context from gin to Go context
 		ctx := c.Request.Context()
 
@@ -30,7 +42,7 @@ func GinHandler(server http.Handler) gin.HandlerFunc {
 
 		// Create a new request with the enriched context
 		req := c.Request.WithContext(ctx)
-		server.ServeHTTP(c.Writer, req)
+		timedServer.ServeHTTP(c.Writer, req)
 	}
 }
 

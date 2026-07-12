@@ -83,6 +83,18 @@ type sandboxRecordingProvisioner struct {
 	destroyCalls   int
 }
 
+type sandboxRateLimiterStub struct {
+	allowed    bool
+	retryAfter time.Duration
+	err        error
+	keys       []string
+}
+
+func (s *sandboxRateLimiterStub) CheckRateLimit(_ context.Context, key string, _ int, _, _ time.Duration) (bool, time.Duration, error) {
+	s.keys = append(s.keys, key)
+	return s.allowed, s.retryAfter, s.err
+}
+
 func (p *sandboxRecordingProvisioner) Provision(_ context.Context, sandbox *platformdomain.Sandbox) (SandboxProvisionResult, error) {
 	p.provisionCalls++
 	base := "https://" + sandbox.Slug + ".movebigrocks.io"
@@ -132,14 +144,14 @@ func TestSandboxServiceCreateVerifyExtendDestroy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create sandbox: %v", err)
 	}
-	if result.Sandbox.Status != platformdomain.SandboxStatusReady {
+	if result.Sandbox.Status != platformdomain.SandboxStatusPendingVerification {
 		t.Fatalf("unexpected create status %q", result.Sandbox.Status)
 	}
 	if result.Sandbox.RequestedEmail != "ops@example.com" {
 		t.Fatalf("unexpected requested email %q", result.Sandbox.RequestedEmail)
 	}
-	if result.Sandbox.RuntimeURL == "" {
-		t.Fatalf("expected runtime URL")
+	if result.Sandbox.RuntimeURL != "" {
+		t.Fatalf("runtime must not be provisioned before verification")
 	}
 	if result.ManageToken == "" {
 		t.Fatalf("expected manage token")
@@ -147,8 +159,8 @@ func TestSandboxServiceCreateVerifyExtendDestroy(t *testing.T) {
 	if result.VerificationURL == "" {
 		t.Fatalf("expected verification URL")
 	}
-	if provisioner.provisionCalls != 1 {
-		t.Fatalf("expected one provision call during create, got %d", provisioner.provisionCalls)
+	if provisioner.provisionCalls != 0 {
+		t.Fatalf("expected no provision calls during create, got %d", provisioner.provisionCalls)
 	}
 
 	verificationToken := result.VerificationURL[strings.LastIndex(result.VerificationURL, "=")+1:]
@@ -160,7 +172,7 @@ func TestSandboxServiceCreateVerifyExtendDestroy(t *testing.T) {
 		t.Fatalf("unexpected verified status %q", verified.Status)
 	}
 	if provisioner.provisionCalls != 1 {
-		t.Fatalf("expected verify to reuse ready sandbox, got %d provision calls", provisioner.provisionCalls)
+		t.Fatalf("expected verify to provision sandbox once, got %d provision calls", provisioner.provisionCalls)
 	}
 
 	loaded, err := service.GetSandbox(t.Context(), verified.ID, result.ManageToken)
@@ -235,6 +247,7 @@ func TestSandboxServiceExportSandbox(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create sandbox: %v", err)
 	}
+	verifySandboxResult(t, service, result)
 	exported, err := service.ExportSandbox(t.Context(), result.Sandbox.ID, result.ManageToken)
 	if err != nil {
 		t.Fatalf("export sandbox: %v", err)
@@ -290,6 +303,7 @@ func TestSandboxServiceReapExpiredSandboxes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create sandbox: %v", err)
 	}
+	verifySandboxResult(t, service, result)
 
 	sandbox, err := service.GetSandbox(t.Context(), result.Sandbox.ID, result.ManageToken)
 	if err != nil {
@@ -332,6 +346,42 @@ func TestSandboxServiceReapExpiredSandboxes(t *testing.T) {
 	if lifecycle["status"] != platformdomain.SandboxStatusExpired {
 		t.Fatalf("expected expired lifecycle status, got %#v", lifecycle["status"])
 	}
+}
+
+func TestSandboxServiceCreateRateLimit(t *testing.T) {
+	t.Parallel()
+
+	limiter := &sandboxRateLimiterStub{allowed: false, retryAfter: 45 * time.Second}
+	service := NewSandboxService(
+		newSandboxMemoryStore(),
+		SandboxServiceConfig{RuntimeDomain: "movebigrocks.io"},
+		WithSandboxCreateRateLimiter(limiter),
+	)
+
+	_, err := service.CreateSandbox(t.Context(), SandboxCreateParams{
+		Email:    "ops@example.com",
+		ClientIP: "192.0.2.10",
+	})
+	var rateLimitErr *SandboxCreateRateLimitError
+	if !errors.As(err, &rateLimitErr) {
+		t.Fatalf("expected rate limit error, got %v", err)
+	}
+	if rateLimitErr.RetryAfter != 45*time.Second {
+		t.Fatalf("unexpected retry-after %s", rateLimitErr.RetryAfter)
+	}
+	if len(limiter.keys) != 1 || strings.Contains(limiter.keys[0], "192.0.2.10") {
+		t.Fatalf("expected hashed IP rate-limit key, got %#v", limiter.keys)
+	}
+}
+
+func verifySandboxResult(t *testing.T, service *SandboxService, result *SandboxCreateResult) *platformdomain.Sandbox {
+	t.Helper()
+	verificationToken := result.VerificationURL[strings.LastIndex(result.VerificationURL, "=")+1:]
+	verified, err := service.VerifySandbox(t.Context(), verificationToken)
+	if err != nil {
+		t.Fatalf("verify sandbox: %v", err)
+	}
+	return verified
 }
 
 func cloneSandbox(sandbox *platformdomain.Sandbox) *platformdomain.Sandbox {
