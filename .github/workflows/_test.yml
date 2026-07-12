@@ -47,7 +47,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.26.0'
+          # Match the go.mod toolchain directive so every step (build, tests,
+          # gosec, govulncheck) runs under the exact Go the repo ships with.
+          # A mismatch here lets the toolchain directive silently auto-switch
+          # the Go version mid-job, which changes the standard-library version
+          # govulncheck analyses and makes the vulnerability gate flap.
+          go-version: '1.26.5'
           cache-dependency-path: platform/go.sum
 
       - name: Install dependencies
@@ -149,10 +154,23 @@ jobs:
           gosec -severity=high -confidence=high -exclude=G703,G704 -exclude-dir=tests -exclude-dir=testutil -fmt text ./...
 
       - name: Vulnerability scan with govulncheck
-        continue-on-error: true
         working-directory: platform
+        env:
+          # Lock the analysis to the repo's toolchain. govulncheck reports
+          # standard-library vulnerabilities against the Go version it runs
+          # under, so an unlocked toolchain makes results depend on the runner
+          # image rather than the code.
+          GOTOOLCHAIN: local
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          # Hard gate on call-reachable vulnerabilities. The scanner version is
+          # pinned so the gate stays deterministic, mirroring gosec above. Two
+          # drift axes are removed here (pinned scanner, locked toolchain); the
+          # third, the live vuln database at vuln.go.dev, is intentional: a
+          # newly disclosed vulnerability that is reachable from this code
+          # SHOULD block merges until the dependency or toolchain is bumped.
+          # Default source mode fails only on call-reachable findings, so
+          # unused-but-present advisories in required modules do not gate.
+          go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
           govulncheck ./...
 
       - name: Build verification

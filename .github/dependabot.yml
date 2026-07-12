@@ -1,0 +1,28 @@
+version: 2
+
+# Dependency update automation. The govulncheck gate in _test.yml blocks
+# merges on call-reachable vulnerabilities; these updates are how those get
+# fixed, and how the pinned toolchain and actions stay current. Minor and
+# patch bumps are grouped so routine currency lands in one review.
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      go-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      actions-minor-and-patch:
+        update-types:
+          - minor
+          - patch
