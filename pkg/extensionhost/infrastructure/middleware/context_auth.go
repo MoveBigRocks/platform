@@ -3,7 +3,9 @@ package middleware
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -113,6 +115,14 @@ func (m *ContextAuthMiddleware) AuthRequired() gin.HandlerFunc {
 		// Check for idle timeout (7 days - matches session expiry)
 		if session.IsIdle(7 * 24 * time.Hour) {
 			m.clearCookieAndRedirect(c)
+			return
+		}
+
+		// CSRF protection: this is a cookie-authenticated request, and the
+		// session cookie is shared across sibling subdomains, so reject a
+		// state-changing request whose Origin names a different host.
+		if !enforceSameOrigin(c) {
+			m.respondForbidden(c, "cross-origin request blocked")
 			return
 		}
 
@@ -399,6 +409,61 @@ func (m *ContextAuthMiddleware) respondForbidden(c *gin.Context, message string)
 func (m *ContextAuthMiddleware) isHTMLRequest(c *gin.Context) bool {
 	accept := c.GetHeader("Accept")
 	return strings.HasPrefix(accept, "text/html")
+}
+
+// enforceSameOrigin returns false when a state-changing, cookie-authenticated
+// request appears to originate from a different host than the one being served,
+// which is the shape of a cross-site request forgery from a sibling subdomain
+// that shares the session cookie. Safe methods and requests that carry no
+// Origin or Referer (non-browser clients, which use token auth rather than the
+// session cookie) are allowed through.
+func enforceSameOrigin(c *gin.Context) bool {
+	switch c.Request.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace:
+		return true
+	}
+
+	stated := c.GetHeader("Origin")
+	if stated == "" {
+		stated = c.GetHeader("Referer")
+	}
+	if stated == "" {
+		return true
+	}
+
+	parsed, err := url.Parse(stated)
+	if err != nil || parsed.Host == "" {
+		return false
+	}
+	return hostnamesMatch(parsed.Host, servedHost(c))
+}
+
+// servedHost is the public host this request was addressed to. Behind the
+// reverse proxy the forwarded host carries the original domain, so it is
+// preferred over the connection Host.
+func servedHost(c *gin.Context) string {
+	if forwarded := c.GetHeader("X-Forwarded-Host"); forwarded != "" {
+		if comma := strings.IndexByte(forwarded, ','); comma >= 0 {
+			forwarded = forwarded[:comma]
+		}
+		return strings.TrimSpace(forwarded)
+	}
+	return c.Request.Host
+}
+
+func hostnamesMatch(a, b string) bool {
+	return strings.EqualFold(hostnameOnly(a), hostnameOnly(b)) && hostnameOnly(a) != ""
+}
+
+func hostnameOnly(host string) string {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return ""
+	}
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		return h
+	}
+	return host
 }
 
 // RespondWithErrorAndAbort sends an error response and aborts the request.

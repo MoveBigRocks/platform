@@ -537,3 +537,40 @@ func TestContextAuthMiddleware_WithStore(t *testing.T) {
 	result := m.WithStore(nil)
 	assert.Same(t, m, result)
 }
+
+func TestEnforceSameOrigin(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cases := []struct {
+		name    string
+		method  string
+		host    string
+		headers map[string]string
+		allowed bool
+	}{
+		{"get is exempt", http.MethodGet, "admin.example.com", map[string]string{"Origin": "https://evil.example.com"}, true},
+		{"same origin post", http.MethodPost, "admin.example.com", map[string]string{"Origin": "https://admin.example.com"}, true},
+		{"sibling subdomain post blocked", http.MethodPost, "admin.example.com", map[string]string{"Origin": "https://tenant.example.com"}, false},
+		{"cross site post blocked", http.MethodPost, "admin.example.com", map[string]string{"Origin": "https://evil.com"}, false},
+		{"no origin header allowed", http.MethodPost, "admin.example.com", map[string]string{}, true},
+		{"referer fallback blocked", http.MethodPost, "admin.example.com", map[string]string{"Referer": "https://tenant.example.com/page"}, false},
+		{"forwarded host preferred", http.MethodPost, "127.0.0.1:8088", map[string]string{"Origin": "https://admin.example.com", "X-Forwarded-Host": "admin.example.com"}, true},
+		{"origin with port matches", http.MethodPost, "localhost:8080", map[string]string{"Origin": "http://localhost:8080"}, true},
+		{"delete cross origin blocked", http.MethodDelete, "admin.example.com", map[string]string{"Origin": "https://tenant.example.com"}, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, "/graphql", nil)
+			req.Host = tc.host
+			for k, v := range tc.headers {
+				req.Header.Set(k, v)
+			}
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = req
+			if got := enforceSameOrigin(c); got != tc.allowed {
+				t.Fatalf("enforceSameOrigin(%s %s, headers=%v) = %v, want %v", tc.method, tc.host, tc.headers, got, tc.allowed)
+			}
+		})
+	}
+}
