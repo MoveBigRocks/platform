@@ -129,6 +129,14 @@ const (
 	ExtensionWorkspaceProvisionDedicated  ExtensionWorkspaceInstallMode = "provision_dedicated_workspace"
 )
 
+// MaxSupportedManifestSchemaVersion is the highest extension manifest schema
+// version this host understands. A bundle authored against a newer manifest
+// format than the host can parse is rejected at install rather than silently
+// misinterpreted, so a customer running an older Move Big Rocks core cannot
+// install an extension built for a newer one and have fields dropped or
+// misread. Raise this when the manifest format changes in a breaking way.
+const MaxSupportedManifestSchemaVersion = 1
+
 type ExtensionManifest struct {
 	SchemaVersion      int
 	Slug               string
@@ -464,6 +472,12 @@ func (m *ExtensionManifest) Validate() error {
 	m.Normalize()
 
 	var problems []string
+	if m.SchemaVersion > MaxSupportedManifestSchemaVersion {
+		problems = append(problems, fmt.Sprintf(
+			"manifest schema version %d is newer than this host supports (max %d); upgrade Move Big Rocks core to install this extension",
+			m.SchemaVersion, MaxSupportedManifestSchemaVersion,
+		))
+	}
 	if m.Slug == "" {
 		problems = append(problems, "slug is required")
 	}

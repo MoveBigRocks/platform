@@ -38,6 +38,36 @@ func TestExtensionManifestValidateEndpoints(t *testing.T) {
 	}
 }
 
+func TestExtensionManifestValidateRejectsNewerSchemaVersion(t *testing.T) {
+	t.Parallel()
+
+	base := ExtensionManifest{
+		Slug:      "future-pack",
+		Name:      "Future Pack",
+		Version:   "1.0.0",
+		Publisher: "DemandOps",
+		Kind:      ExtensionKindProduct,
+		Scope:     ExtensionScopeWorkspace,
+		Risk:      ExtensionRiskStandard,
+	}
+
+	atMax := base
+	atMax.SchemaVersion = MaxSupportedManifestSchemaVersion
+	if err := atMax.Validate(); err != nil {
+		t.Fatalf("expected manifest at the supported schema version to validate, got: %v", err)
+	}
+
+	tooNew := base
+	tooNew.SchemaVersion = MaxSupportedManifestSchemaVersion + 1
+	err := tooNew.Validate()
+	if err == nil {
+		t.Fatalf("expected a manifest schema version above the supported max to be rejected")
+	}
+	if !strings.Contains(err.Error(), "schema version") {
+		t.Fatalf("expected the error to mention the schema version, got: %v", err)
+	}
+}
+
 func TestExtensionManifestValidateArtifactSurfaceEndpoints(t *testing.T) {
 	t.Parallel()
 
