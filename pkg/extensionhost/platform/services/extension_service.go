@@ -593,14 +593,31 @@ func (s *ExtensionService) UpgradeExtension(ctx context.Context, params UpgradeE
 		if err := s.ensureManagedArtifactSurfaces(ctx, &upgraded, assets); err != nil {
 			return nil, err
 		}
-		if err := s.provisionQueues(ctx, &upgraded); err != nil {
-			return nil, err
-		}
-		if err := s.provisionForms(ctx, &upgraded); err != nil {
-			return nil, err
-		}
-		if err := s.provisionAutomationRules(ctx, &upgraded); err != nil {
-			return nil, err
+		// Seed the upgraded extension's workspace-scoped queues, forms, and
+		// rules inside one transaction, the same way ActivateExtension does.
+		// The tenant context that satisfies row-level security is set with
+		// set_config(..., true), which is transaction-local, so running these
+		// on the connection pool would drop the context between statements: the
+		// existence lookups would miss the workspace's existing rows under RLS
+		// and the follow-up inserts would then violate the tenant_isolation
+		// policy.
+		if upgraded.Manifest.Scope == platformdomain.ExtensionScopeWorkspace {
+			provisionWorkspaceArtifacts := func(provisionCtx context.Context) error {
+				if err := s.provisionQueues(provisionCtx, &upgraded); err != nil {
+					return err
+				}
+				if err := s.provisionForms(provisionCtx, &upgraded); err != nil {
+					return err
+				}
+				return s.provisionAutomationRules(provisionCtx, &upgraded)
+			}
+			if s.tx != nil {
+				if err := s.tx.WithTransaction(ctx, provisionWorkspaceArtifacts); err != nil {
+					return nil, err
+				}
+			} else if err := provisionWorkspaceArtifacts(ctx); err != nil {
+				return nil, err
+			}
 		}
 		if s.schemaRuntime != nil {
 			if err := s.schemaRuntime.EnsureInstalledExtensionSchema(ctx, &upgraded); err != nil {
