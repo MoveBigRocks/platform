@@ -1086,7 +1086,26 @@ func checksumBytes(value []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// ensureWorkspaceTenantContext sets the workspace session variable for the
+// current transaction so that seeding a workspace-scoped extension's default
+// queues, forms, and rules satisfies core row-level security. The provisioning
+// writes rows keyed on the extension's workspace, so without the context those
+// inserts violate the tenant_isolation policy. It is a no-op when the runner
+// does not support tenant context (tests) or outside a transaction.
+func (s *ExtensionService) ensureWorkspaceTenantContext(ctx context.Context, workspaceID string) error {
+	setter, ok := s.tx.(interface {
+		SetTenantContext(ctx context.Context, workspaceID string) error
+	})
+	if !ok {
+		return nil
+	}
+	return setter.SetTenantContext(ctx, workspaceID)
+}
+
 func (s *ExtensionService) provisionQueues(ctx context.Context, extension *platformdomain.InstalledExtension) error {
+	if err := s.ensureWorkspaceTenantContext(ctx, extension.WorkspaceID); err != nil {
+		return err
+	}
 	for _, seed := range extension.Manifest.Queues {
 		queue, err := buildSeededQueue(extension, seed)
 		if err != nil {
@@ -1107,6 +1126,9 @@ func (s *ExtensionService) provisionQueues(ctx context.Context, extension *platf
 func (s *ExtensionService) provisionForms(ctx context.Context, extension *platformdomain.InstalledExtension) error {
 	if s.formStore == nil {
 		return nil
+	}
+	if err := s.ensureWorkspaceTenantContext(ctx, extension.WorkspaceID); err != nil {
+		return err
 	}
 
 	existingForms, err := s.formStore.ListWorkspaceFormSchemas(ctx, extension.WorkspaceID)
@@ -1137,6 +1159,9 @@ func (s *ExtensionService) provisionForms(ctx context.Context, extension *platfo
 func (s *ExtensionService) provisionAutomationRules(ctx context.Context, extension *platformdomain.InstalledExtension) error {
 	if s.ruleStore == nil {
 		return nil
+	}
+	if err := s.ensureWorkspaceTenantContext(ctx, extension.WorkspaceID); err != nil {
+		return err
 	}
 
 	existingRules, err := s.ruleStore.ListWorkspaceRules(ctx, extension.WorkspaceID)
