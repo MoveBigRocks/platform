@@ -1,0 +1,196 @@
+package platformservices
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/movebigrocks/extension-sdk/runtimehost"
+	shared "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared"
+	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
+	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
+	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
+	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
+)
+
+// ErrCoreHostNotFound is returned when a core entity the extension asked for
+// does not exist or is outside the extension's workspace. The handler maps it
+// to HTTP 404.
+var ErrCoreHostNotFound = errors.New("core entity not found")
+
+// ExtensionCoreHostService backs the core-data host API. A first-party
+// extension calls it (bearer host token) instead of embedding a copy of the
+// core stores. It resolves the calling extension, enforces the extension's
+// declared permission and workspace scope, and runs each core write inside the
+// extension's workspace tenant context so row-level security applies exactly as
+// it would for a user in that workspace.
+type ExtensionCoreHostService struct {
+	extensions coreHostExtensionResolver
+	cases      coreHostCaseService
+	tenant     coreHostTenantRunner
+}
+
+// coreHostExtensionResolver loads the calling extension. It is an interface so
+// the host service can be unit tested without the full extension service; the
+// concrete *ExtensionService satisfies it.
+type coreHostExtensionResolver interface {
+	GetInstalledExtension(ctx context.Context, extensionID string) (*platformdomain.InstalledExtension, error)
+}
+
+// coreHostCaseService is the slice of the core case service the host API needs.
+// It is an interface so this package does not hard-depend on the concrete
+// service wiring and can be unit tested.
+type coreHostCaseService interface {
+	CreateCase(ctx context.Context, params serviceapp.CreateCaseParams) (*servicedomain.Case, error)
+	GetCaseInWorkspace(ctx context.Context, workspaceID, caseID string) (*servicedomain.Case, error)
+}
+
+// coreHostTenantRunner runs a function inside one transaction and sets the
+// workspace tenant context within it. set_config for the workspace is
+// transaction-local, so the write must share the transaction that sets it.
+type coreHostTenantRunner interface {
+	WithTransaction(ctx context.Context, fn func(context.Context) error) error
+	SetTenantContext(ctx context.Context, workspaceID string) error
+}
+
+func NewExtensionCoreHostService(
+	extensions coreHostExtensionResolver,
+	cases coreHostCaseService,
+	tenant coreHostTenantRunner,
+) *ExtensionCoreHostService {
+	return &ExtensionCoreHostService{
+		extensions: extensions,
+		cases:      cases,
+		tenant:     tenant,
+	}
+}
+
+// CreateCase creates a core case in the calling extension's workspace.
+func (s *ExtensionCoreHostService) CreateCase(ctx context.Context, extensionID string, input runtimehost.CreateCaseInput) (*runtimehost.HostCase, error) {
+	if s == nil || s.extensions == nil || s.cases == nil || s.tenant == nil {
+		return nil, fmt.Errorf("core host services are not configured")
+	}
+	extension, err := s.resolveExtension(ctx, extensionID, "case:write")
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(input.Subject) == "" {
+		return nil, fmt.Errorf("subject is required")
+	}
+
+	params := serviceapp.CreateCaseParams{
+		WorkspaceID:  extension.WorkspaceID,
+		Subject:      strings.TrimSpace(input.Subject),
+		Description:  input.Description,
+		Priority:     servicedomain.CasePriority(strings.TrimSpace(input.Priority)),
+		Channel:      servicedomain.CaseChannel(strings.TrimSpace(input.Channel)),
+		Category:     strings.TrimSpace(input.Category),
+		QueueID:      strings.TrimSpace(input.QueueID),
+		ContactID:    strings.TrimSpace(input.ContactID),
+		ContactName:  strings.TrimSpace(input.ContactName),
+		ContactEmail: strings.TrimSpace(input.ContactEmail),
+		TeamID:       strings.TrimSpace(input.TeamID),
+		AssignedToID: strings.TrimSpace(input.AssignedToID),
+		Tags:         input.Tags,
+		CustomFields: customFieldsFromMap(input.CustomFields),
+	}
+
+	var created *servicedomain.Case
+	err = s.tenant.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := s.tenant.SetTenantContext(txCtx, extension.WorkspaceID); err != nil {
+			return err
+		}
+		c, createErr := s.cases.CreateCase(txCtx, params)
+		created = c
+		return createErr
+	})
+	if err != nil {
+		return nil, err
+	}
+	return hostCaseFromDomain(created), nil
+}
+
+// GetCase returns a case in the calling extension's workspace, or a not-found
+// error the handler maps to HTTP 404.
+func (s *ExtensionCoreHostService) GetCase(ctx context.Context, extensionID, caseID string) (*runtimehost.HostCase, error) {
+	if s == nil || s.extensions == nil || s.cases == nil || s.tenant == nil {
+		return nil, fmt.Errorf("core host services are not configured")
+	}
+	extension, err := s.resolveExtension(ctx, extensionID, "case:read")
+	if err != nil {
+		return nil, err
+	}
+	caseID = strings.TrimSpace(caseID)
+	if caseID == "" {
+		return nil, fmt.Errorf("case id is required")
+	}
+
+	var found *servicedomain.Case
+	err = s.tenant.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := s.tenant.SetTenantContext(txCtx, extension.WorkspaceID); err != nil {
+			return err
+		}
+		c, getErr := s.cases.GetCaseInWorkspace(txCtx, extension.WorkspaceID, caseID)
+		found = c
+		return getErr
+	})
+	if err != nil {
+		if errors.Is(err, shared.ErrNotFound) {
+			return nil, ErrCoreHostNotFound
+		}
+		return nil, err
+	}
+	return hostCaseFromDomain(found), nil
+}
+
+// resolveExtension loads the calling extension and enforces that it is active,
+// workspace-scoped with a workspace, and declares the required permission.
+// Phase 1 supports workspace-scoped extensions only; cross-workspace (admin)
+// access will be added with an explicit privilege, not the ambient admin role.
+func (s *ExtensionCoreHostService) resolveExtension(ctx context.Context, extensionID, permission string) (*platformdomain.InstalledExtension, error) {
+	extension, err := s.extensions.GetInstalledExtension(ctx, strings.TrimSpace(extensionID))
+	if err != nil {
+		return nil, err
+	}
+	if extension == nil || extension.Status != platformdomain.ExtensionStatusActive {
+		return nil, ErrExtensionHostForbidden
+	}
+	if extension.Manifest.Scope != platformdomain.ExtensionScopeWorkspace || strings.TrimSpace(extension.WorkspaceID) == "" {
+		return nil, ErrExtensionHostForbidden
+	}
+	if !manifestHasPermission(extension.Manifest, permission) {
+		return nil, ErrExtensionHostForbidden
+	}
+	return extension, nil
+}
+
+func customFieldsFromMap(m map[string]any) shareddomain.TypedCustomFields {
+	tcf := shareddomain.NewTypedCustomFields()
+	for k, v := range m {
+		tcf.SetAny(k, v)
+	}
+	return tcf
+}
+
+func hostCaseFromDomain(c *servicedomain.Case) *runtimehost.HostCase {
+	if c == nil {
+		return nil
+	}
+	return &runtimehost.HostCase{
+		ID:           c.ID,
+		HumanID:      c.HumanID,
+		WorkspaceID:  c.WorkspaceID,
+		Subject:      c.Subject,
+		Description:  c.Description,
+		Status:       string(c.Status),
+		Priority:     string(c.Priority),
+		Channel:      string(c.Channel),
+		Category:     c.Category,
+		QueueID:      c.QueueID,
+		Tags:         c.Tags,
+		ContactID:    c.ContactID,
+		ContactEmail: c.ContactEmail,
+		CustomFields: c.CustomFields.ToMap(),
+	}
+}

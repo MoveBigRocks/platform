@@ -150,6 +150,7 @@ func createAdminRouter(
 	hostAPIHandler := platformhandlers.NewExtensionHostAPIHandler(
 		cfg,
 		platformservices.NewExtensionIdentityHostService(c.Platform.Extension, c.Platform.Session, c.Platform.User),
+		platformservices.NewExtensionCoreHostService(c.Platform.Extension, c.Service.Case, c.Store),
 	)
 	adminFeatureMiddleware := adminManagementHandler.FeatureContextMiddleware()
 	attachmentUploadHandler := servicehandlers.NewAttachmentUploadHandler(c.Service.Attachment, c.Store.Cases())
@@ -203,6 +204,8 @@ func createAdminRouter(
 	router.POST("/auth/magic-link", authHandler.HandleMagicLinkRequest)
 	router.POST("/auth/logout", authHandler.Logout)
 	router.POST(runtimehost.IdentitySessionPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.IssueIdentitySession)
+	router.POST(runtimehost.CoreCasesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.CreateCase)
+	router.GET(runtimehost.CoreCasesPath+"/:caseID", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetCase)
 
 	// Protected auth routes
 	authProtected := router.Group("/auth")
@@ -461,8 +464,11 @@ func createAPIRouter(
 	hostAPIHandler := platformhandlers.NewExtensionHostAPIHandler(
 		cfg,
 		platformservices.NewExtensionIdentityHostService(c.Platform.Extension, c.Platform.Session, c.Platform.User),
+		platformservices.NewExtensionCoreHostService(c.Platform.Extension, c.Service.Case, c.Store),
 	)
 	router.POST(runtimehost.IdentitySessionPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.IssueIdentitySession)
+	router.POST(runtimehost.CoreCasesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.CreateCase)
+	router.GET(runtimehost.CoreCasesPath+"/:caseID", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetCase)
 
 	router.NoRoute(func(ctx *gin.Context) {
 		serveResolvedExtensionServiceRoute(ctx, c.Platform.Extension, serviceTargets, cfg, principalAuth)
