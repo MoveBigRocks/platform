@@ -77,13 +77,14 @@ sentry-tests:
 lint:
 	golangci-lint run
 
-# Run dead-code analysis while excluding internal test utility packages
-# (deadcode treats test-only usage as unreachable).
+# Run dead-code analysis, excluding internal test utility packages (deadcode
+# treats test-only usage as unreachable). GOWORK=off pins the version check to
+# this module so a multi-module workspace does not break the toolchain guard.
 deadcode:
 	@if ! command -v deadcode >/dev/null; then \
 		go install golang.org/x/tools/cmd/deadcode@latest; \
 	fi
-	@repo_go=$$(go list -m -f '{{.GoVersion}}'); \
+	@repo_go=$$(GOWORK=off go list -m -f '{{.GoVersion}}'); \
 	tool_path=$$(command -v deadcode); \
 	tool_go=$$(go version -m "$$tool_path" 2>/dev/null | sed -n '1s/.*: go//p'); \
 	if [ -z "$$tool_go" ] || [ "$${tool_go%.*}" != "$${repo_go%.*}" ]; then \
@@ -100,28 +101,8 @@ deadcode:
 	if [ -n "$$filtered" ]; then echo "$$filtered"; fi; \
 	if [ $$status -ne 0 ] && [ -n "$$filtered" ]; then exit $$status; fi
 
-# Run dead-code analysis on production packages only (excluding internal test utilities).
-deadcode-production:
-	@if ! command -v deadcode >/dev/null; then \
-		go install golang.org/x/tools/cmd/deadcode@latest; \
-	fi
-	@repo_go=$$(go list -m -f '{{.GoVersion}}'); \
-	tool_path=$$(command -v deadcode); \
-	tool_go=$$(go version -m "$$tool_path" 2>/dev/null | sed -n '1s/.*: go//p'); \
-	if [ -z "$$tool_go" ] || [ "$${tool_go%.*}" != "$${repo_go%.*}" ]; then \
-		echo "deadcode toolchain mismatch: repo requires Go $$repo_go, but $$tool_path was built with $${tool_go:-unknown}." >&2; \
-		echo "Reinstall with the current toolchain: go install golang.org/x/tools/cmd/deadcode@latest" >&2; \
-		exit 1; \
-	fi; \
-	tmpcache=$$(mktemp -d); \
-	tmpout=$$(mktemp); \
-	GOCACHE=$$tmpcache; \
-	go list -f '{{.ImportPath}}' ./... | grep -Ev '(^|/)internal/testutil($|/)' | xargs env GOCACHE=$$tmpcache "$$tool_path" > "$$tmpout" 2>&1; status=$$?; \
-	filtered=$$(grep -Ev '^github.com/movebigrocks/platform/internal/testutil/|^internal/testutil/' "$$tmpout" || true); \
-	rm -rf "$$tmpcache"; \
-	rm -f "$$tmpout"; \
-	if [ -n "$$filtered" ]; then echo "$$filtered"; fi; \
-	if [ $$status -ne 0 ] && [ -n "$$filtered" ]; then exit $$status; fi
+# Alias for the CI job that invokes dead-code analysis by this name.
+deadcode-production: deadcode
 
 # Deploy (CI handles this, but manual option available)
 deploy:
