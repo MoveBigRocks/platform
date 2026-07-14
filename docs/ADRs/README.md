@@ -54,3 +54,5 @@ operations platform.
 | [0018](0018-api-interface-versioning.md) | API Interface and Versioning Strategy | Accepted |
 | [0026](0026-extension-host-lifecycle-and-public-extension-sdk-boundary.md) | Extension Host Lifecycle and Public Extension SDK Boundary | Accepted |
 | [0027](0027-explicit-fleet-registration-and-disclosed-heartbeat.md) | Explicit Fleet Registration and Disclosed Heartbeat via MBR Fleet | Accepted |
+| [0028](0028-extension-endpoint-dual-auth-gate.md) | Dual-Auth Gate for Extension Endpoints | Accepted |
+| [0029](0029-language-neutral-extension-runtime-contract.md) | Language-Neutral Extension Runtime Contract | Accepted |

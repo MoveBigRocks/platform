@@ -1,46 +1,58 @@
 # Extension Endpoint Model
 
-This document defines how extensions should expose HTTP endpoints in a secure, standard way.
+This document defines how extensions expose HTTP endpoints in a secure, standard
+way, and how an extension reaches core capabilities.
 
 The short version is:
 
 - extensions do not open arbitrary internet-facing ports on their own
-- core Move Big Rocks owns external routing, auth, rate limits, request tracing, and audit boundaries
+- core Move Big Rocks owns external routing, auth, rate limits, request tracing,
+  and audit boundaries
 - extensions declare endpoint types in the manifest
-- core mounts those endpoints into approved path families and proxies to the extension runtime when needed
+- core mounts those endpoints into approved path families and proxies to the
+  extension runtime when needed
+- an extension reaches core data through the host API, not through core stores,
+  services, or a copied core
 
-Implemented slice:
-
-- asset-backed `public-page` and `public-asset` endpoints are mounted through core
-- asset-backed `admin-page` endpoints are mounted through core when they live under `/extensions/*`
-- `publicRoutes` and `adminRoutes` are resolved through the same runtime
-- service-backed public routes resolve installed `public-asset`, `public-page`, and `public-ingest` endpoints through the shared target registry
-- admin-side service-backed routes under `/extensions/*` resolve installed `admin-page` and `admin-action` endpoints through the same target registry
-- parameterized service endpoints such as `/api/:projectNumber/envelope` are supported for compatibility-sensitive first-party extensions
-- service-backed runtime health is checked through internal manifest-declared `health` endpoints during activation and `mbr extensions monitor`
-- service-backed scheduled jobs and event consumers run through the same service-target runtime registry
-- supervised process management and full external `extension-api` extraction remain out of scope for this document
-
-This is required for extensions such as `web-analytics`, `error-tracking`, and future connector or product extensions that need public ingest routes, admin pages, or machine APIs.
+The boundary between core and an extension is a wire contract, not a shared code
+surface, so an extension runtime can be written in any language. See
+[ADR 0029](ADRs/0029-language-neutral-extension-runtime-contract.md) and
+[ADR 0026](ADRs/0026-extension-host-lifecycle-and-public-extension-sdk-boundary.md).
 
 ## Design Goals
 
 - keep endpoint behavior predictable for humans and agents
-- preserve analytics and error-tracking UI and API behavior
 - let extensions add real routes without bypassing core auth and tenancy
 - make endpoint security policy declarative and reviewable
-- support both bundle and service-backed extension runtimes
+- support both asset-backed and service-backed extension runtimes
+- keep the runtime language independent of the core
+
+## Two Runtime Shapes
+
+An extension is one of two shapes, and an extension may combine them:
+
+- asset-backed: the bundle ships static assets and core serves them directly. No
+  extension process runs. This covers public pages and assets and simple admin
+  pages.
+- service-backed: the bundle ships a runtime that core supervises as a child
+  process. The runtime serves HTTP over a unix socket and receives scheduled
+  jobs and consumer events over the runtime protocol. This covers ingest,
+  webhooks, admin actions, and machine APIs.
+
+The service-backed runtime is language independent. Core supervises it and
+speaks to it over the runtime protocol, so the runtime binary may be Go, and may
+later be another language, without changing this contract.
 
 ## Standard Endpoint Classes
 
-Every extension endpoint should declare one of these classes:
+Every extension endpoint declares one of these classes:
 
 - `public-page`
   Public HTML or static-site routes such as careers pages.
 - `public-asset`
   Static assets such as scripts, stylesheets, and images.
 - `public-ingest`
-  Public write endpoints such as analytics capture or form-adjacent forms.
+  Public write endpoints such as analytics capture or form-adjacent intake.
 - `webhook`
   Signed inbound callbacks from trusted providers.
 - `admin-page`
@@ -52,44 +64,35 @@ Every extension endpoint should declare one of these classes:
 - `health`
   Internal runtime health endpoints used by core supervision.
 
-These classes are different on purpose. A public ingest route should not inherit the same defaults as an admin action endpoint.
+These classes are different on purpose. A public ingest route does not inherit
+the same defaults as an admin action endpoint.
 
 ## Path Families
 
-The long-term target is:
+Extension paths are predictable:
 
-Milestone 1 should keep extension paths predictable:
+- public pages and assets: `/ext/<extension-slug>/*`
+- admin pages: `/admin/ext/<extension-slug>/*`
+- admin actions: `/admin/ext/<extension-slug>/actions/*`
+- extension APIs: `/api/ext/<extension-slug>/*`
+- public ingest and provider-facing endpoints: `/ingest/ext/<extension-slug>/*`
+- internal health: loopback or unix-socket only, not public
 
-- public pages and assets:
-  - `/ext/<extension-slug>/*`
-- admin pages:
-  - `/admin/ext/<extension-slug>/*`
-- admin actions:
-  - `/admin/ext/<extension-slug>/actions/*`
-- extension APIs:
-  - `/api/ext/<extension-slug>/*`
-- public ingest and provider-facing endpoints:
-  - `/ingest/ext/<extension-slug>/*`
-- internal health:
-  - loopback or unix-socket only, not public
+Compatible aliases can be added where product continuity requires them, but they
+register through the same endpoint catalog. For example, `web-analytics` may
+register `/js/analytics.js` as an alias to its standard asset route, and
+`error-tracking` may register provider-compatible ingest aliases. Aliases are
+explicit, reviewed, and reserved to first-party or privileged extensions when
+they affect public product contracts.
 
-Compatible aliases can be added where needed for product continuity, but they should still be registered through the same endpoint catalog. For example:
-
-- `web-analytics` may register `/js/analytics.js` as an alias to its standard asset route
-- `error-tracking` may register Sentry-compatible ingest aliases
-
-Aliases should be explicit, reviewed, and reserved to first-party or privileged extensions when they affect public product contracts.
-
-The asset-backed runtime supports:
-
-- public routes on their declared mount paths, except reserved core paths such as `/auth`, `/health`, `/metrics`, `/pricing`, and `/signup`
-- admin routes on their declared mount paths only when they live under `/extensions/*`
-
-That narrower contract keeps asset-backed extensions predictable while the richer service-backed runtime surface stays bounded.
+Core reserves its own paths, such as `/auth`, `/health`, `/metrics`, `/pricing`,
+and `/signup`, and rejects extension routes that collide with them. Active
+public paths must not collide across workspaces, and active admin paths must not
+collide within a workspace.
 
 ## Manifest Contract
 
-An endpoint declaration should include:
+An endpoint declaration includes:
 
 - `name`
 - `class`
@@ -103,7 +106,7 @@ An endpoint declaration should include:
 - `serviceTarget`
 - `uiIntegration` when relevant
 
-Recommended auth modes:
+Auth modes:
 
 - `public`
 - `signed-webhook`
@@ -112,7 +115,7 @@ Recommended auth modes:
 - `extension-token`
 - `internal-only`
 
-Recommended workspace binding modes:
+Workspace binding modes:
 
 - `none`
 - `workspace-from-session`
@@ -120,20 +123,15 @@ Recommended workspace binding modes:
 - `workspace-from-route`
 - `instance-scoped`
 
-Core should reject invalid combinations. Example:
+Core rejects invalid combinations. For example, an `admin-page` cannot use
+`public`, a `public-ingest` cannot use `session` as its only auth mode, and a
+`health` endpoint cannot be internet-facing.
 
-- `admin-page` cannot use `public`
-- `public-ingest` cannot use `session` as its only auth mode
-- `health` cannot be internet-facing
-
-Instance-admin rule:
-
-- if a workspace-scoped extension exposes admin pages, an instance admin without
-  an active workspace should still get a working entrypoint
-- service-backed admin pages can rely on core to inject the resolved install
-  workspace
-- static asset admin pages that call workspace-bound APIs should preserve the
-  `?workspace=...` hint on those API requests
+For instance-admin reach, a workspace-scoped extension that exposes admin pages
+still resolves to a working entrypoint for an instance admin without an active
+workspace: service-backed admin pages rely on core to inject the resolved
+install workspace, and asset admin pages that call workspace-bound APIs preserve
+the `?workspace=...` hint on those API requests.
 
 ## Security Defaults by Endpoint Class
 
@@ -173,8 +171,8 @@ Instance-admin rule:
 - workspace membership and RBAC enforced by core
 - mounted under `/extensions/*`
 - extension nav registration required
-- workspace-scoped pages should still be reachable from instance-admin
-  navigation without a live workspace session
+- workspace-scoped pages remain reachable from instance-admin navigation
+  without a live workspace session
 
 ### `admin-action`
 
@@ -194,68 +192,78 @@ Instance-admin rule:
 
 - not exposed publicly
 - used only by core supervision
-- must report extension runtime readiness and version
+- reports extension runtime readiness and version
 
 ## Routing Model
 
-Core Move Big Rocks owns the external HTTP surface.
+Core Move Big Rocks owns the external HTTP surface. That means:
 
-That means:
-
-- the main routers still terminate TLS and accept external traffic
+- the main routers terminate TLS and accept external traffic
 - core resolves the endpoint declaration from the installed extension catalog
 - core applies the declared auth, rate limit, body limit, and content rules
 - core injects trusted runtime context
 - only then does core serve a static asset or proxy to the extension runtime
 
-Extensions should not attach themselves directly to the public router or database connection.
+Extensions do not attach themselves directly to the public router or to a core
+database connection.
 
-## Runtime Contract for Service-Backed Extensions
+## Runtime Protocol for Service-Backed Extensions
 
-Service-backed extensions should run behind a supervised internal interface, such as:
+A service-backed runtime runs behind a unix socket that core supervises. Core
+delivers three things to the runtime over that socket:
 
-- loopback HTTP
-- unix socket
-- a core-managed sidecar process
+- proxied HTTP requests for the runtime's declared endpoints
+- scheduled jobs the manifest declares
+- consumer events the manifest subscribes to
 
-Core should pass trusted context using signed or internal-only headers:
+Core forwards trusted context on each proxied request using headers it controls:
 
 - request ID
 - authenticated principal
 - workspace ID when resolved
 - extension install ID
 - instance ID
+- a short-lived bearer host token for host-API calls
 
-The extension runtime should be treated as untrusted application code relative to core routing and tenancy enforcement.
+The runtime is treated as untrusted application code relative to core routing
+and tenancy enforcement. It reads forwarded context from the request rather than
+holding any core state of its own.
 
-## How Endpoints Hook Into Core Services
+## Reaching Core Capabilities
 
-Extensions should not reach directly into core storage internals. They should integrate through sanctioned surfaces:
+An extension does not read or write `core_*` schemas and does not import core
+stores, services, or a vendored copy of the core. It reaches core capabilities
+through sanctioned surfaces:
 
-- GraphQL reads and writes for approved primitives
-- typed command/event flows through the outbox and event bus
-- documented admin action contracts where needed
+- the host API at `/__mbr/host/v1/...`, authenticated by the per-request bearer
+  host token, carrying JSON, for reading and writing core entities the
+  extension is permitted to touch (for example cases, contacts, and queues)
+- typed command and event flows through the outbox and event bus for
+  fire-and-forget signals and cross-extension coordination
+- documented admin action contracts where an operator action is required
+
+The host API applies the calling extension's workspace scope and permissions and
+runs each write under the extension's workspace tenant context, so row-level
+security applies exactly as it does for a user in that workspace. A capability
+that an extension needs is added as a host-API operation expressed in JSON, not
+by handing a core object across the boundary.
 
 Typical examples:
 
-- ATS careers form submission:
-  - public page endpoint renders the job page
-  - form submission reaches a public ingest route
-  - extension requests core case/contact creation through sanctioned core actions
-- analytics capture:
-  - public ingest endpoint receives event payload
-  - extension stores or rolls up analytics data in its own bounded runtime
-  - admin pages and widgets read analytics state through extension APIs and shared shell integration
-- error tracking:
-  - webhook or ingest endpoint accepts compatible error payloads
-  - extension groups and processes issues
-  - extension publishes typed events for automation and support linking
+- ATS careers submission: a public page renders the job page, a public ingest
+  route receives the submission, and the runtime requests core contact and case
+  creation through the host API
+- analytics capture: a public ingest endpoint receives the event, the runtime
+  stores and rolls up analytics data in its own `ext_*` schema, and admin pages
+  read that state through the runtime's own APIs and the shared shell
+- error tracking: a webhook or ingest endpoint accepts compatible error
+  payloads, the runtime groups issues in its own schema, and it links cases and
+  publishes typed events through the host API and the event bus
 
 ## UI Integration Rules
 
-Endpoint registration also needs UI registration.
-
-If an extension defines admin pages, it must also be able to declare:
+Endpoint registration also needs UI registration. An extension that defines
+admin pages declares:
 
 - admin navigation entries
 - page titles and icons
@@ -263,29 +271,24 @@ If an extension defines admin pages, it must also be able to declare:
 - optional dashboard widgets
 - saved filter or workspace-view integration where supported
 
-Core owns the shell, navigation rendering, workspace switcher, and shared auth. The extension owns the content inside its registered surfaces.
+Core owns the shell, navigation rendering, workspace switcher, and shared auth.
+The extension owns the content inside its registered surfaces.
 
-## Milestone 1 Rules
+## Runtime Capabilities by Shape
 
-Milestone 1 should standardize on these rules:
-
-- bundle extensions can define `public-page`, `public-asset`, and simple `admin-page` surfaces backed by packaged assets
-- service-backed extensions can additionally define `public-ingest`, `webhook`, `admin-action`, and richer `extension-api` surfaces
-- privileged identity and connector extensions can only use the service-backed runtime
-- first-party-only aliases are allowed where compatibility matters, such as analytics scripts or Sentry-compatible endpoints
-- every endpoint declaration must be visible to the CLI, admin diagnostics, and security review flow
-
-Implemented:
-
-- bundle extensions can mount asset-backed public pages and assets from stored extension assets
-- bundle extensions can mount asset-backed admin pages under `/extensions/*`
-- route resolution is workspace-aware for admin pages and instance-wide for public pages
-- active public path collisions are rejected across workspaces
-- active admin path collisions are rejected within a workspace
+- asset-backed extensions define `public-page`, `public-asset`, and simple
+  `admin-page` surfaces backed by packaged assets
+- service-backed extensions additionally define `public-ingest`, `webhook`,
+  `admin-action`, and richer `extension-api` surfaces
+- privileged identity and connector extensions use the service-backed runtime
+- first-party or privileged aliases are allowed where compatibility matters,
+  such as analytics scripts or provider-compatible endpoints
+- every endpoint declaration is visible to the CLI, admin diagnostics, and the
+  security review flow
 
 ## Operational Requirements
 
-Every installed extension endpoint should be:
+Every installed extension endpoint is:
 
 - listed in the extension catalog
 - versioned
@@ -294,4 +297,12 @@ Every installed extension endpoint should be:
 - auditable
 - disableable without uninstalling the whole instance
 
-This gives operators and agents one predictable place to inspect what an extension is exposing.
+This gives operators and agents one predictable place to inspect what an
+extension is exposing.
+
+## Related
+
+- [ADR 0026](ADRs/0026-extension-host-lifecycle-and-public-extension-sdk-boundary.md)
+- [ADR 0029](ADRs/0029-language-neutral-extension-runtime-contract.md)
+- [ADR 0028](ADRs/0028-extension-endpoint-dual-auth-gate.md)
+- [EXTENSION_SECURITY_MODEL](EXTENSION_SECURITY_MODEL.md)

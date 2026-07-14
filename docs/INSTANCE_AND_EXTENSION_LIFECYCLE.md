@@ -14,7 +14,7 @@ The goal is not just to make the architecture technically sound. The goal is to 
 
 ## Product UX Rule
 
-Milestone 1 should optimize for this simple default:
+The product optimizes for this simple default:
 
 1. one public core repo
 2. one private instance repo
@@ -32,14 +32,14 @@ If the setup asks for more than that on day one, it is too complex.
 
 ## The Intended User Journey
 
-The ideal Milestone 1 customer journey is:
+The ideal customer journey is:
 
 1. Discover Move Big Rocks through the public core repo and docs.
 2. Understand the model quickly:
    - free core first
    - extensions are optional
    - Move Big Rocks is self-hosted
-- the CLI is the operator and agent surface
+   - the CLI is the operator and agent surface
 3. Create one private instance repo from the public instance-template repo.
 4. Open that repo in Codex or Claude Code.
 5. Tell the agent to follow `START_HERE.md`.
@@ -221,16 +221,26 @@ The extension repo owns extension logic. It does not own install, activate,
 monitor, rollback, or route admission. Those remain explicit host-managed steps
 on the Move Big Rocks platform surface.
 
-Custom extension repos should depend on public SDK packages and ordinary
-libraries only. They should not import core repo packages. The public surface is:
+Custom extension repos depend on the public wire contract and ordinary libraries
+only. They do not import core repo packages. The boundary an extension builds
+against is a language-neutral wire contract, not a set of Go imports:
 
-- runtime helpers from `MoveBigRocks/extension-sdk`
-- host-facing public Go packages from `github.com/movebigrocks/extension-sdk/extensionhost/...`
+- Core delivers proxied HTTP requests, scheduled jobs, and consumer events to the
+  runtime over a unix socket.
+- The runtime calls back to the host API under `/__mbr/host/v1/...` with a
+  per-request bearer host token and JSON request and response bodies.
+- The extension owns an `ext_*` PostgreSQL schema through SQL migrations it ships
+  in its bundle.
+- Bundles are signed with Ed25519 over the bundle bytes.
 
 For service-backed routes, the host forwards extension identity, effective
-extension config, session context, and admin navigation/widget context into the
-runtime request. Extension runtimes should consume that via the SDK instead of
-querying core stores for their own installation metadata.
+extension config, session context, and admin navigation and widget context on
+the incoming request. The runtime reads that forwarded context from the request
+and calls the host API for anything else it needs, rather than querying core
+stores for its own installation metadata. The Go SDK is one runtime that
+implements this contract; the boundary is the contract itself, so a runtime in
+another language consumes it the same way. See
+[ADR 0029](./ADRs/0029-language-neutral-extension-runtime-contract.md).
 
 Publishing to a marketplace should be optional.
 
@@ -279,7 +289,7 @@ This is especially important for:
 - extensions with custom endpoints
 - extensions that touch email, auth, or external integrations
 
-Milestone 1 should make this review path explicit and agent-friendly, not implicit tribal knowledge.
+This review path stays explicit and agent-friendly, not implicit tribal knowledge.
 
 ## Stage 5: Build and Package the Extension
 
@@ -287,7 +297,7 @@ The extension repo should produce a signed bundle.
 
 ## One Supported Private-Extension Path
 
-Milestone 1 now has one explicit end-to-end path for private extension work.
+There is one explicit end-to-end path for private extension work.
 
 1. Create a private repo from
    [MoveBigRocks/extension-sdk](https://github.com/MoveBigRocks/extension-sdk).
@@ -361,7 +371,7 @@ Before production activation, the operator should be able to:
 
 This is important because extension deployment should not feel like "go straight to production and hope."
 
-For Milestone 1, the minimum safe preview path should be:
+The minimum safe preview path is:
 
 - install into a non-critical sandbox workspace on the live instance
 - run `mbr extensions validate`
@@ -387,22 +397,20 @@ The operator or agent should:
 6. activate it in the target workspace or instance
 7. verify health and the expected UX
 
-The instance repo should remain the source of truth for what should be running.
+The instance repo remains the source of truth for what should be running.
 
-Current model:
+Production activation runs through the private instance repo deploy flow:
 
-- the private instance repo deploy flow now auto-reconciles
-  `extensions/desired-state.yaml` into `installed_extensions`
-- service-backed runtime deployment now derives from generated desired-state
-  runtime manifests instead of a separate hand-maintained file
+- the deploy flow reconciles `extensions/desired-state.yaml` into the installed
+  extension state
+- service-backed runtime deployment derives from the generated desired-state
+  runtime manifest rather than a separately maintained file
 - deploy and verify archive reconciliation artifacts and fail closed on drift
-- schema-backed extension upgrades now prefer the verified bundle supplied by
-  the current reconcile/apply operation and repair unreadable stored bundle
-  payloads before running migrations
-- valid stored bundle mismatches still fail closed through migration checksum
-  drift detection instead of being silently overwritten
+- schema-backed extension upgrades apply the verified bundle from the current
+  reconcile operation, and migration checksum drift fails closed rather than
+  being silently overwritten
 
-The control-plane record for that implementation lives in
+The reconciliation contract is defined in
 [Extension Desired-State Reconciliation](./EXTENSION_DESIRED_STATE_RECONCILIATION_PLAN.md).
 
 ## Stage 8: Monitor, Upgrade, Deactivate, Uninstall
@@ -428,7 +436,7 @@ The default removal path should be:
 
 ## What Must Feel Easy
 
-For Milestone 1, these tasks need to feel straightforward:
+These tasks need to feel straightforward:
 
 - deploy Move Big Rocks on a fresh Linux machine
 - log in through the browser-backed CLI flow
@@ -443,41 +451,13 @@ For Milestone 1, these tasks need to feel straightforward:
 
 If any of these require reading five unrelated documents and inventing the missing glue, the user experience is still wrong.
 
-## Where the UX Is Right Today
+## The Product Model
 
-The direction is right:
-
-- one private instance repo by default
-- one CLI
-- one agent handoff file
-- optional second repo only for real custom logic
-- extensions as the main path for off-the-shelf and customer-built capabilities
-
-That is the right product model.
-
-## Where the UX Is Still Not Good Enough
-
-The remaining friction points are now smaller and mostly about polish:
-
-- some first-party extensions are still intentionally narrower than the long-term
-  product vision
-- preview and security review policy still spans the instance repo plus the
-  extension repo, even though the supported command path is now explicit
-- sandbox activation and extension review guidance still spans multiple files
-
-Those are the remaining experience gaps to close.
-
-## Milestone 1 UX Decision
-
-Yes, we are targeting the right user experience.
-
-The right Milestone 1 shape is:
+The product model is:
 
 - free core Move Big Rocks is valuable on its own
 - one private instance repo is enough for most customers
 - the CLI is the main operator and agent surface
 - extensions are the way to add optional product areas
 - custom extensions are private by default
-- agents should be able to help with setup, deployment, extension authoring, validation, activation, and operation
-
-The work that remains is not a change of direction. It is finishing the runtime, repo, and documentation layers so the experience becomes true end to end.
+- agents help with setup, deployment, extension authoring, validation, activation, and operation

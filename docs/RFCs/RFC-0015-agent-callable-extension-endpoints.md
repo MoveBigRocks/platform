@@ -13,15 +13,19 @@ Adds an `agentPaths` bucket to the extension contract so agent-callable paths
 are first-class alongside `adminPaths` and `publicPaths`. Web-analytics
 property management becomes the first dogfood adopter.
 
+This is the inbound direction, an agent or the `mbr` CLI calling into an
+extension over `/extensions/*`. It is distinct from the outbound host API an
+extension uses to call back into core; both surfaces coexist on the same
+runtime.
+
 ## Problem Statement
 
 The platform already implements `auth: agent_token` and
-`workspace_from_agent_token` workspace binding for extension endpoints
-(`cmd/api/extension_service_targets.go:212-228, :290-308`). The enum values
+`workspace_from_agent_token` workspace binding for extension endpoints in the
+extension service-target layer. The enum values
 `ExtensionEndpointAuthAgentToken` and `ExtensionWorkspaceBindingFromAgentToken`
-exist in `pkg/extensionhost/platform/domain/extension.go:110, :120`. The
-endpoint model doc lists `agent_token` as a recommended auth mode for
-`extension_api` endpoints.
+exist in the extension host domain. The endpoint model doc lists `agent_token`
+as a recommended auth mode for `extension_api` endpoints.
 
 However, **no extension in the codebase currently uses it**. Every
 `extension_api` endpoint across `ats`, `error-tracking`, and `web-analytics`
@@ -206,74 +210,14 @@ Keep the contract schema unchanged; let `extension_api` endpoints with
 `auth: agent_token` show up in `adminPaths` alongside session endpoints.
 
 **Pros:** zero platform-side changes.
-**Cons:** semantically wrong — `adminPaths` becomes a grab-bag of
+**Cons:** semantically wrong; `adminPaths` becomes a grab-bag of
 "any authenticated path". Makes it harder for tooling and operators to reason
 about which paths are browser-only vs agent-callable. Leaves the dogfood
 story half-built.
 **Why rejected:** the user explicitly asked for "no shortcuts". The contract
 is the canonical inventory; it should reflect the distinction.
 
-## Verification Criteria
-
-### Unit Tests
-- [ ] `deriveExtensionContractFromManifest` emits `agentPaths` only for
-      `extension_api` + `auth: agent_token`
-- [ ] `extension_api` + `auth: session` still lands in `adminPaths`
-- [ ] `compareExtensionContract` flags drift between declared contract
-      `agentPaths` and manifest-derived `agentPaths`
-- [ ] Normalization sorts `agentPaths` deduplicated
-
-### Integration Tests
-- [ ] `extension_service_targets_test.go`: agent-token request to a
-      web-analytics agent endpoint succeeds and populates `workspace_id` from
-      the token; session request to the same path is rejected
-- [ ] Session request to existing admin property endpoint still succeeds
-
-### Acceptance Criteria
-- [ ] After the web-analytics release, `mbr agents tokens create` + curl to
-      `POST /extensions/web-analytics/api/agent/properties` with
-      `{"domain":"tuinplan.nl","timezone":"Europe/Amsterdam"}` returns `201`
-      and creates a row in `ext_demandops_web_analytics.properties`
-- [ ] The admin UI at `admin.mbr.demandops.com/extensions/web-analytics`
-      continues to list, create, update, delete properties with no regressions
-- [ ] `extension.contract.json` lint passes; contract file includes the new
-      `agentPaths` block
-
-## Implementation Checklist
-
-- [ ] RFC approved
-- [ ] Platform: `agentPaths` contract bucket + derivation + tests
-- [ ] Platform: integration test for agent-token path on extension API
-- [ ] Extensions: web-analytics manifest + contract + agent skill
-- [ ] `make test-all` passes (platform)
-- [ ] Extension `make check` passes (extensions)
-- [ ] Platform + extension builds cut new OCI versions
-- [ ] `mbr-prod` pin bumped, reconciled on mbr.demandops.com
-- [ ] tuinplan.nl property created via the new agent surface as end-to-end proof
-- [ ] RFC status → `verified`
-
-## Open Questions
-
-- [ ] Permissions/scopes on agent tokens: do we gate `properties.create` behind
-      a named permission on the agent membership, or is workspace membership
-      sufficient for this first iteration? Proposal: workspace membership for
-      the initial release; tighten with named permissions in a follow-up
-      once we have more than one extension surface to compare against.
-- [ ] Do we want to document a naming convention for the agent path prefix
-      (`/api/agent/...` in this RFC)? Proposal: yes, make it a convention
-      documented in `docs/EXTENSION_ENDPOINT_MODEL.md` in a follow-up PR; keep
-      this RFC scoped to web-analytics as the first adopter.
-
 ## Related
 
 - **RFCs:** RFC-0002 (Agent Access), RFC-0004 (Extension System)
 - **Docs:** `docs/EXTENSION_ENDPOINT_MODEL.md`, `docs/AGENT_CLI.md`
-
----
-
-## Changelog
-
-| Date | Author | Change |
-|------|--------|--------|
-| 2026-04-21 | @adrianmcphee | Initial draft |
-| 2026-04-21 | @adrianmcphee | Document dual-auth gate on `/extensions/*` after discovering declared agent endpoints were runtime-inert behind the session-only middleware; split implementation into manifest-side (PR 1/2) and router-side (PR 3) atomic changes; cross-reference ADR 0028. |

@@ -30,9 +30,9 @@ modes already bit production:
    `sudo /bin/systemctl restart mbr-extension-runtime@...` silently fails
    (sudo returns a password prompt over a non-tty ssh heredoc, exit non-zero,
    the `2>/dev/null || true` patterns and `set -e` interactions with for-loops
-   swallow it). The deploy reports green while the old binary keeps serving.
-   This happened on 2026-04-21 with web-analytics v0.8.25 and was only caught
-   because a curl against the new agent surface returned 404.
+   swallow it). The deploy reports green while the old binary keeps serving,
+   and the missing surface is only caught when a request against it returns a
+   404 rather than by any deploy-time signal.
 
 2. **Adding a new extension is a documented ops config change.** Six sudoers
    lines, a new env file, a systemd unit start, a service file edit. Easy to
@@ -71,12 +71,18 @@ lifecycle of all extension runtime processes for the running slot:
   stragglers and closes its internal wait group.
 - **Process death on parent exit**: children are spawned with
   `SysProcAttr{Pdeathsig: syscall.SIGTERM}` (Linux) so a core crash reaps them
-  automatically — belt-and-braces with the explicit SIGTERM on the shutdown
-  path.
+  automatically, a backstop to the explicit SIGTERM on the shutdown path.
 - **Logging**: stdout and stderr of each child are scanned line-by-line and
   emitted through the core's logger with a `source=extension_runtime slug=...`
   tag. Extension logs end up in the same `journalctl -u mbr-blue` stream as
   the core.
+
+The supervisor is runtime-language-agnostic. It spawns each extension runtime as
+a supervised child process and reaches it over the `unix_socket_http` runtime
+protocol, independent of the language the runtime is written in. A TypeScript
+runtime added under ADR-0029 is supervised the same way, as a child process over
+the same protocol, so this in-process supervisor model survives language
+neutrality.
 
 ### Deploy simplification (mbr-prod repo)
 
@@ -98,28 +104,28 @@ lifecycle of all extension runtime processes for the running slot:
 
 ### Changes Required
 
-1. **`platform/internal/extensionhost/supervisor/supervisor.go`** — new
+1. **`platform/internal/extensionhost/supervisor/supervisor.go`**: new
    package with `Supervisor`, `Config`, `New`, `Start`, `Stop`. Tested with
    a fake runtime binary that can be scripted to crash, hang, or exit cleanly.
-2. **`platform/cmd/api/main.go`** — construct `Supervisor` after DB init,
+2. **`platform/cmd/api/main.go`**: construct `Supervisor` after DB init,
    start it before the HTTP server starts, stop it after HTTP server shutdown.
-3. **`platform/pkg/extensionhost/infrastructure/config/config.go`** — new
+3. **`platform/pkg/extensionhost/infrastructure/config/config.go`**: new
    `MBRSlot` config (env `MBR_SLOT`, default empty). When non-empty, the
    socket dispatcher and supervisor both append the slot to
    `EXTENSION_RUNTIME_DIR`.
-4. **`platform/internal/extensionhost/runtime/socket_transport.go`** — honour
+4. **`platform/internal/extensionhost/runtime/socket_transport.go`**: honour
    slot-scoped socket paths in `doUnixSocketRequest`.
-5. **`mbr-prod/deploy/mbr-blue.service` + `mbr-green.service`** — add
+5. **`mbr-prod/deploy/mbr-blue.service` + `mbr-green.service`**: add
    `Environment=MBR_SLOT=blue` and `MBR_SLOT=green` respectively.
-6. **`mbr-prod/deploy/mbr-sudoers`** — remove 26 lines of per-extension
+6. **`mbr-prod/deploy/mbr-sudoers`**: remove 26 lines of per-extension
    sudoers + the one `cp` rule for the extension-runtime service file.
-7. **`mbr-prod/deploy/mbr-extension-runtime@.service`** — delete.
-8. **`mbr-prod/.github/workflows/_deploy.yml`** — remove the two for-loops
+7. **`mbr-prod/deploy/mbr-extension-runtime@.service`**: delete.
+8. **`mbr-prod/.github/workflows/_deploy.yml`**: remove the two for-loops
    (stop + restart-with-ready-wait), remove the service-file install block,
    remove the env-file rsync (still sync sudoers). Add a one-shot cleanup
    step that removes any legacy `mbr-extension-runtime@*.service` instance
    and template from `/etc/systemd/system/` if present.
-9. **`mbr-prod/deploy/setup.sh`** — drop the initial install of the
+9. **`mbr-prod/deploy/setup.sh`**: drop the initial install of the
    extension-runtime template (superseded by this RFC); sudoers rule for
    template install also removed.
 
@@ -138,8 +144,9 @@ lifecycle of all extension runtime processes for the running slot:
 
 | ADR / RFC | Title | Compliance |
 |-----------|-------|------------|
-| ADR 0014 | Blue-Green Deployment | Both slots now truly independent — each owns its runtime processes and sockets. Cutover semantics unchanged externally. |
+| ADR 0014 | Blue-Green Deployment | Both slots now truly independent, each owning its runtime processes and sockets. Cutover semantics unchanged externally. |
 | ADR 0026 | Extension Host Lifecycle and Public Extension SDK Boundary | No SDK boundary change. Runtimes still talk to the platform over the documented unix_socket_http protocol. |
+| ADR 0029 | Language-Neutral Extension Runtime Contract | Supervision is language-agnostic. A runtime in any supported language is a supervised child process over the same `unix_socket_http` contract, so the supervisor model holds under language neutrality. |
 | RFC-0004 | Extension System | Clarifies the runtime lifecycle model implicit in RFC-0004. |
 
 ## Alternatives Considered
@@ -184,75 +191,20 @@ Add `PartOf=mbr-blue.service mbr-green.service` to the template so a slot
 restart cascades into the runtime units.
 
 **Pros:** deploy simplifies; no explicit restart loop.
-**Cons:** sudoers drift remains — `PartOf` only handles stop/restart, not
+**Cons:** sudoers drift remains; `PartOf` only handles stop/restart, not
 initial start of a new-slug template instance. Adding an extension still
 requires sudoers updates for `enable` + `start`. Also, `PartOf` behaviour on
 templated units across two separate parent services is subtle enough to
 warrant its own bug budget.
-**Why rejected:** cleaner than 1–3, still touches sudoers and keeps the
+**Why rejected:** cleaner than 1 to 3, still touches sudoers and keeps the
 ceremony.
-
-## Verification Criteria
-
-### Unit Tests (supervisor package)
-- [ ] Supervisor spawns every entry in a test runtime-manifest
-- [ ] Supervisor restarts a child that exits with non-zero and respects
-      backoff (>= 2s between first and second spawn, <= 60s cap)
-- [ ] Supervisor does NOT restart children once `Stop` has been called
-- [ ] `Stop` sends SIGTERM, then SIGKILL after grace, in that order
-- [ ] Missing binary path surfaces an error at `Start` time rather than
-      silently spin-looping
-
-### Integration Tests
-- [ ] End-to-end test in `cmd/api` that boots the core with a one-entry
-      runtime-manifest pointing at a scripted fake binary, asserts the
-      child is alive, issues a shutdown signal, asserts the child exits
-      within grace.
-
-### Acceptance Criteria (post-deploy)
-- [ ] `/etc/systemd/system/mbr-extension-runtime@.service` is absent on
-      mbr.demandops.com
-- [ ] `/etc/systemd/system/mbr-extension-runtime@*-runtime.service`
-      instance files absent
-- [ ] `/etc/sudoers.d/mbr` contains no `mbr-extension-runtime@` rules
-- [ ] `pgrep -f web-analytics-runtime` shows exactly one PID, a child of
-      the active `mbr-blue` or `mbr-green` process (verified via
-      `/proc/<pid>/status` `PPid:`)
-- [ ] `journalctl -u mbr-green -n 50` shows lines tagged
-      `source=extension_runtime slug=web-analytics` for recent analytics
-      ingest events
-- [ ] `curl -H "Authorization: Bearer <agent_token>" POST
-      /extensions/web-analytics/api/agent/properties` still returns 201
-      (the RFC-0015 surface continues to work after the architectural shift)
-
-## Implementation Checklist
-
-- [ ] RFC committed
-- [ ] Supervisor package + unit tests
-- [ ] Integration test in cmd/api
-- [ ] Supervisor wired into cmd/api/main.go with proper start/stop ordering
-- [ ] Slot-scoped socket path support in config + socket dispatcher
-- [ ] mbr-blue.service and mbr-green.service updated with `MBR_SLOT=`
-- [ ] mbr-sudoers cleaned up; sudoers re-synced on every deploy
-- [ ] mbr-extension-runtime@.service removed from repo
-- [ ] _deploy.yml simplified
-- [ ] One-shot cleanup of legacy units on mbr.demandops.com (first
-      post-change deploy)
-- [ ] Post-deploy acceptance checks run green against mbr.demandops.com
 
 ## Related
 
 - **Related RFCs:** RFC-0004 (Extension System), RFC-0015 (Agent-Callable
   Extension Endpoints)
 - **Related ADRs:** ADR 0014 (Blue-Green Deployment), ADR 0026 (Extension
-  Host Lifecycle and Public Extension SDK Boundary), ADR 0028 (Dual-Auth Gate)
+  Host Lifecycle and Public Extension SDK Boundary), ADR 0028 (Dual-Auth Gate),
+  ADR 0029 (Language-Neutral Extension Runtime Contract)
 - **Supersedes:** the per-extension systemd/sudoers pattern established in
   `setup.sh`, not formally documented in an ADR
-
----
-
-## Changelog
-
-| Date | Author | Change |
-|------|--------|--------|
-| 2026-04-21 | @adrianmcphee | Initial draft, written after the silent sudoers-drift failure during the web-analytics-v0.8.25 deploy. |

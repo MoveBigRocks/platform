@@ -1,6 +1,5 @@
 # Extension Security Model
 
-**Document version:** 2026-03-13  
 **Status:** Active security and trust policy
 
 ## Purpose
@@ -32,7 +31,7 @@ Rules:
 - bundles must be signed
 - release pipeline is controlled by the Move Big Rocks first-party team
 - standard-risk first-party bundles can be published publicly for free
-- privileged capabilities are allowed only through first-party reviewed paths in Milestone 1
+- privileged capabilities are allowed only through first-party reviewed paths
 
 ### Customer-built private extensions
 
@@ -53,7 +52,7 @@ Rules:
 
 ### Marketplace extensions
 
-Later, not the default Milestone 1 path.
+Later, not the default path.
 
 Rules:
 
@@ -140,7 +139,7 @@ Before activating a self-built extension, the agent or operator should answer:
 9. Can a malicious or broken configuration leak workspace data?
 10. Does the extension introduce a customer-facing security boundary such as auth, email, or messaging?
 
-If the answer to the last question is yes, the extension should not go through the generic self-built path in Milestone 1.
+If the answer to the last question is yes, the extension should not go through the generic self-built path.
 
 ## Verification Gates
 
@@ -155,14 +154,14 @@ Before activation, a self-built extension should pass these gates:
 - threat-model review recorded in the instance repo
 - sandbox-workspace activation before production activation
 
-The current core implementation already enforces some structural checks:
+The core host enforces these structural checks:
 
 - manifest shape
 - route asset presence
 - customization asset presence
 - generic runtime policy for allowed scope/risk/kind combinations
 
-The remaining checks should live in the extension authoring workflow and instance repo policy until the CLI automates them.
+The remaining checks live in the extension authoring workflow and instance repo policy.
 
 Extensions should also use the same outbox and event-bus pattern as core whenever they publish or consume domain events. That keeps retries, auditability, and operational visibility consistent across first-party and customer-built extensions.
 
@@ -172,7 +171,7 @@ Use this sequence:
 
 1. Create the extension in a separate repo from core and from the instance repo.
 2. Keep the extension `workspace` scoped unless there is a compelling reason otherwise.
-3. Limit it to `product` or `operational` kind for Milestone 1.
+3. Limit it to `product` or `operational` kind.
 4. Write the manifest with the smallest possible permission set.
 5. Run a threat-model prompt and record the result in the instance repo.
 6. Run tests.
@@ -192,9 +191,9 @@ The value proposition for a semi-technical or non-technical user is:
 
 That is the missing layer between "I can generate code" and "I can safely run this in production."
 
-## Milestone 1 Product Promise
+## Product Promise
 
-Milestone 1 should make the following promise clearly:
+The product makes the following promise clearly:
 
 - anyone can deploy free core Move Big Rocks and use it as a support and operations foundation
 - customers can safely install first-party signed bundles, including a free public bundle set for ATS, error tracking, and web analytics

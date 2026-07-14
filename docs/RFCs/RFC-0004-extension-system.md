@@ -118,6 +118,13 @@ Used for:
 Core remains responsible for auth, tenancy, routing, lifecycle, and health
 supervision. The extension owns its specialized behavior.
 
+A service-backed runtime is a language-neutral client of a wire contract, not a
+package linked into core. Core delivers proxied HTTP requests, scheduled jobs,
+and consumer events to the runtime over a unix socket (the runtime protocol),
+and the runtime calls back to the host API under `/__mbr/host/v1/...` with a
+bearer host token and JSON bodies for any core capability it needs. ADR-0029 is
+the boundary decision (building on ADR-0026); see it for the contract details.
+
 ## Endpoint Model
 
 Extensions use a standard endpoint contract rather than ad hoc route
@@ -139,7 +146,9 @@ activation and monitoring use the same contract.
 
 Core owns the external routers, auth, rate limiting, tracing, and proxy
 boundaries. Extensions declare endpoints and core mounts them into approved
-path families.
+path families. Core matches an incoming request to a declared endpoint and
+proxies it to the extension runtime over the runtime protocol (HTTP over a unix
+socket); the runtime never faces the public network directly.
 
 This is especially important for:
 
@@ -159,7 +168,7 @@ They are able to:
 
 - publish typed extension-owned events
 - subscribe to stable core events
-- publish typed command events when requesting core actions such as case creation or email sending
+- request core actions such as case creation or email sending through the host API under `/__mbr/host/v1/...`
 - register event consumers and scheduled jobs in the service-backed runtime
 
 Extension event types are registered into the live event catalog while the

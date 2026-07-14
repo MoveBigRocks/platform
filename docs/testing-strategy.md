@@ -17,8 +17,8 @@ side effect that users depend on.
 
 ## The Failure Mode This Strategy Prevents
 
-This strategy was introduced because the repo previously had several places
-where tests proved the shape of a feature, but not the user-visible workflow:
+Tests can prove the shape of a feature without proving the user-visible
+workflow. This strategy exists to catch that failure mode, which shows up as:
 
 - tests prove that email or notification commands are queued, but not that a
   consumer exists and executes them
@@ -27,9 +27,9 @@ where tests proved the shape of a feature, but not the user-visible workflow:
 - scenario tests often simulate success by writing final state directly instead
   of traversing the production path
 
-Those gaps previously made milestone and readiness docs too optimistic. The
-current workflow-proof model exists to keep the repo from regressing into that
-state.
+These gaps make capability claims look stronger than they are. The
+workflow-proof model keeps evidence honest by requiring the real production path
+to complete.
 
 ## Capability Proof Model
 
@@ -44,9 +44,9 @@ Use these proof levels consistently:
 | `Workflow` | The production path completes end-to-end for a scoped user workflow | External-provider production reliability across the internet |
 | `Operational proof` | Workflow proof plus archived artifact(s) in milestone/release evidence | Broader product claims outside the archived workflow set |
 
-A milestone-facing capability may be marked `Proven` only when all required
-levels for that workflow are present in CI and, for milestone-critical flows,
-represented in the proof bundle.
+A capability is credible for release only when all required proof levels for its
+workflow are present in CI, and release-critical flows are represented in the
+proof bundle.
 
 If a workflow stops at "event queued" or "submission stored", it is only
 `Partially evidenced`.
@@ -151,24 +151,18 @@ For every production command stream, the repo must have all of the following:
 If a stream has producers but no consumers, that is a release blocker for any
 workflow that depends on it.
 
-## Required Workflow Matrix
+## Workflow Evidence
 
-Milestone- and readiness-facing claims must be backed by the workflow inventory
-in [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md).
+User-visible workflow claims need automated end-to-end evidence, not just
+component tests. A workflow is credible only when an automated test drives its
+full production path, from the real entrypoint through storage, outbox, and
+worker/consumer to the durable side effect.
 
-The execution order for closing current workflow gaps is tracked separately in
-[`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md).
+Evidence should cover complete product loops, not only the narrowest
+command-driven subset. At minimum this includes:
 
-No scoped workflow should be marked `Proven` until it has a row in that matrix
-with concrete automated evidence.
-
-For the expanded Milestone 1 target, that matrix must cover complete product
-loops, not only the narrowest command-driven subset. At minimum it now needs
-rows for:
-
-- the operator-complete case loop, broken down enough that manual create/work
-  management, handoff/status, and attachment-bearing case flows can each be
-  proved or kept honestly open
+- the operator case loop, including manual create and work management,
+  handoff/status, and attachment-bearing case flows
 - conversation reply, handoff, escalation, and public intake
 - attachment-bearing operational flows, including first-party extension intake
   paths such as ATS candidate resumes
@@ -179,56 +173,15 @@ rows for:
 
 ### Merge Gate
 
-Target merge gate:
+The merge gate requires:
 
 1. `make docs-check`
 2. unit and store/integration tests
-3. workflow tests for affected scoped capabilities
-4. command-stream parity checks for any changed producer/consumer paths
-5. build verification
-
-Current reality:
-
-- the full `go test -tags=integration ./...` sweep is green and hard-gated in CI
-- milestone proof now runs that same full integration sweep and archives its log
-- milestone proof archives machine-readable workflow artifacts for scoped
-  command-driven operational flows, including success and failure artifacts for
-  `email-commands`, `notification-commands`, and `case-commands`
-- milestone proof now also archives the supported public conversation intake
-  artifact plus the operator conversation reply, handoff, and escalation
-  artifacts required by the expanded Milestone 1 bar
-- worker-manager registration is covered directly in
-  [`internal/workers/manager_test.go`](../internal/workers/manager_test.go)
-- full container startup wiring is covered in
-  [`internal/infrastructure/container/container_integration_test.go`](../internal/infrastructure/container/container_integration_test.go)
-- the sanctioned case-create contract now travels through the same outbox,
-  worker, and container path as the other production command streams
-- milestone proof CI also downloads and archives the live public-bundle
-  publication evidence listed in
-  [`docs/evidence/public-bundle-publication-runs.json`](./evidence/public-bundle-publication-runs.json)
-- reusable CI outputs and summaries now report the integration sweep as part of
-  the required gate instead of a soft signal
-- the reusable `Test` workflow now verifies core in standalone mode without
-  materializing sibling extension repos, so core CI proves that the platform
-  repo can build and test independently
-- milestone proof CI materializes the canonical sibling repos
-  (`extensions`, `private-extensions`, and `extension-sdk`) before running
-  proof, and proof mode sets `MBR_REQUIRE_WORKSPACE_REFS=true` so
-  canonical-source tests fail closed instead of silently skipping
-- `enterprise-access` now validates from the canonical
-  `private-extensions` checkout instead of leaking through `platform` or the
-  public first-party extensions repo
-- those sibling repos are pinned by
-  [`docs/evidence/canonical-workspace-refs.json`](./evidence/canonical-workspace-refs.json)
-  and verified by the proof script before milestone-critical tests run
-- the proof bundle archives the canonical workspace manifest and the publication
-  evidence manifest so the artifact retains its own proof inputs
-- milestone proof bootstraps a temporary `go.work` when the workspace does not
-  already provide one, so multi-repo proof does not silently depend on a
-  developer-specific local Go workspace
-- local reruns can materialize the pinned sibling repos with
-  [`scripts/bootstrap-canonical-workspace.sh`](../scripts/bootstrap-canonical-workspace.sh),
-  which reduces manual proof setup drift
+3. the full integration sweep (`go test -tags=integration ./...`) hard-gated in
+   CI
+4. workflow tests for affected scoped capabilities
+5. command-stream parity checks for any changed producer/consumer paths
+6. build verification
 
 ### Milestone Proof Gate
 
@@ -245,8 +198,7 @@ prove:
 
 ## Ongoing Guardrails
 
-1. Keep milestone-facing workflows aligned with
-   [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md).
+1. Keep user-visible workflows aligned with their automated end-to-end evidence.
 2. Add or update workflow artifacts whenever an entrypoint, consumer, or
    durable side effect changes.
 3. Do not add new producer streams without a real consumer, consumer test, and
@@ -257,9 +209,6 @@ prove:
 6. For any proof that depends on canonical sibling repositories, make the
    committed CI workflow materialize those repos and make proof mode fail when
    they are absent.
-
-The completed uplift sequence remains documented in
-[`docs/WORKFLOW_PROOF_CLOSURE_PLAN.md`](./WORKFLOW_PROOF_CLOSURE_PLAN.md).
 
 ## Running Tests
 
@@ -288,10 +237,10 @@ Run this whenever behavior changes are introduced.
    - Prefer code-level contracts and generated specs over prose when they
      exist.
 
-2. **Workflow inventory check**
-   - If the change affects a user-visible workflow, add or update its row in
-     [`docs/WORKFLOW_PROOF_MATRIX.md`](./WORKFLOW_PROOF_MATRIX.md).
-   - Do not mark a workflow `Proven` without listing its automated evidence.
+2. **Workflow evidence check**
+   - If the change affects a user-visible workflow, add or update its automated
+     end-to-end evidence.
+   - Do not treat a workflow as credible without listing its automated evidence.
 
 3. **Change impact sweep**
    - Verify all behavior claims against the implementation in `internal/`,

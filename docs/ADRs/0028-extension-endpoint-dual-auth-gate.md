@@ -1,6 +1,6 @@
 # ADR 0028: Dual-Auth Gate for Extension Endpoints
 
-**Status:** accepted
+**Status:** Accepted
 **Date:** 2026-04-21
 **Deciders:** @adrianmcphee
 
