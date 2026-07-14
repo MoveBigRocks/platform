@@ -493,7 +493,6 @@ Move Big Rocks uses one PostgreSQL application database per instance.
 ## Key Documents
 
 - [Vision](https://github.com/MoveBigRocks/platform/blob/main/docs/vision.md)
-- [Milestone 1 Scope](https://github.com/MoveBigRocks/platform/blob/main/milestone-1-scope.md)
 - [START_WITH_AN_AGENT.md](https://github.com/MoveBigRocks/platform/blob/main/START_WITH_AN_AGENT.md)
 - [Agent CLI](https://github.com/MoveBigRocks/platform/blob/main/docs/AGENT_CLI.md)
 - [Customer Instance Setup](https://github.com/MoveBigRocks/platform/blob/main/docs/CUSTOMER_INSTANCE_SETUP.md)

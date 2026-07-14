@@ -1,4 +1,4 @@
-.PHONY: dev run build build-server build-cli build-linux build-server-linux build-cli-linux cli-release-local milestone-proof bootstrap-canonical-workspace test test-integration test-coverage test-all lint deadcode deadcode-production clean deploy setup-hooks validate-templates create-admin create-agent seed-defaults seed-security-test sentry-tests health docs-check sync-agent-cli-doc
+.PHONY: dev run build build-server build-cli build-linux build-server-linux build-cli-linux cli-release-local test test-integration test-coverage test-all lint deadcode deadcode-production clean deploy setup-hooks validate-templates create-admin create-agent seed-defaults seed-security-test sentry-tests health docs-check sync-agent-cli-doc
 
 ifneq (,$(wildcard ./.env))
 include .env
@@ -32,16 +32,6 @@ build-cli:
 
 cli-release-local:
 	@bash scripts/build-cli-release.sh $(if $(VERSION),--version "$(VERSION)") --out "$(or $(OUT),dist/cli-release)"
-
-milestone-proof:
-	@bash scripts/run-milestone-1-proof.sh $(if $(VERSION),--version "$(VERSION)") --out "$(or $(OUT),dist/milestone-proof)"
-
-bootstrap-canonical-workspace:
-ifndef WORKSPACE_ROOT
-	@echo "Usage: make bootstrap-canonical-workspace WORKSPACE_ROOT=/path/to/workspace"
-	@exit 1
-endif
-	@bash scripts/bootstrap-canonical-workspace.sh --workspace-root "$(WORKSPACE_ROOT)"
 
 # Build Linux artifacts
 build-linux: build-server-linux build-cli-linux

@@ -14,9 +14,9 @@ while IFS= read -r source_file; do
   while IFS= read -r raw_match; do
     [[ -z "$raw_match" ]] && continue
 
-    # rg output format for -o matches: file:line:match
-    match="${raw_match#*:}"
-    match="${match#*:}"
+    # The line-number prefix and any colons inside a URL are skipped by the
+    # paren extraction below, which reads the target between ( and ).
+    match="$raw_match"
 
     target="${match#*\(}"
     target="${target%\)*}"
@@ -33,16 +33,19 @@ while IFS= read -r source_file; do
     fi
 
     if [[ "$target" == "/"* ]]; then
-      resolved="$(realpath -m "$REPO_ROOT$target")"
+      resolved="$REPO_ROOT$target"
     else
-      resolved="$(realpath -m "$source_file/../$target")"
+      resolved="$(dirname "$source_file")/$target"
     fi
+    # Normalize the path portably (BSD realpath has no -m); keep it relative to
+    # the repo root, which is the current directory.
+    resolved="$(python3 -c 'import os,sys; print(os.path.normpath(sys.argv[1]))' "$resolved")"
 
     if [[ ! -e "$resolved" ]]; then
       printf '%s -> %s\n' "$source_file" "$target" >> "$tmp_hits"
       findings=1
     fi
-  done < <(rg -o -n '\\[[^]]+\\]\\([^)]*\\)' "$source_file")
+  done < <(rg -o -n '\[[^]]+\]\([^)]*\)' "$source_file")
 done < <(rg --files -g '*.md' -g '*.mdx')
 
 if [[ "$findings" -ne 0 ]]; then

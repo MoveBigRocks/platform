@@ -12,18 +12,18 @@ Advanced, and TuinPlan. The core operating need was: do not duplicate
 SaaS subscriptions, licenses, integrations, identities, and hidden
 workflows for each brand.
 
-## What runs on Move Big Rocks today
+## What Move Big Rocks runs on itself
 
-| Surface | Status | Notes |
-|---------|--------|-------|
-| Customer support intake | Live | Forms, queues, conversations, cases |
-| Error tracking | Live | Sentry-compatible ingest via the error tracking extension |
-| Web analytics | Live | Cookie-free analytics via the web analytics extension |
-| ATS / recruiting | Live | Careers site and candidate workflows via the ATS extension |
-| Sales pipeline | Live | Opportunity tracking via the sales pipeline extension |
-| Knowledge management | Live | RFCs, templates, runbooks, strategic context |
-| Automation | Live | Event-driven rules for routing and notifications |
-| Community feature requests | Available | Installed, not yet promoted publicly |
+| Surface | Notes |
+|---------|-------|
+| Customer support intake | Forms, queues, conversations, cases |
+| Error tracking | Sentry-compatible ingest via the error tracking extension |
+| Web analytics | Cookie-free analytics via the web analytics extension |
+| ATS / recruiting | Careers site and candidate workflows via the ATS extension |
+| Sales pipeline | Opportunity tracking via the sales pipeline extension |
+| Knowledge management | RFCs, templates, runbooks, strategic context |
+| Automation | Event-driven rules for routing and notifications |
+| Community feature requests | Feature-request intake via the community extension |
 
 ## Which extensions are in active daily use
 
