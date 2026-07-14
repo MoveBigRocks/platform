@@ -150,7 +150,14 @@ func createAdminRouter(
 	hostAPIHandler := platformhandlers.NewExtensionHostAPIHandler(
 		cfg,
 		platformservices.NewExtensionIdentityHostService(c.Platform.Extension, c.Platform.Session, c.Platform.User),
-		platformservices.NewExtensionCoreHostService(c.Platform.Extension, c.Service.Case, c.Store),
+		platformservices.NewExtensionCoreHostService(platformservices.CoreHostDeps{
+			Extensions:  c.Platform.Extension,
+			Cases:       c.Service.Case,
+			QueueReader: c.Store.Queues(),
+			QueueWriter: c.Service.Queue,
+			Contacts:    c.Platform.Contact,
+			Tenant:      c.Store,
+		}),
 	)
 	adminFeatureMiddleware := adminManagementHandler.FeatureContextMiddleware()
 	attachmentUploadHandler := servicehandlers.NewAttachmentUploadHandler(c.Service.Attachment, c.Store.Cases())
@@ -206,6 +213,13 @@ func createAdminRouter(
 	router.POST(runtimehost.IdentitySessionPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.IssueIdentitySession)
 	router.POST(runtimehost.CoreCasesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.CreateCase)
 	router.GET(runtimehost.CoreCasesPath+"/:caseID", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetCase)
+	router.PATCH(runtimehost.CoreCasesPath+"/:caseID", hostAPIHandler.RequireHostToken(), hostAPIHandler.UpdateCase)
+	router.POST(runtimehost.CoreCasesPath+"/:caseID/handoff", hostAPIHandler.RequireHostToken(), hostAPIHandler.HandoffCase)
+	router.POST(runtimehost.CoreCasesPath+"/:caseID/resolve", hostAPIHandler.RequireHostToken(), hostAPIHandler.MarkCaseResolved)
+	router.POST(runtimehost.CoreQueuesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.CreateQueue)
+	router.GET(runtimehost.CoreQueuesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.GetQueueBySlug)
+	router.GET(runtimehost.CoreQueuesPath+"/:queueID", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetQueue)
+	router.POST(runtimehost.CoreContactsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.CreateContact)
 
 	// Protected auth routes
 	authProtected := router.Group("/auth")
@@ -464,11 +478,25 @@ func createAPIRouter(
 	hostAPIHandler := platformhandlers.NewExtensionHostAPIHandler(
 		cfg,
 		platformservices.NewExtensionIdentityHostService(c.Platform.Extension, c.Platform.Session, c.Platform.User),
-		platformservices.NewExtensionCoreHostService(c.Platform.Extension, c.Service.Case, c.Store),
+		platformservices.NewExtensionCoreHostService(platformservices.CoreHostDeps{
+			Extensions:  c.Platform.Extension,
+			Cases:       c.Service.Case,
+			QueueReader: c.Store.Queues(),
+			QueueWriter: c.Service.Queue,
+			Contacts:    c.Platform.Contact,
+			Tenant:      c.Store,
+		}),
 	)
 	router.POST(runtimehost.IdentitySessionPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.IssueIdentitySession)
 	router.POST(runtimehost.CoreCasesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.CreateCase)
 	router.GET(runtimehost.CoreCasesPath+"/:caseID", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetCase)
+	router.PATCH(runtimehost.CoreCasesPath+"/:caseID", hostAPIHandler.RequireHostToken(), hostAPIHandler.UpdateCase)
+	router.POST(runtimehost.CoreCasesPath+"/:caseID/handoff", hostAPIHandler.RequireHostToken(), hostAPIHandler.HandoffCase)
+	router.POST(runtimehost.CoreCasesPath+"/:caseID/resolve", hostAPIHandler.RequireHostToken(), hostAPIHandler.MarkCaseResolved)
+	router.POST(runtimehost.CoreQueuesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.CreateQueue)
+	router.GET(runtimehost.CoreQueuesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.GetQueueBySlug)
+	router.GET(runtimehost.CoreQueuesPath+"/:queueID", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetQueue)
+	router.POST(runtimehost.CoreContactsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.CreateContact)
 
 	router.NoRoute(func(ctx *gin.Context) {
 		serveResolvedExtensionServiceRoute(ctx, c.Platform.Extension, serviceTargets, cfg, principalAuth)

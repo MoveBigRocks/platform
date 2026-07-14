@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/movebigrocks/extension-sdk/runtimehost"
 	shared "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared"
@@ -26,9 +27,12 @@ var ErrCoreHostNotFound = errors.New("core entity not found")
 // extension's workspace tenant context so row-level security applies exactly as
 // it would for a user in that workspace.
 type ExtensionCoreHostService struct {
-	extensions coreHostExtensionResolver
-	cases      coreHostCaseService
-	tenant     coreHostTenantRunner
+	extensions  coreHostExtensionResolver
+	cases       coreHostCaseService
+	queueReader coreHostQueueReader
+	queueWriter coreHostQueueWriter
+	contacts    coreHostContactService
+	tenant      coreHostTenantRunner
 }
 
 // coreHostExtensionResolver loads the calling extension. It is an interface so
@@ -44,6 +48,40 @@ type coreHostExtensionResolver interface {
 type coreHostCaseService interface {
 	CreateCase(ctx context.Context, params serviceapp.CreateCaseParams) (*servicedomain.Case, error)
 	GetCaseInWorkspace(ctx context.Context, workspaceID, caseID string) (*servicedomain.Case, error)
+	UpdateCase(ctx context.Context, caseObj *servicedomain.Case) error
+	HandoffCase(ctx context.Context, caseID string, params serviceapp.CaseHandoffParams) error
+	MarkCaseResolved(ctx context.Context, caseID string, resolvedAt time.Time) error
+}
+
+// coreHostQueueReader reads queues; the core queue store satisfies it. Queue
+// reads are store-level in the core, writes are service-level, so the host API
+// takes both a reader and a writer.
+type coreHostQueueReader interface {
+	GetQueue(ctx context.Context, queueID string) (*servicedomain.Queue, error)
+	GetQueueBySlug(ctx context.Context, workspaceID, slug string) (*servicedomain.Queue, error)
+}
+
+// coreHostQueueWriter creates queues; the core queue service satisfies it.
+type coreHostQueueWriter interface {
+	CreateQueue(ctx context.Context, params serviceapp.CreateQueueParams) (*servicedomain.Queue, error)
+}
+
+// coreHostContactService is the slice of the core contact service the host API
+// needs.
+type coreHostContactService interface {
+	CreateContact(ctx context.Context, params CreateContactParams) (*platformdomain.Contact, error)
+}
+
+// CoreHostDeps wires the core services the host API sits in front of. Fields are
+// interfaces so tests can substitute fakes; the container passes the concrete
+// services.
+type CoreHostDeps struct {
+	Extensions  coreHostExtensionResolver
+	Cases       coreHostCaseService
+	QueueReader coreHostQueueReader
+	QueueWriter coreHostQueueWriter
+	Contacts    coreHostContactService
+	Tenant      coreHostTenantRunner
 }
 
 // coreHostTenantRunner runs a function inside one transaction and sets the
@@ -54,15 +92,14 @@ type coreHostTenantRunner interface {
 	SetTenantContext(ctx context.Context, workspaceID string) error
 }
 
-func NewExtensionCoreHostService(
-	extensions coreHostExtensionResolver,
-	cases coreHostCaseService,
-	tenant coreHostTenantRunner,
-) *ExtensionCoreHostService {
+func NewExtensionCoreHostService(deps CoreHostDeps) *ExtensionCoreHostService {
 	return &ExtensionCoreHostService{
-		extensions: extensions,
-		cases:      cases,
-		tenant:     tenant,
+		extensions:  deps.Extensions,
+		cases:       deps.Cases,
+		queueReader: deps.QueueReader,
+		queueWriter: deps.QueueWriter,
+		contacts:    deps.Contacts,
+		tenant:      deps.Tenant,
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/movebigrocks/extension-sdk/runtimehost"
 	shared "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared"
@@ -37,6 +38,16 @@ func (f *fakeCaseService) GetCaseInWorkspace(_ context.Context, _, _ string) (*s
 	return f.getResult, f.getErr
 }
 
+func (f *fakeCaseService) UpdateCase(_ context.Context, _ *servicedomain.Case) error { return nil }
+
+func (f *fakeCaseService) HandoffCase(_ context.Context, _ string, _ serviceapp.CaseHandoffParams) error {
+	return nil
+}
+
+func (f *fakeCaseService) MarkCaseResolved(_ context.Context, _ string, _ time.Time) error {
+	return nil
+}
+
 type fakeTenantRunner struct {
 	tenantWorkspace string
 }
@@ -67,11 +78,11 @@ func TestCoreHostCreateCaseAppliesWorkspaceScopeAndTenantContext(t *testing.T) {
 		Subject:      "Boom",
 	}}
 	tenant := &fakeTenantRunner{}
-	svc := NewExtensionCoreHostService(
-		&fakeExtensionResolver{ext: activeWorkspaceExtension("case:write")},
-		cases,
-		tenant,
-	)
+	svc := NewExtensionCoreHostService(CoreHostDeps{
+		Extensions: &fakeExtensionResolver{ext: activeWorkspaceExtension("case:write")},
+		Cases:      cases,
+		Tenant:     tenant,
+	})
 
 	out, err := svc.CreateCase(context.Background(), "ext-1", runtimehost.CreateCaseInput{
 		Subject:  "Boom",
@@ -93,11 +104,11 @@ func TestCoreHostCreateCaseAppliesWorkspaceScopeAndTenantContext(t *testing.T) {
 }
 
 func TestCoreHostCreateCaseRequiresPermission(t *testing.T) {
-	svc := NewExtensionCoreHostService(
-		&fakeExtensionResolver{ext: activeWorkspaceExtension("case:read")}, // no case:write
-		&fakeCaseService{},
-		&fakeTenantRunner{},
-	)
+	svc := NewExtensionCoreHostService(CoreHostDeps{
+		Extensions: &fakeExtensionResolver{ext: activeWorkspaceExtension("case:read")}, // no case:write
+		Cases:      &fakeCaseService{},
+		Tenant:     &fakeTenantRunner{},
+	})
 	_, err := svc.CreateCase(context.Background(), "ext-1", runtimehost.CreateCaseInput{Subject: "x"})
 	if !errors.Is(err, ErrExtensionHostForbidden) {
 		t.Fatalf("expected forbidden without case:write, got %v", err)
@@ -107,7 +118,11 @@ func TestCoreHostCreateCaseRequiresPermission(t *testing.T) {
 func TestCoreHostCreateCaseRejectsInactiveExtension(t *testing.T) {
 	ext := activeWorkspaceExtension("case:write")
 	ext.Status = platformdomain.ExtensionStatusInactive
-	svc := NewExtensionCoreHostService(&fakeExtensionResolver{ext: ext}, &fakeCaseService{}, &fakeTenantRunner{})
+	svc := NewExtensionCoreHostService(CoreHostDeps{
+		Extensions: &fakeExtensionResolver{ext: ext},
+		Cases:      &fakeCaseService{},
+		Tenant:     &fakeTenantRunner{},
+	})
 	_, err := svc.CreateCase(context.Background(), "ext-1", runtimehost.CreateCaseInput{Subject: "x"})
 	if !errors.Is(err, ErrExtensionHostForbidden) {
 		t.Fatalf("expected forbidden for inactive extension, got %v", err)
@@ -115,11 +130,11 @@ func TestCoreHostCreateCaseRejectsInactiveExtension(t *testing.T) {
 }
 
 func TestCoreHostGetCaseMapsNotFound(t *testing.T) {
-	svc := NewExtensionCoreHostService(
-		&fakeExtensionResolver{ext: activeWorkspaceExtension("case:read")},
-		&fakeCaseService{getErr: shared.ErrNotFound},
-		&fakeTenantRunner{},
-	)
+	svc := NewExtensionCoreHostService(CoreHostDeps{
+		Extensions: &fakeExtensionResolver{ext: activeWorkspaceExtension("case:read")},
+		Cases:      &fakeCaseService{getErr: shared.ErrNotFound},
+		Tenant:     &fakeTenantRunner{},
+	})
 	_, err := svc.GetCase(context.Background(), "ext-1", "missing")
 	if !errors.Is(err, ErrCoreHostNotFound) {
 		t.Fatalf("expected ErrCoreHostNotFound, got %v", err)

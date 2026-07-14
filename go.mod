@@ -16,7 +16,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.12.0
-	github.com/movebigrocks/extension-sdk v0.8.25
+	github.com/movebigrocks/extension-sdk v0.8.26
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oschwald/maxminddb-golang v1.13.1
 	github.com/prometheus/client_golang v1.23.2
