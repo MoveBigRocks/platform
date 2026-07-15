@@ -76,6 +76,13 @@ type Store interface {
 	// For SQLite, this simply runs the function within a transaction.
 	// SECURITY: Only use this for legitimate cross-tenant administrative operations.
 	WithAdminContext(ctx context.Context, fn func(ctx context.Context) error) error
+
+	// GetHostOperationResult and PutHostOperationResult back the idempotency
+	// ledger for coarse host-API operations: a result is recorded under the
+	// caller's key so a retry returns the same identifiers instead of
+	// duplicating core rows. Workspace-scoped via row-level security.
+	GetHostOperationResult(ctx context.Context, workspaceID, extensionID, operation, key string) ([]byte, bool, error)
+	PutHostOperationResult(ctx context.Context, workspaceID, extensionID, operation, key string, result []byte) error
 }
 
 // AuditStore persists append-only governance records. Deliberately exposing no

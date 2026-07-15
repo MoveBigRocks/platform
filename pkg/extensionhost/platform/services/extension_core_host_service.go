@@ -98,6 +98,11 @@ type CoreHostDeps struct {
 type coreHostTenantRunner interface {
 	WithTransaction(ctx context.Context, fn func(context.Context) error) error
 	SetTenantContext(ctx context.Context, workspaceID string) error
+	// GetHostOperationResult and PutHostOperationResult back the idempotency
+	// ledger that makes a coarse operation safe to retry: it records the result
+	// under the caller's key so a repeat returns the same ids.
+	GetHostOperationResult(ctx context.Context, workspaceID, extensionID, operation, key string) ([]byte, bool, error)
+	PutHostOperationResult(ctx context.Context, workspaceID, extensionID, operation, key string, result []byte) error
 }
 
 func NewExtensionCoreHostService(deps CoreHostDeps) *ExtensionCoreHostService {

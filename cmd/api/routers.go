@@ -229,6 +229,7 @@ func createAdminRouter(
 	router.POST(runtimehost.CoreCasesPath+"/:caseID/attachments", hostAPIHandler.RequireHostToken(), hostAPIHandler.LinkAttachmentsToCase)
 	router.POST(runtimehost.CoreRulesEvaluatePath, hostAPIHandler.RequireHostToken(), hostAPIHandler.EvaluateRulesForCase)
 	router.POST(runtimehost.CoreArtifactsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.PublishArtifact)
+	router.POST(runtimehost.CoreIngestApplicationPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.IngestApplication)
 
 	// Protected auth routes
 	authProtected := router.Group("/auth")
@@ -515,6 +516,7 @@ func createAPIRouter(
 	router.POST(runtimehost.CoreCasesPath+"/:caseID/attachments", hostAPIHandler.RequireHostToken(), hostAPIHandler.LinkAttachmentsToCase)
 	router.POST(runtimehost.CoreRulesEvaluatePath, hostAPIHandler.RequireHostToken(), hostAPIHandler.EvaluateRulesForCase)
 	router.POST(runtimehost.CoreArtifactsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.PublishArtifact)
+	router.POST(runtimehost.CoreIngestApplicationPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.IngestApplication)
 
 	router.NoRoute(func(ctx *gin.Context) {
 		serveResolvedExtensionServiceRoute(ctx, c.Platform.Extension, serviceTargets, cfg, principalAuth)

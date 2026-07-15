@@ -50,6 +50,7 @@ func (f *fakeCaseService) MarkCaseResolved(_ context.Context, _ string, _ time.T
 
 type fakeTenantRunner struct {
 	tenantWorkspace string
+	ledger          map[string][]byte
 }
 
 func (f *fakeTenantRunner) WithTransaction(ctx context.Context, fn func(context.Context) error) error {
@@ -58,6 +59,19 @@ func (f *fakeTenantRunner) WithTransaction(ctx context.Context, fn func(context.
 
 func (f *fakeTenantRunner) SetTenantContext(_ context.Context, workspaceID string) error {
 	f.tenantWorkspace = workspaceID
+	return nil
+}
+
+func (f *fakeTenantRunner) GetHostOperationResult(_ context.Context, _, _, operation, key string) ([]byte, bool, error) {
+	v, ok := f.ledger[operation+"|"+key]
+	return v, ok, nil
+}
+
+func (f *fakeTenantRunner) PutHostOperationResult(_ context.Context, _, _, operation, key string, result []byte) error {
+	if f.ledger == nil {
+		f.ledger = map[string][]byte{}
+	}
+	f.ledger[operation+"|"+key] = result
 	return nil
 }
 

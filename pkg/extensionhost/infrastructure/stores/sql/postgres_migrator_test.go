@@ -93,6 +93,7 @@ func TestLoadPostgresMigrationsMatchesResetBaseline(t *testing.T) {
 		"postgres/000017_form_access_token_hashes.up.sql",
 		"postgres/000018_outbox_idempotency_leases.up.sql",
 		"postgres/000019_public_form_lookup_rls.up.sql",
+		"postgres/000020_host_operation_results.up.sql",
 	}
 
 	if !slices.Equal(got, want) {
