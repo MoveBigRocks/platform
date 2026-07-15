@@ -151,12 +151,16 @@ func createAdminRouter(
 		cfg,
 		platformservices.NewExtensionIdentityHostService(c.Platform.Extension, c.Platform.Session, c.Platform.User),
 		platformservices.NewExtensionCoreHostService(platformservices.CoreHostDeps{
-			Extensions:  c.Platform.Extension,
-			Cases:       c.Service.Case,
-			QueueReader: c.Store.Queues(),
-			QueueWriter: c.Service.Queue,
-			Contacts:    c.Platform.Contact,
-			Tenant:      c.Store,
+			Extensions:      c.Platform.Extension,
+			Cases:           c.Service.Case,
+			QueueReader:     c.Store.Queues(),
+			QueueWriter:     c.Service.Queue,
+			Contacts:        c.Platform.Contact,
+			Attachments:     c.Service.Attachment,
+			AttachmentStore: c.Store.Cases(),
+			Rules:           c.Automation.Engine,
+			Artifacts:       c.Platform.Extension,
+			Tenant:          c.Store,
 		}),
 	)
 	adminFeatureMiddleware := adminManagementHandler.FeatureContextMiddleware()
@@ -220,6 +224,11 @@ func createAdminRouter(
 	router.GET(runtimehost.CoreQueuesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.GetQueueBySlug)
 	router.GET(runtimehost.CoreQueuesPath+"/:queueID", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetQueue)
 	router.POST(runtimehost.CoreContactsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.CreateContact)
+	router.POST(runtimehost.CoreAttachmentsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.UploadAttachment)
+	router.GET(runtimehost.CoreAttachmentsPath+"/:attachmentID", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetAttachment)
+	router.POST(runtimehost.CoreCasesPath+"/:caseID/attachments", hostAPIHandler.RequireHostToken(), hostAPIHandler.LinkAttachmentsToCase)
+	router.POST(runtimehost.CoreRulesEvaluatePath, hostAPIHandler.RequireHostToken(), hostAPIHandler.EvaluateRulesForCase)
+	router.POST(runtimehost.CoreArtifactsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.PublishArtifact)
 
 	// Protected auth routes
 	authProtected := router.Group("/auth")
@@ -479,12 +488,16 @@ func createAPIRouter(
 		cfg,
 		platformservices.NewExtensionIdentityHostService(c.Platform.Extension, c.Platform.Session, c.Platform.User),
 		platformservices.NewExtensionCoreHostService(platformservices.CoreHostDeps{
-			Extensions:  c.Platform.Extension,
-			Cases:       c.Service.Case,
-			QueueReader: c.Store.Queues(),
-			QueueWriter: c.Service.Queue,
-			Contacts:    c.Platform.Contact,
-			Tenant:      c.Store,
+			Extensions:      c.Platform.Extension,
+			Cases:           c.Service.Case,
+			QueueReader:     c.Store.Queues(),
+			QueueWriter:     c.Service.Queue,
+			Contacts:        c.Platform.Contact,
+			Attachments:     c.Service.Attachment,
+			AttachmentStore: c.Store.Cases(),
+			Rules:           c.Automation.Engine,
+			Artifacts:       c.Platform.Extension,
+			Tenant:          c.Store,
 		}),
 	)
 	router.POST(runtimehost.IdentitySessionPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.IssueIdentitySession)
@@ -497,6 +510,11 @@ func createAPIRouter(
 	router.GET(runtimehost.CoreQueuesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.GetQueueBySlug)
 	router.GET(runtimehost.CoreQueuesPath+"/:queueID", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetQueue)
 	router.POST(runtimehost.CoreContactsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.CreateContact)
+	router.POST(runtimehost.CoreAttachmentsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.UploadAttachment)
+	router.GET(runtimehost.CoreAttachmentsPath+"/:attachmentID", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetAttachment)
+	router.POST(runtimehost.CoreCasesPath+"/:caseID/attachments", hostAPIHandler.RequireHostToken(), hostAPIHandler.LinkAttachmentsToCase)
+	router.POST(runtimehost.CoreRulesEvaluatePath, hostAPIHandler.RequireHostToken(), hostAPIHandler.EvaluateRulesForCase)
+	router.POST(runtimehost.CoreArtifactsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.PublishArtifact)
 
 	router.NoRoute(func(ctx *gin.Context) {
 		serveResolvedExtensionServiceRoute(ctx, c.Platform.Extension, serviceTargets, cfg, principalAuth)

@@ -27,12 +27,16 @@ var ErrCoreHostNotFound = errors.New("core entity not found")
 // extension's workspace tenant context so row-level security applies exactly as
 // it would for a user in that workspace.
 type ExtensionCoreHostService struct {
-	extensions  coreHostExtensionResolver
-	cases       coreHostCaseService
-	queueReader coreHostQueueReader
-	queueWriter coreHostQueueWriter
-	contacts    coreHostContactService
-	tenant      coreHostTenantRunner
+	extensions      coreHostExtensionResolver
+	cases           coreHostCaseService
+	queueReader     coreHostQueueReader
+	queueWriter     coreHostQueueWriter
+	contacts        coreHostContactService
+	attachments     coreHostAttachmentUploader
+	attachmentStore coreHostAttachmentStore
+	rules           coreHostRuleEngine
+	artifacts       coreHostArtifactPublisher
+	tenant          coreHostTenantRunner
 }
 
 // coreHostExtensionResolver loads the calling extension. It is an interface so
@@ -76,12 +80,16 @@ type coreHostContactService interface {
 // interfaces so tests can substitute fakes; the container passes the concrete
 // services.
 type CoreHostDeps struct {
-	Extensions  coreHostExtensionResolver
-	Cases       coreHostCaseService
-	QueueReader coreHostQueueReader
-	QueueWriter coreHostQueueWriter
-	Contacts    coreHostContactService
-	Tenant      coreHostTenantRunner
+	Extensions      coreHostExtensionResolver
+	Cases           coreHostCaseService
+	QueueReader     coreHostQueueReader
+	QueueWriter     coreHostQueueWriter
+	Contacts        coreHostContactService
+	Attachments     coreHostAttachmentUploader
+	AttachmentStore coreHostAttachmentStore
+	Rules           coreHostRuleEngine
+	Artifacts       coreHostArtifactPublisher
+	Tenant          coreHostTenantRunner
 }
 
 // coreHostTenantRunner runs a function inside one transaction and sets the
@@ -94,12 +102,16 @@ type coreHostTenantRunner interface {
 
 func NewExtensionCoreHostService(deps CoreHostDeps) *ExtensionCoreHostService {
 	return &ExtensionCoreHostService{
-		extensions:  deps.Extensions,
-		cases:       deps.Cases,
-		queueReader: deps.QueueReader,
-		queueWriter: deps.QueueWriter,
-		contacts:    deps.Contacts,
-		tenant:      deps.Tenant,
+		extensions:      deps.Extensions,
+		cases:           deps.Cases,
+		queueReader:     deps.QueueReader,
+		queueWriter:     deps.QueueWriter,
+		contacts:        deps.Contacts,
+		attachments:     deps.Attachments,
+		attachmentStore: deps.AttachmentStore,
+		rules:           deps.Rules,
+		artifacts:       deps.Artifacts,
+		tenant:          deps.Tenant,
 	}
 }
 
