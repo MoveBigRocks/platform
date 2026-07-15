@@ -3,10 +3,13 @@ package platformservices
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/movebigrocks/extension-sdk/runtimehost"
+	automationservices "github.com/movebigrocks/platform/pkg/extensionhost/automation/services"
+	shared "github.com/movebigrocks/platform/pkg/extensionhost/infrastructure/stores/shared"
 	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
 	serviceapp "github.com/movebigrocks/platform/pkg/extensionhost/service/services"
 )
@@ -111,4 +114,76 @@ func (s *ExtensionCoreHostService) IngestApplication(ctx context.Context, extens
 		return nil, err
 	}
 	return result, nil
+}
+
+const applyCaseChangeOperation = "applyCaseChange"
+
+// ApplyCaseChange applies a patch to a case and fires the workspace's automation
+// rules for it in one transaction, recorded under the caller's idempotency key.
+// A repeat call with the same key returns the case without re-applying the patch
+// or re-firing the rules, so a retry cannot double-fire rule side effects. This
+// is the boundary form of ATS's stage-change flow.
+func (s *ExtensionCoreHostService) ApplyCaseChange(ctx context.Context, extensionID, caseID string, input runtimehost.ApplyCaseChangeInput) (*runtimehost.HostCase, error) {
+	if s == nil || s.cases == nil || s.rules == nil || s.tenant == nil {
+		return nil, fmt.Errorf("core host services are not configured")
+	}
+	extension, err := s.resolveExtension(ctx, extensionID, "case:write")
+	if err != nil {
+		return nil, err
+	}
+	if !manifestHasPermission(extension.Manifest, "automation:write") {
+		return nil, ErrExtensionHostForbidden
+	}
+	caseID = strings.TrimSpace(caseID)
+	key := strings.TrimSpace(input.IdempotencyKey)
+	if caseID == "" || key == "" {
+		return nil, fmt.Errorf("caseId and idempotencyKey are required")
+	}
+
+	var out *servicedomain.Case
+	err = s.tenant.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := s.tenant.SetTenantContext(txCtx, extension.WorkspaceID); err != nil {
+			return err
+		}
+		_, applied, ferr := s.tenant.GetHostOperationResult(txCtx, extension.WorkspaceID, extension.ID, applyCaseChangeOperation, key)
+		if ferr != nil {
+			return ferr
+		}
+		current, getErr := s.cases.GetCaseInWorkspace(txCtx, extension.WorkspaceID, caseID)
+		if getErr != nil {
+			return getErr
+		}
+		if applied {
+			// Already applied under this key: return the current case without
+			// re-patching or re-firing rules.
+			out = current
+			return nil
+		}
+		applyCasePatch(current, input.Patch)
+		if err := s.cases.UpdateCase(txCtx, current); err != nil {
+			return err
+		}
+		if strings.TrimSpace(input.Event) != "" {
+			changes := automationservices.NewFieldChanges()
+			for k, v := range input.Changes {
+				changes.Set(k, v)
+			}
+			if err := s.rules.EvaluateRulesForCase(txCtx, current, strings.TrimSpace(input.Event), changes); err != nil {
+				return err
+			}
+		}
+		out = current
+		payload, merr := json.Marshal(map[string]string{"caseId": current.ID})
+		if merr != nil {
+			return merr
+		}
+		return s.tenant.PutHostOperationResult(txCtx, extension.WorkspaceID, extension.ID, applyCaseChangeOperation, key, payload)
+	})
+	if err != nil {
+		if errors.Is(err, shared.ErrNotFound) {
+			return nil, ErrCoreHostNotFound
+		}
+		return nil, err
+	}
+	return hostCaseFromDomain(out), nil
 }

@@ -27,3 +27,24 @@ func (h *ExtensionHostAPIHandler) IngestApplication(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, out)
 }
+
+// ApplyCaseChange serves POST /cases/:caseID/apply-change: the coarse operation
+// that patches a case and fires automation rules in one transaction, idempotent
+// on the caller's key.
+func (h *ExtensionHostAPIHandler) ApplyCaseChange(c *gin.Context) {
+	claims, ok := h.coreClaims(c)
+	if !ok {
+		return
+	}
+	var input runtimehost.ApplyCaseChangeInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, runtimehost.ErrorResponse{Status: "failed", Message: "invalid case change payload"})
+		return
+	}
+	out, err := h.core.ApplyCaseChange(c.Request.Context(), claims.ExtensionID, c.Param("caseID"), input)
+	if err != nil {
+		respondHostError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, out)
+}

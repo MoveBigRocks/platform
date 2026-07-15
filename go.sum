@@ -161,6 +161,8 @@ github.com/movebigrocks/extension-sdk v0.8.27 h1:btgEknYf2yoBHD3yZTBIMGz3Z10vz7s
 github.com/movebigrocks/extension-sdk v0.8.27/go.mod h1:Iqlf7AeddG58nbnELSWb/j1mn+sCXV6aRwFPwaBdNaA=
 github.com/movebigrocks/extension-sdk v0.8.28 h1:IvwRG6qEjCvaIkppWUymreTr2jUedKhwiSYYfHb2tpA=
 github.com/movebigrocks/extension-sdk v0.8.28/go.mod h1:Iqlf7AeddG58nbnELSWb/j1mn+sCXV6aRwFPwaBdNaA=
+github.com/movebigrocks/extension-sdk v0.8.29 h1:81eAZuuhvFhhYyYaQ1UvleL43IAIETUcLaHbs04YQD8=
+github.com/movebigrocks/extension-sdk v0.8.29/go.mod h1:Iqlf7AeddG58nbnELSWb/j1mn+sCXV6aRwFPwaBdNaA=
 github.com/mr-tron/base58 v1.2.0 h1:T/HDJBh4ZCPbU39/+c3rRvE0uKBQlU27+QI8LJ4t64o=
 github.com/mr-tron/base58 v1.2.0/go.mod h1:BinMc/sQntlIE1frQmRFPUoPA1Zkr8VRgBdjWI2mNwc=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=

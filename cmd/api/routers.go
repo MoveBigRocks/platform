@@ -230,6 +230,7 @@ func createAdminRouter(
 	router.POST(runtimehost.CoreRulesEvaluatePath, hostAPIHandler.RequireHostToken(), hostAPIHandler.EvaluateRulesForCase)
 	router.POST(runtimehost.CoreArtifactsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.PublishArtifact)
 	router.POST(runtimehost.CoreIngestApplicationPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.IngestApplication)
+	router.POST(runtimehost.CoreCasesPath+"/:caseID/apply-change", hostAPIHandler.RequireHostToken(), hostAPIHandler.ApplyCaseChange)
 
 	// Protected auth routes
 	authProtected := router.Group("/auth")
@@ -517,6 +518,7 @@ func createAPIRouter(
 	router.POST(runtimehost.CoreRulesEvaluatePath, hostAPIHandler.RequireHostToken(), hostAPIHandler.EvaluateRulesForCase)
 	router.POST(runtimehost.CoreArtifactsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.PublishArtifact)
 	router.POST(runtimehost.CoreIngestApplicationPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.IngestApplication)
+	router.POST(runtimehost.CoreCasesPath+"/:caseID/apply-change", hostAPIHandler.RequireHostToken(), hostAPIHandler.ApplyCaseChange)
 
 	router.NoRoute(func(ctx *gin.Context) {
 		serveResolvedExtensionServiceRoute(ctx, c.Platform.Extension, serviceTargets, cfg, principalAuth)

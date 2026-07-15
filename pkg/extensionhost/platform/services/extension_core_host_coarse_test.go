@@ -6,9 +6,57 @@ import (
 	"testing"
 
 	"github.com/movebigrocks/extension-sdk/runtimehost"
+	automationservices "github.com/movebigrocks/platform/pkg/extensionhost/automation/services"
 	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 	servicedomain "github.com/movebigrocks/platform/pkg/extensionhost/service/domain"
 )
+
+type fakeRuleEngine struct{ evaluations int }
+
+func (f *fakeRuleEngine) EvaluateRulesForCase(_ context.Context, _ *servicedomain.Case, _ string, _ *automationservices.FieldChanges) error {
+	f.evaluations++
+	return nil
+}
+
+func TestCoreHostApplyCaseChangeFiresRulesOnceAcrossRetries(t *testing.T) {
+	rules := &fakeRuleEngine{}
+	cases := &fakeCaseService{getResult: &servicedomain.Case{
+		CaseIdentity: servicedomain.CaseIdentity{ID: "case-1", WorkspaceID: "ws-1"},
+	}}
+	svc := NewExtensionCoreHostService(CoreHostDeps{
+		Extensions: &fakeExtensionResolver{ext: activeWorkspaceExtension("case:write", "automation:write")},
+		Cases:      cases,
+		Rules:      rules,
+		Tenant:     &fakeTenantRunner{},
+	})
+	input := runtimehost.ApplyCaseChangeInput{
+		IdempotencyKey: "chg-1",
+		Event:          "ats_application_stage_changed",
+		Changes:        map[string]any{"stage": "interview"},
+	}
+	if _, err := svc.ApplyCaseChange(context.Background(), "ext-1", "case-1", input); err != nil {
+		t.Fatalf("first apply: %v", err)
+	}
+	if _, err := svc.ApplyCaseChange(context.Background(), "ext-1", "case-1", input); err != nil {
+		t.Fatalf("retry apply: %v", err)
+	}
+	if rules.evaluations != 1 {
+		t.Fatalf("rules must fire exactly once across a retry, got %d", rules.evaluations)
+	}
+}
+
+func TestCoreHostApplyCaseChangeRequiresAutomationPermission(t *testing.T) {
+	svc := NewExtensionCoreHostService(CoreHostDeps{
+		Extensions: &fakeExtensionResolver{ext: activeWorkspaceExtension("case:write")}, // no automation:write
+		Cases:      &fakeCaseService{},
+		Rules:      &fakeRuleEngine{},
+		Tenant:     &fakeTenantRunner{},
+	})
+	_, err := svc.ApplyCaseChange(context.Background(), "ext-1", "case-1", runtimehost.ApplyCaseChangeInput{IdempotencyKey: "k"})
+	if !errors.Is(err, ErrExtensionHostForbidden) {
+		t.Fatalf("expected forbidden without automation:write, got %v", err)
+	}
+}
 
 type fakeContactService struct{ created int }
 
