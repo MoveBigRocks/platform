@@ -147,7 +147,7 @@ func (r *Registry) proxyHTTPToUnixSocket(extension *platformdomain.InstalledExte
 	}
 
 	headers := cloneHeaders(ctx.Request.Header)
-	applyForwardedHeaders(headers, extension, ctx, r.hostTokenSecret, r.publicBaseURL, r.adminBaseURL, r.apiBaseURL)
+	applyForwardedHeaders(headers, extension, endpoint, ctx, r.hostTokenSecret, r.publicBaseURL, r.adminBaseURL, r.apiBaseURL)
 
 	resp, err := r.doUnixSocketRequest(
 		ctx.Request.Context(),
@@ -268,7 +268,7 @@ func applyRuntimeBaseURLHeaders(headers http.Header, publicBaseURL, adminBaseURL
 	}
 }
 
-func applyForwardedHeaders(headers http.Header, extension *platformdomain.InstalledExtension, ctx *gin.Context, hostTokenSecret, publicBaseURL, adminBaseURL, apiBaseURL string) {
+func applyForwardedHeaders(headers http.Header, extension *platformdomain.InstalledExtension, endpoint platformdomain.ExtensionEndpoint, ctx *gin.Context, hostTokenSecret, publicBaseURL, adminBaseURL, apiBaseURL string) {
 	applyRuntimeIdentityHeaders(headers, extension)
 	applyRuntimeHostAuthHeader(headers, extension, hostTokenSecret)
 	// Proxied inbound requests (public careers pages, admin panels, workspace
@@ -293,8 +293,11 @@ func applyForwardedHeaders(headers http.Header, extension *platformdomain.Instal
 		}
 		headers.Set("X-Forwarded-Proto", proto)
 	}
-	if workspaceID := strings.TrimSpace(ctx.GetString("workspace_id")); workspaceID != "" {
+	workspaceID := forwardedWorkspaceID(extension, endpoint, ctx)
+	if workspaceID != "" {
 		headers.Set(runtimeproto.HeaderWorkspaceID, workspaceID)
+	} else {
+		headers.Del(runtimeproto.HeaderWorkspaceID)
 	}
 	if userID := strings.TrimSpace(ctx.GetString("user_id")); userID != "" {
 		headers.Set(runtimeproto.HeaderUserID, userID)
@@ -306,7 +309,7 @@ func applyForwardedHeaders(headers http.Header, extension *platformdomain.Instal
 		headers.Set(runtimeproto.HeaderUserEmail, fmt.Sprint(email))
 	}
 	if session, ok := ctx.Get("session"); ok {
-		if raw, ok := marshalSessionContext(session); ok {
+		if raw, ok := marshalSessionContext(session, endpoint, workspaceID, ctx); ok {
 			headers.Set(runtimeproto.HeaderSessionContextJSON, raw)
 		}
 	}
@@ -343,12 +346,70 @@ func marshalHeaderValue(value interface{}) (string, bool) {
 	return string(data), true
 }
 
-func marshalSessionContext(value interface{}) (string, bool) {
+type forwardedSessionContext struct {
+	Type          platformdomain.ContextType `json:"type,omitempty"`
+	WorkspaceID   *string                    `json:"workspace_id,omitempty"`
+	WorkspaceName *string                    `json:"workspace_name,omitempty"`
+	WorkspaceSlug *string                    `json:"workspace_slug,omitempty"`
+	Role          string                     `json:"role,omitempty"`
+}
+
+func forwardedWorkspaceID(extension *platformdomain.InstalledExtension, endpoint platformdomain.ExtensionEndpoint, ctx *gin.Context) string {
+	if endpoint.WorkspaceBinding == platformdomain.ExtensionWorkspaceBindingInstanceScoped {
+		return ""
+	}
+	if endpoint.WorkspaceBinding == platformdomain.ExtensionWorkspaceBindingFromSession ||
+		endpoint.WorkspaceBinding == platformdomain.ExtensionWorkspaceBindingFromAgentToken ||
+		endpoint.WorkspaceBinding == platformdomain.ExtensionWorkspaceBindingFromRoute {
+		if ctx != nil {
+			return strings.TrimSpace(ctx.GetString("workspace_id"))
+		}
+		return ""
+	}
+	if extension == nil {
+		return ""
+	}
+	return strings.TrimSpace(extension.WorkspaceID)
+}
+
+func marshalSessionContext(value interface{}, endpoint platformdomain.ExtensionEndpoint, workspaceID string, ctx *gin.Context) (string, bool) {
 	session, ok := value.(*platformdomain.Session)
 	if !ok || session == nil {
 		return "", false
 	}
-	return marshalHeaderValue(session.CurrentContext)
+	current := forwardedSessionContext{
+		Type:          session.CurrentContext.Type,
+		WorkspaceID:   session.CurrentContext.WorkspaceID,
+		WorkspaceName: session.CurrentContext.WorkspaceName,
+		WorkspaceSlug: session.CurrentContext.WorkspaceSlug,
+		Role:          session.CurrentContext.Role,
+	}
+	if endpoint.WorkspaceBinding == platformdomain.ExtensionWorkspaceBindingInstanceScoped {
+		current.Type = platformdomain.ContextTypeInstance
+		current.WorkspaceID = nil
+		current.WorkspaceName = nil
+		current.WorkspaceSlug = nil
+		if ctx != nil {
+			if value, exists := ctx.Get("auth_context"); exists {
+				if authCtx, valid := value.(*platformdomain.AuthContext); valid && authCtx != nil && authCtx.InstanceRole != nil {
+					current.Role = string(platformdomain.CanonicalizeInstanceRole(*authCtx.InstanceRole))
+				}
+			}
+		}
+	} else if strings.TrimSpace(workspaceID) != "" {
+		workspaceID = strings.TrimSpace(workspaceID)
+		current.Type = platformdomain.ContextTypeWorkspace
+		current.WorkspaceID = &workspaceID
+		if ctx != nil {
+			if workspaceName := strings.TrimSpace(ctx.GetString("workspace_name")); workspaceName != "" {
+				current.WorkspaceName = &workspaceName
+			}
+			if workspaceSlug := strings.TrimSpace(ctx.GetString("workspace_slug")); workspaceSlug != "" {
+				current.WorkspaceSlug = &workspaceSlug
+			}
+		}
+	}
+	return marshalHeaderValue(current)
 }
 
 func paramsToMap(params gin.Params) map[string]string {

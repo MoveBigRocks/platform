@@ -6,10 +6,12 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/movebigrocks/extension-sdk/runtimeproto"
 	platformdomain "github.com/movebigrocks/platform/pkg/extensionhost/platform/domain"
 	shareddomain "github.com/movebigrocks/platform/pkg/extensionhost/shared/domain"
@@ -63,10 +65,60 @@ func TestApplyForwardedHeadersAdvertisesHostAPIBaseURL(t *testing.T) {
 	// public, admin, or workspace domain the request arrived on.
 	extension := &platformdomain.InstalledExtension{ID: "ext_123", WorkspaceID: "ws_123"}
 	headers := http.Header{}
-	applyForwardedHeaders(headers, extension, nil, "", "https://app.test", "https://admin.test", "https://api.test")
+	applyForwardedHeaders(headers, extension, platformdomain.ExtensionEndpoint{}, nil, "", "https://app.test", "https://admin.test", "https://api.test")
 
 	if got := headers.Get(runtimeproto.HeaderAPIBaseURL); got != "https://api.test" {
 		t.Fatalf("expected host-API base URL header, got %q", got)
+	}
+}
+
+func TestApplyForwardedHeadersClearsSessionWorkspaceForInstanceEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/extensions/error-tracking/applications/new", nil)
+	ctx.Set("workspace_id", "ws_session")
+	ctx.Set("workspace_name", "Session workspace")
+	ctx.Set("workspace_slug", "session-workspace")
+	workspaceID := "ws_session"
+	workspaceName := "Session workspace"
+	workspaceSlug := "session-workspace"
+	ctx.Set("session", &platformdomain.Session{CurrentContext: platformdomain.Context{
+		Type:          platformdomain.ContextTypeWorkspace,
+		WorkspaceID:   &workspaceID,
+		WorkspaceName: &workspaceName,
+		WorkspaceSlug: &workspaceSlug,
+		Role:          string(platformdomain.WorkspaceRoleAdmin),
+	}})
+	instanceRole := platformdomain.InstanceRoleAdmin
+	ctx.Set("auth_context", &platformdomain.AuthContext{InstanceRole: &instanceRole})
+
+	headers := http.Header{runtimeproto.HeaderWorkspaceID: []string{"spoofed"}}
+	applyForwardedHeaders(
+		headers,
+		&platformdomain.InstalledExtension{ID: "ext_error_tracking", Slug: "error-tracking"},
+		platformdomain.ExtensionEndpoint{WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped},
+		ctx,
+		"",
+		"https://app.test",
+		"https://admin.test",
+		"https://api.test",
+	)
+
+	if got := headers.Get(runtimeproto.HeaderWorkspaceID); got != "" {
+		t.Fatalf("expected instance endpoint to omit workspace header, got %q", got)
+	}
+	var forwarded map[string]any
+	if err := json.Unmarshal([]byte(headers.Get(runtimeproto.HeaderSessionContextJSON)), &forwarded); err != nil {
+		t.Fatalf("decode forwarded session context: %v", err)
+	}
+	if got := forwarded["type"]; got != string(platformdomain.ContextTypeInstance) {
+		t.Fatalf("expected instance session context, got %#v", got)
+	}
+	if _, exists := forwarded["workspace_id"]; exists {
+		t.Fatalf("expected instance session context to omit workspace_id, got %#v", forwarded)
+	}
+	if got := forwarded["role"]; got != string(platformdomain.InstanceRoleAdmin) {
+		t.Fatalf("expected instance role, got %#v", got)
 	}
 }
 
