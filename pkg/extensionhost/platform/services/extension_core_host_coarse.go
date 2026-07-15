@@ -25,7 +25,7 @@ func (s *ExtensionCoreHostService) IngestApplication(ctx context.Context, extens
 	if s == nil || s.extensions == nil || s.cases == nil || s.contacts == nil || s.tenant == nil {
 		return nil, fmt.Errorf("core host services are not configured")
 	}
-	extension, err := s.resolveExtension(ctx, extensionID, "case:write")
+	extension, workspaceID, err := s.resolveExtensionForWorkspace(ctx, extensionID, "case:write", "")
 	if err != nil {
 		return nil, err
 	}
@@ -49,11 +49,11 @@ func (s *ExtensionCoreHostService) IngestApplication(ctx context.Context, extens
 
 	var result *runtimehost.IngestApplicationResult
 	err = s.tenant.WithTransaction(ctx, func(txCtx context.Context) error {
-		if err := s.tenant.SetTenantContext(txCtx, extension.WorkspaceID); err != nil {
+		if err := s.tenant.SetTenantContext(txCtx, workspaceID); err != nil {
 			return err
 		}
 
-		stored, found, ferr := s.tenant.GetHostOperationResult(txCtx, extension.WorkspaceID, extension.ID, ingestApplicationOperation, key)
+		stored, found, ferr := s.tenant.GetHostOperationResult(txCtx, workspaceID, extension.ID, ingestApplicationOperation, key)
 		if ferr != nil {
 			return ferr
 		}
@@ -67,7 +67,7 @@ func (s *ExtensionCoreHostService) IngestApplication(ctx context.Context, extens
 		}
 
 		contact, cerr := s.contacts.CreateContact(txCtx, CreateContactParams{
-			WorkspaceID: extension.WorkspaceID,
+			WorkspaceID: workspaceID,
 			Email:       strings.TrimSpace(input.Contact.Email),
 			Name:        strings.TrimSpace(input.Contact.Name),
 			Phone:       strings.TrimSpace(input.Contact.Phone),
@@ -80,7 +80,7 @@ func (s *ExtensionCoreHostService) IngestApplication(ctx context.Context, extens
 		}
 
 		caseObj, kerr := s.cases.CreateCase(txCtx, serviceapp.CreateCaseParams{
-			WorkspaceID:  extension.WorkspaceID,
+			WorkspaceID:  workspaceID,
 			Subject:      strings.TrimSpace(input.Case.Subject),
 			Description:  input.Case.Description,
 			Priority:     servicedomain.CasePriority(strings.TrimSpace(input.Case.Priority)),
@@ -98,7 +98,7 @@ func (s *ExtensionCoreHostService) IngestApplication(ctx context.Context, extens
 		}
 
 		if len(input.AttachmentIDs) > 0 && s.attachmentStore != nil {
-			if lerr := s.attachmentStore.LinkAttachmentsToCase(txCtx, extension.WorkspaceID, caseObj.ID, input.AttachmentIDs); lerr != nil {
+			if lerr := s.attachmentStore.LinkAttachmentsToCase(txCtx, workspaceID, caseObj.ID, input.AttachmentIDs); lerr != nil {
 				return lerr
 			}
 		}
@@ -108,7 +108,7 @@ func (s *ExtensionCoreHostService) IngestApplication(ctx context.Context, extens
 		if merr != nil {
 			return merr
 		}
-		return s.tenant.PutHostOperationResult(txCtx, extension.WorkspaceID, extension.ID, ingestApplicationOperation, key, payload)
+		return s.tenant.PutHostOperationResult(txCtx, workspaceID, extension.ID, ingestApplicationOperation, key, payload)
 	})
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ func (s *ExtensionCoreHostService) ApplyCaseChange(ctx context.Context, extensio
 	if s == nil || s.cases == nil || s.rules == nil || s.tenant == nil {
 		return nil, fmt.Errorf("core host services are not configured")
 	}
-	extension, err := s.resolveExtension(ctx, extensionID, "case:write")
+	extension, workspaceID, err := s.resolveExtensionForWorkspace(ctx, extensionID, "case:write", "")
 	if err != nil {
 		return nil, err
 	}
@@ -142,14 +142,14 @@ func (s *ExtensionCoreHostService) ApplyCaseChange(ctx context.Context, extensio
 
 	var out *servicedomain.Case
 	err = s.tenant.WithTransaction(ctx, func(txCtx context.Context) error {
-		if err := s.tenant.SetTenantContext(txCtx, extension.WorkspaceID); err != nil {
+		if err := s.tenant.SetTenantContext(txCtx, workspaceID); err != nil {
 			return err
 		}
-		_, applied, ferr := s.tenant.GetHostOperationResult(txCtx, extension.WorkspaceID, extension.ID, applyCaseChangeOperation, key)
+		_, applied, ferr := s.tenant.GetHostOperationResult(txCtx, workspaceID, extension.ID, applyCaseChangeOperation, key)
 		if ferr != nil {
 			return ferr
 		}
-		current, getErr := s.cases.GetCaseInWorkspace(txCtx, extension.WorkspaceID, caseID)
+		current, getErr := s.cases.GetCaseInWorkspace(txCtx, workspaceID, caseID)
 		if getErr != nil {
 			return getErr
 		}
@@ -177,7 +177,7 @@ func (s *ExtensionCoreHostService) ApplyCaseChange(ctx context.Context, extensio
 		if merr != nil {
 			return merr
 		}
-		return s.tenant.PutHostOperationResult(txCtx, extension.WorkspaceID, extension.ID, applyCaseChangeOperation, key, payload)
+		return s.tenant.PutHostOperationResult(txCtx, workspaceID, extension.ID, applyCaseChangeOperation, key, payload)
 	})
 	if err != nil {
 		if errors.Is(err, shared.ErrNotFound) {

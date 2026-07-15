@@ -125,7 +125,7 @@ func (s *ExtensionCoreHostService) CreateCase(ctx context.Context, extensionID s
 	if s == nil || s.extensions == nil || s.cases == nil || s.tenant == nil {
 		return nil, fmt.Errorf("core host services are not configured")
 	}
-	extension, err := s.resolveExtension(ctx, extensionID, "case:write")
+	_, workspaceID, err := s.resolveExtensionForWorkspace(ctx, extensionID, "case:write", "")
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func (s *ExtensionCoreHostService) CreateCase(ctx context.Context, extensionID s
 	}
 
 	params := serviceapp.CreateCaseParams{
-		WorkspaceID:  extension.WorkspaceID,
+		WorkspaceID:  workspaceID,
 		Subject:      strings.TrimSpace(input.Subject),
 		Description:  input.Description,
 		Priority:     servicedomain.CasePriority(strings.TrimSpace(input.Priority)),
@@ -152,7 +152,7 @@ func (s *ExtensionCoreHostService) CreateCase(ctx context.Context, extensionID s
 
 	var created *servicedomain.Case
 	err = s.tenant.WithTransaction(ctx, func(txCtx context.Context) error {
-		if err := s.tenant.SetTenantContext(txCtx, extension.WorkspaceID); err != nil {
+		if err := s.tenant.SetTenantContext(txCtx, workspaceID); err != nil {
 			return err
 		}
 		c, createErr := s.cases.CreateCase(txCtx, params)
@@ -171,7 +171,7 @@ func (s *ExtensionCoreHostService) GetCase(ctx context.Context, extensionID, cas
 	if s == nil || s.extensions == nil || s.cases == nil || s.tenant == nil {
 		return nil, fmt.Errorf("core host services are not configured")
 	}
-	extension, err := s.resolveExtension(ctx, extensionID, "case:read")
+	_, workspaceID, err := s.resolveExtensionForWorkspace(ctx, extensionID, "case:read", "")
 	if err != nil {
 		return nil, err
 	}
@@ -182,10 +182,10 @@ func (s *ExtensionCoreHostService) GetCase(ctx context.Context, extensionID, cas
 
 	var found *servicedomain.Case
 	err = s.tenant.WithTransaction(ctx, func(txCtx context.Context) error {
-		if err := s.tenant.SetTenantContext(txCtx, extension.WorkspaceID); err != nil {
+		if err := s.tenant.SetTenantContext(txCtx, workspaceID); err != nil {
 			return err
 		}
-		c, getErr := s.cases.GetCaseInWorkspace(txCtx, extension.WorkspaceID, caseID)
+		c, getErr := s.cases.GetCaseInWorkspace(txCtx, workspaceID, caseID)
 		found = c
 		return getErr
 	})
@@ -198,10 +198,11 @@ func (s *ExtensionCoreHostService) GetCase(ctx context.Context, extensionID, cas
 	return hostCaseFromDomain(found), nil
 }
 
-// resolveExtension loads the calling extension and enforces that it is active,
-// workspace-scoped with a workspace, and declares the required permission.
-// Phase 1 supports workspace-scoped extensions only; cross-workspace (admin)
-// access will be added with an explicit privilege, not the ambient admin role.
+// resolveExtension loads the calling extension and enforces that it is active
+// and declares the required permission. It does not bind a workspace; callers
+// apply the scope rule for their operation through resolveExtensionForWorkspace
+// (a single-workspace operation) or resolveExtensionForCrossWorkspace (an
+// operation that spans workspaces).
 func (s *ExtensionCoreHostService) resolveExtension(ctx context.Context, extensionID, permission string) (*platformdomain.InstalledExtension, error) {
 	extension, err := s.extensions.GetInstalledExtension(ctx, strings.TrimSpace(extensionID))
 	if err != nil {
@@ -210,10 +211,58 @@ func (s *ExtensionCoreHostService) resolveExtension(ctx context.Context, extensi
 	if extension == nil || extension.Status != platformdomain.ExtensionStatusActive {
 		return nil, ErrExtensionHostForbidden
 	}
-	if extension.Manifest.Scope != platformdomain.ExtensionScopeWorkspace || strings.TrimSpace(extension.WorkspaceID) == "" {
+	if !manifestHasPermission(extension.Manifest, permission) {
 		return nil, ErrExtensionHostForbidden
 	}
-	if !manifestHasPermission(extension.Manifest, permission) {
+	return extension, nil
+}
+
+// resolveExtensionForWorkspace resolves the extension and the workspace a
+// single-workspace operation must run in, applying the extension's scope:
+//
+//   - a workspace-scoped extension is pinned to its own installed workspace and
+//     may not name another; passing a different target is refused.
+//   - an instance-scoped extension is not bound to a workspace, so it must name
+//     the target workspace it wants to act in. Holding the instance scope grant
+//     is what authorizes it to act in any workspace.
+//
+// This is the one place the workspace an operation runs in is decided, so RLS
+// and the cross-tenant boundary are enforced consistently for every op.
+func (s *ExtensionCoreHostService) resolveExtensionForWorkspace(ctx context.Context, extensionID, permission, targetWorkspaceID string) (*platformdomain.InstalledExtension, string, error) {
+	extension, err := s.resolveExtension(ctx, extensionID, permission)
+	if err != nil {
+		return nil, "", err
+	}
+	targetWorkspaceID = strings.TrimSpace(targetWorkspaceID)
+	switch extension.Manifest.Scope {
+	case platformdomain.ExtensionScopeWorkspace:
+		if strings.TrimSpace(extension.WorkspaceID) == "" {
+			return nil, "", ErrExtensionHostForbidden
+		}
+		if targetWorkspaceID != "" && targetWorkspaceID != extension.WorkspaceID {
+			return nil, "", ErrExtensionHostForbidden
+		}
+		return extension, extension.WorkspaceID, nil
+	case platformdomain.ExtensionScopeInstance:
+		if targetWorkspaceID == "" {
+			return nil, "", fmt.Errorf("workspaceId is required for an instance-scoped extension")
+		}
+		return extension, targetWorkspaceID, nil
+	default:
+		return nil, "", ErrExtensionHostForbidden
+	}
+}
+
+// resolveExtensionForCrossWorkspace resolves the extension for an operation that
+// inherently spans workspaces (for example listing every workspace). Only an
+// instance-scoped extension holding the permission may perform it; a
+// workspace-scoped extension is confined to its own workspace and is refused.
+func (s *ExtensionCoreHostService) resolveExtensionForCrossWorkspace(ctx context.Context, extensionID, permission string) (*platformdomain.InstalledExtension, error) {
+	extension, err := s.resolveExtension(ctx, extensionID, permission)
+	if err != nil {
+		return nil, err
+	}
+	if extension.Manifest.Scope != platformdomain.ExtensionScopeInstance {
 		return nil, ErrExtensionHostForbidden
 	}
 	return extension, nil

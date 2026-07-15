@@ -19,18 +19,27 @@ import (
 // holds permission. Every workspace-scoped host op funnels through here so the
 // scope and RLS behavior are defined once.
 func (s *ExtensionCoreHostService) runScoped(ctx context.Context, extensionID, permission string, fn func(txCtx context.Context, workspaceID string) error) error {
+	return s.runScopedInWorkspace(ctx, extensionID, permission, "", fn)
+}
+
+// runScopedInWorkspace runs fn inside the resolved workspace's tenant context in
+// one transaction, after applying the extension's scope for targetWorkspaceID. A
+// workspace-scoped extension always runs in its own workspace; an instance-scoped
+// extension runs in the target workspace it named. Every single-workspace host op
+// funnels through here so the scope and RLS behavior are defined once.
+func (s *ExtensionCoreHostService) runScopedInWorkspace(ctx context.Context, extensionID, permission, targetWorkspaceID string, fn func(txCtx context.Context, workspaceID string) error) error {
 	if s == nil || s.extensions == nil || s.tenant == nil {
 		return fmt.Errorf("core host services are not configured")
 	}
-	extension, err := s.resolveExtension(ctx, extensionID, permission)
+	_, workspaceID, err := s.resolveExtensionForWorkspace(ctx, extensionID, permission, targetWorkspaceID)
 	if err != nil {
 		return err
 	}
 	return s.tenant.WithTransaction(ctx, func(txCtx context.Context) error {
-		if err := s.tenant.SetTenantContext(txCtx, extension.WorkspaceID); err != nil {
+		if err := s.tenant.SetTenantContext(txCtx, workspaceID); err != nil {
 			return err
 		}
-		return fn(txCtx, extension.WorkspaceID)
+		return fn(txCtx, workspaceID)
 	})
 }
 
