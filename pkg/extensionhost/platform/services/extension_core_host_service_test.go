@@ -23,10 +23,15 @@ func (f *fakeExtensionResolver) GetInstalledExtension(context.Context, string) (
 }
 
 type fakeCaseService struct {
-	created      serviceapp.CreateCaseParams
-	createResult *servicedomain.Case
-	getResult    *servicedomain.Case
-	getErr       error
+	created        serviceapp.CreateCaseParams
+	createResult   *servicedomain.Case
+	getResult      *servicedomain.Case
+	getErr         error
+	linkedCaseID   string
+	linkedIssue    string
+	linkedProject  string
+	unlinkedCaseID string
+	unlinkedIssue  string
 }
 
 func (f *fakeCaseService) CreateCase(_ context.Context, params serviceapp.CreateCaseParams) (*servicedomain.Case, error) {
@@ -48,9 +53,19 @@ func (f *fakeCaseService) MarkCaseResolved(_ context.Context, _ string, _ time.T
 	return nil
 }
 
+func (f *fakeCaseService) LinkIssueToCase(_ context.Context, caseID, issueID, projectID string) error {
+	f.linkedCaseID, f.linkedIssue, f.linkedProject = caseID, issueID, projectID
+	return nil
+}
+func (f *fakeCaseService) UnlinkIssueFromCase(_ context.Context, caseID, issueID string) error {
+	f.unlinkedCaseID, f.unlinkedIssue = caseID, issueID
+	return nil
+}
+
 type fakeTenantRunner struct {
 	tenantWorkspace string
 	ledger          map[string][]byte
+	adminCalls      int
 }
 
 func (f *fakeTenantRunner) WithTransaction(ctx context.Context, fn func(context.Context) error) error {
@@ -60,6 +75,11 @@ func (f *fakeTenantRunner) WithTransaction(ctx context.Context, fn func(context.
 func (f *fakeTenantRunner) SetTenantContext(_ context.Context, workspaceID string) error {
 	f.tenantWorkspace = workspaceID
 	return nil
+}
+
+func (f *fakeTenantRunner) WithAdminContext(ctx context.Context, fn func(context.Context) error) error {
+	f.adminCalls++
+	return fn(ctx)
 }
 
 func (f *fakeTenantRunner) GetHostOperationResult(_ context.Context, _, _, operation, key string) ([]byte, bool, error) {

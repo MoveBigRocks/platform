@@ -34,6 +34,9 @@ type ExtensionCoreHostService struct {
 	contacts        coreHostContactService
 	attachments     coreHostAttachmentUploader
 	attachmentStore coreHostAttachmentStore
+	caseStore       coreHostCaseStore
+	workspaces      coreHostWorkspaceService
+	outbox          coreHostEventPublisher
 	rules           coreHostRuleEngine
 	artifacts       coreHostArtifactPublisher
 	tenant          coreHostTenantRunner
@@ -55,6 +58,17 @@ type coreHostCaseService interface {
 	UpdateCase(ctx context.Context, caseObj *servicedomain.Case) error
 	HandoffCase(ctx context.Context, caseID string, params serviceapp.CaseHandoffParams) error
 	MarkCaseResolved(ctx context.Context, caseID string, resolvedAt time.Time) error
+	LinkIssueToCase(ctx context.Context, caseID, issueID, projectID string) error
+	UnlinkIssueFromCase(ctx context.Context, caseID, issueID string) error
+}
+
+type coreHostCaseStore interface {
+	GetCaseByIssueAndContact(ctx context.Context, workspaceID, issueID, contactID string) (*servicedomain.Case, error)
+}
+
+type coreHostWorkspaceService interface {
+	ListWorkspaces(ctx context.Context) ([]*platformdomain.Workspace, error)
+	GetWorkspacesByIDs(ctx context.Context, ids []string) ([]*platformdomain.Workspace, error)
 }
 
 // coreHostQueueReader reads queues; the core queue store satisfies it. Queue
@@ -87,6 +101,9 @@ type CoreHostDeps struct {
 	Contacts        coreHostContactService
 	Attachments     coreHostAttachmentUploader
 	AttachmentStore coreHostAttachmentStore
+	CaseStore       coreHostCaseStore
+	Workspaces      coreHostWorkspaceService
+	Outbox          coreHostEventPublisher
 	Rules           coreHostRuleEngine
 	Artifacts       coreHostArtifactPublisher
 	Tenant          coreHostTenantRunner
@@ -98,6 +115,7 @@ type CoreHostDeps struct {
 type coreHostTenantRunner interface {
 	WithTransaction(ctx context.Context, fn func(context.Context) error) error
 	SetTenantContext(ctx context.Context, workspaceID string) error
+	WithAdminContext(ctx context.Context, fn func(context.Context) error) error
 	// GetHostOperationResult and PutHostOperationResult back the idempotency
 	// ledger that makes a coarse operation safe to retry: it records the result
 	// under the caller's key so a repeat returns the same ids.
@@ -114,6 +132,9 @@ func NewExtensionCoreHostService(deps CoreHostDeps) *ExtensionCoreHostService {
 		contacts:        deps.Contacts,
 		attachments:     deps.Attachments,
 		attachmentStore: deps.AttachmentStore,
+		caseStore:       deps.CaseStore,
+		workspaces:      deps.Workspaces,
+		outbox:          deps.Outbox,
 		rules:           deps.Rules,
 		artifacts:       deps.Artifacts,
 		tenant:          deps.Tenant,
@@ -125,7 +146,7 @@ func (s *ExtensionCoreHostService) CreateCase(ctx context.Context, extensionID s
 	if s == nil || s.extensions == nil || s.cases == nil || s.tenant == nil {
 		return nil, fmt.Errorf("core host services are not configured")
 	}
-	_, workspaceID, err := s.resolveExtensionForWorkspace(ctx, extensionID, "case:write", "")
+	_, workspaceID, err := s.resolveExtensionForWorkspace(ctx, extensionID, "case:write", input.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -168,10 +189,15 @@ func (s *ExtensionCoreHostService) CreateCase(ctx context.Context, extensionID s
 // GetCase returns a case in the calling extension's workspace, or a not-found
 // error the handler maps to HTTP 404.
 func (s *ExtensionCoreHostService) GetCase(ctx context.Context, extensionID, caseID string) (*runtimehost.HostCase, error) {
+	return s.GetCaseInWorkspace(ctx, extensionID, "", caseID)
+}
+
+// GetCaseInWorkspace returns a case from the explicitly targeted workspace.
+func (s *ExtensionCoreHostService) GetCaseInWorkspace(ctx context.Context, extensionID, targetWorkspaceID, caseID string) (*runtimehost.HostCase, error) {
 	if s == nil || s.extensions == nil || s.cases == nil || s.tenant == nil {
 		return nil, fmt.Errorf("core host services are not configured")
 	}
-	_, workspaceID, err := s.resolveExtensionForWorkspace(ctx, extensionID, "case:read", "")
+	_, workspaceID, err := s.resolveExtensionForWorkspace(ctx, extensionID, "case:read", targetWorkspaceID)
 	if err != nil {
 		return nil, err
 	}

@@ -410,9 +410,9 @@ upgraded without managing a permanent core fork.
 The platform remains the extension host. Packaging, validation, activation,
 monitoring, and rollback stay on the `mbr extensions ...` surface. Custom
 extension repos should build against the public extension SDK and should not
-import `github.com/movebigrocks/platform/...`. The SDK carries both the
-runtime helpers like `runtimehttp` and `extdb` and the host-facing contract
-packages under `github.com/movebigrocks/extension-sdk/extensionhost/...`.
+import `github.com/movebigrocks/platform/...`. The SDK carries runtime helpers
+like `runtimehttp` and `extdb` plus the language-neutral host client and JSON
+contracts in `runtimehost`.
 Service-backed runtimes should receive their extension identity and effective
 config from the host-forwarded runtime context, not by reaching back into core
 stores.

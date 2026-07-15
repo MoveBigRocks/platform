@@ -136,6 +136,24 @@ would be a separate decision.
 - First-party extensions run as host-API clients, which proves the Go runtime; a
   TypeScript runtime, when built, consumes the same published schema.
 
+## Implementation close-out (2026-07-15)
+
+The temporary `extension-sdk/extensionhost` copy of core has been removed. ATS
+and error-tracking now own their extension data and reach core only through
+`/__mbr/host/v1/...`. Error-tracking's cross-workspace access is represented by
+an instance scope grant plus `workspace:read`, while each case and event
+operation remains workspace-targeted and permission-checked by the host.
+
+The Go SDK exposes only focused runtime packages, including `runtimehost`,
+`runtimehttp`, `extdb`, `apierrors`, `bundletrust`, and `testdb`. Bundle signing
+and verification share the public `bundletrust` implementation, so deleting the
+core copy does not create a second trust algorithm. First-party tests use fake
+host clients or the public PostgreSQL helper instead of copied platform stores.
+
+The security-parity gate that compared the copied tree with core has also been
+retired. There is no copied tree left to synchronize; host API tests and
+isolated module builds now enforce the boundary directly.
+
 ## Related
 
 - **Builds on:** [0026](0026-extension-host-lifecycle-and-public-extension-sdk-boundary.md)

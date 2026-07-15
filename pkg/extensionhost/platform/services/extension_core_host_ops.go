@@ -152,7 +152,7 @@ func (s *ExtensionCoreHostService) UpdateCase(ctx context.Context, extensionID, 
 		return nil, fmt.Errorf("case id is required")
 	}
 	var updated *servicedomain.Case
-	err := s.runScoped(ctx, extensionID, "case:write", func(txCtx context.Context, workspaceID string) error {
+	err := s.runScopedInWorkspace(ctx, extensionID, "case:write", patch.WorkspaceID, func(txCtx context.Context, workspaceID string) error {
 		current, getErr := s.cases.GetCaseInWorkspace(txCtx, workspaceID, caseID)
 		if getErr != nil {
 			return getErr
@@ -198,12 +198,12 @@ func (s *ExtensionCoreHostService) HandoffCase(ctx context.Context, extensionID,
 }
 
 // MarkCaseResolved marks a case resolved in the extension's workspace.
-func (s *ExtensionCoreHostService) MarkCaseResolved(ctx context.Context, extensionID, caseID string, resolvedAt time.Time) error {
+func (s *ExtensionCoreHostService) MarkCaseResolved(ctx context.Context, extensionID, targetWorkspaceID, caseID string, resolvedAt time.Time) error {
 	caseID = strings.TrimSpace(caseID)
 	if caseID == "" {
 		return fmt.Errorf("case id is required")
 	}
-	err := s.runScoped(ctx, extensionID, "case:write", func(txCtx context.Context, _ string) error {
+	err := s.runScopedInWorkspace(ctx, extensionID, "case:write", targetWorkspaceID, func(txCtx context.Context, _ string) error {
 		return s.cases.MarkCaseResolved(txCtx, caseID, resolvedAt)
 	})
 	if errors.Is(err, shared.ErrNotFound) {

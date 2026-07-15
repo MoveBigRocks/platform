@@ -95,7 +95,7 @@ func (h *ExtensionHostAPIHandler) GetCase(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, runtimehost.ErrorResponse{Status: "failed", Message: "host token is required"})
 		return
 	}
-	found, err := h.core.GetCase(c.Request.Context(), claims.ExtensionID, c.Param("caseID"))
+	found, err := h.core.GetCaseInWorkspace(c.Request.Context(), claims.ExtensionID, c.Query("workspaceId"), c.Param("caseID"))
 	if err != nil {
 		respondHostError(c, err)
 		return

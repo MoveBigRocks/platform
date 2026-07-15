@@ -158,6 +158,9 @@ func createAdminRouter(
 			Contacts:        c.Platform.Contact,
 			Attachments:     c.Service.Attachment,
 			AttachmentStore: c.Store.Cases(),
+			CaseStore:       c.Store.Cases(),
+			Workspaces:      c.Platform.Workspace,
+			Outbox:          c.Outbox,
 			Rules:           c.Automation.Engine,
 			Artifacts:       c.Platform.Extension,
 			Tenant:          c.Store,
@@ -220,6 +223,12 @@ func createAdminRouter(
 	router.PATCH(runtimehost.CoreCasesPath+"/:caseID", hostAPIHandler.RequireHostToken(), hostAPIHandler.UpdateCase)
 	router.POST(runtimehost.CoreCasesPath+"/:caseID/handoff", hostAPIHandler.RequireHostToken(), hostAPIHandler.HandoffCase)
 	router.POST(runtimehost.CoreCasesPath+"/:caseID/resolve", hostAPIHandler.RequireHostToken(), hostAPIHandler.MarkCaseResolved)
+	router.POST(runtimehost.CoreCasesPath+"/:caseID/issues", hostAPIHandler.RequireHostToken(), hostAPIHandler.LinkIssueToCase)
+	router.DELETE(runtimehost.CoreCasesPath+"/:caseID/issues", hostAPIHandler.RequireHostToken(), hostAPIHandler.UnlinkIssueFromCase)
+	router.GET(runtimehost.CoreCaseIssueLookupPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.GetCaseByIssueAndContact)
+	router.GET(runtimehost.CoreWorkspacesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.ListWorkspaces)
+	router.POST(runtimehost.CoreWorkspacesPath+"/by-ids", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetWorkspacesByIDs)
+	router.POST(runtimehost.CoreEventsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.PublishEvent)
 	router.POST(runtimehost.CoreQueuesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.CreateQueue)
 	router.GET(runtimehost.CoreQueuesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.GetQueueBySlug)
 	router.GET(runtimehost.CoreQueuesPath+"/:queueID", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetQueue)
@@ -497,6 +506,9 @@ func createAPIRouter(
 			Contacts:        c.Platform.Contact,
 			Attachments:     c.Service.Attachment,
 			AttachmentStore: c.Store.Cases(),
+			CaseStore:       c.Store.Cases(),
+			Workspaces:      c.Platform.Workspace,
+			Outbox:          c.Outbox,
 			Rules:           c.Automation.Engine,
 			Artifacts:       c.Platform.Extension,
 			Tenant:          c.Store,
@@ -508,6 +520,12 @@ func createAPIRouter(
 	router.PATCH(runtimehost.CoreCasesPath+"/:caseID", hostAPIHandler.RequireHostToken(), hostAPIHandler.UpdateCase)
 	router.POST(runtimehost.CoreCasesPath+"/:caseID/handoff", hostAPIHandler.RequireHostToken(), hostAPIHandler.HandoffCase)
 	router.POST(runtimehost.CoreCasesPath+"/:caseID/resolve", hostAPIHandler.RequireHostToken(), hostAPIHandler.MarkCaseResolved)
+	router.POST(runtimehost.CoreCasesPath+"/:caseID/issues", hostAPIHandler.RequireHostToken(), hostAPIHandler.LinkIssueToCase)
+	router.DELETE(runtimehost.CoreCasesPath+"/:caseID/issues", hostAPIHandler.RequireHostToken(), hostAPIHandler.UnlinkIssueFromCase)
+	router.GET(runtimehost.CoreCaseIssueLookupPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.GetCaseByIssueAndContact)
+	router.GET(runtimehost.CoreWorkspacesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.ListWorkspaces)
+	router.POST(runtimehost.CoreWorkspacesPath+"/by-ids", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetWorkspacesByIDs)
+	router.POST(runtimehost.CoreEventsPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.PublishEvent)
 	router.POST(runtimehost.CoreQueuesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.CreateQueue)
 	router.GET(runtimehost.CoreQueuesPath, hostAPIHandler.RequireHostToken(), hostAPIHandler.GetQueueBySlug)
 	router.GET(runtimehost.CoreQueuesPath+"/:queueID", hostAPIHandler.RequireHostToken(), hostAPIHandler.GetQueue)
