@@ -147,7 +147,7 @@ func (r *Registry) proxyHTTPToUnixSocket(extension *platformdomain.InstalledExte
 	}
 
 	headers := cloneHeaders(ctx.Request.Header)
-	applyForwardedHeaders(headers, extension, ctx, r.hostTokenSecret)
+	applyForwardedHeaders(headers, extension, ctx, r.hostTokenSecret, r.publicBaseURL, r.adminBaseURL, r.apiBaseURL)
 
 	resp, err := r.doUnixSocketRequest(
 		ctx.Request.Context(),
@@ -268,9 +268,14 @@ func applyRuntimeBaseURLHeaders(headers http.Header, publicBaseURL, adminBaseURL
 	}
 }
 
-func applyForwardedHeaders(headers http.Header, extension *platformdomain.InstalledExtension, ctx *gin.Context, hostTokenSecret string) {
+func applyForwardedHeaders(headers http.Header, extension *platformdomain.InstalledExtension, ctx *gin.Context, hostTokenSecret, publicBaseURL, adminBaseURL, apiBaseURL string) {
 	applyRuntimeIdentityHeaders(headers, extension)
 	applyRuntimeHostAuthHeader(headers, extension, hostTokenSecret)
+	// Proxied inbound requests (public careers pages, admin panels, workspace
+	// APIs) can arrive on any domain. Advertise where the host API actually
+	// lives so the extension's host client targets /__mbr/host/v1 directly
+	// rather than guessing it from the inbound Host header.
+	applyRuntimeBaseURLHeaders(headers, publicBaseURL, adminBaseURL, apiBaseURL)
 	if ctx == nil {
 		return
 	}

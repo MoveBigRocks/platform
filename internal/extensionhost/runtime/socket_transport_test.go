@@ -57,6 +57,19 @@ func TestApplyRuntimeIdentityHeadersIncludesEffectiveExtensionConfig(t *testing.
 	}
 }
 
+func TestApplyForwardedHeadersAdvertisesHostAPIBaseURL(t *testing.T) {
+	// A proxied inbound request must carry the host-API base URL so the
+	// extension's host client can reach /__mbr/host/v1 regardless of which
+	// public, admin, or workspace domain the request arrived on.
+	extension := &platformdomain.InstalledExtension{ID: "ext_123", WorkspaceID: "ws_123"}
+	headers := http.Header{}
+	applyForwardedHeaders(headers, extension, nil, "", "https://app.test", "https://admin.test", "https://api.test")
+
+	if got := headers.Get(runtimeproto.HeaderAPIBaseURL); got != "https://api.test" {
+		t.Fatalf("expected host-API base URL header, got %q", got)
+	}
+}
+
 func TestDoUnixSocketRequestKeepsBodyReadableUntilClose(t *testing.T) {
 	runtimeDir, err := os.MkdirTemp("/tmp", "mbr-runtime-*")
 	if err != nil {
