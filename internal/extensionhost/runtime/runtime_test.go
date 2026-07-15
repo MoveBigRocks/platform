@@ -237,6 +237,35 @@ func TestRuntimePrepareInstallRejectsUnsafePrivilegedManifest(t *testing.T) {
 	assert.Contains(t, err.Error(), "may not declare public_page endpoints")
 }
 
+func TestRuntimePrepareInstallAllowsPublicIngestForStandardInstanceProduct(t *testing.T) {
+	runtime := NewRuntime(NewRegistryForRuntimeDir(newRuntimeTestDir(t)))
+	manifest := platformdomain.ExtensionManifest{
+		Kind:         platformdomain.ExtensionKindProduct,
+		Scope:        platformdomain.ExtensionScopeInstance,
+		Risk:         platformdomain.ExtensionRiskStandard,
+		RuntimeClass: platformdomain.ExtensionRuntimeClassServiceBacked,
+		Runtime: platformdomain.ExtensionRuntimeSpec{
+			Protocol: platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP,
+		},
+		Endpoints: []platformdomain.ExtensionEndpoint{
+			{
+				Name:          "sentry-envelope",
+				Class:         platformdomain.ExtensionEndpointClassPublicIngest,
+				Auth:          platformdomain.ExtensionEndpointAuthPublic,
+				ServiceTarget: "error-tracking.ingest.envelope",
+			},
+			{
+				Name:          "runtime-health",
+				Class:         platformdomain.ExtensionEndpointClassHealth,
+				Auth:          platformdomain.ExtensionEndpointAuthInternalOnly,
+				ServiceTarget: "error-tracking.runtime.health",
+			},
+		},
+	}
+
+	require.NoError(t, runtime.PrepareInstall(context.Background(), manifest, ""))
+}
+
 func TestRuntimeEnsureInstalledExtensionRuntimeRegistersEventConsumersAndJobs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

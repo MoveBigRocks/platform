@@ -208,7 +208,7 @@ func (r *Runtime) EnsureInstalledExtensionRuntime(
 
 func (r *Runtime) PrepareInstall(_ context.Context, manifest platformdomain.ExtensionManifest, _ string) error {
 	if manifest.RuntimeClass != platformdomain.ExtensionRuntimeClassServiceBacked {
-		return fmt.Errorf("privileged extensions require service-backed runtime")
+		return fmt.Errorf("managed extensions require service-backed runtime")
 	}
 	if r == nil || r.registry == nil {
 		return fmt.Errorf("service target registry is not configured")
@@ -219,12 +219,14 @@ func (r *Runtime) PrepareInstall(_ context.Context, manifest platformdomain.Exte
 		if endpoint.Class == platformdomain.ExtensionEndpointClassHealth {
 			hasHealthEndpoint = true
 		}
-		if endpoint.Class == platformdomain.ExtensionEndpointClassPublicPage || endpoint.Class == platformdomain.ExtensionEndpointClassPublicAsset {
-			return fmt.Errorf("privileged extensions may not declare %s endpoints", endpoint.Class)
-		}
-		if endpoint.Auth == platformdomain.ExtensionEndpointAuthPublic &&
-			endpoint.Class != platformdomain.ExtensionEndpointClassWebhook {
-			return fmt.Errorf("privileged endpoint %s may not use public auth", endpoint.Name)
+		if manifest.Risk == platformdomain.ExtensionRiskPrivileged {
+			if endpoint.Class == platformdomain.ExtensionEndpointClassPublicPage || endpoint.Class == platformdomain.ExtensionEndpointClassPublicAsset {
+				return fmt.Errorf("privileged extensions may not declare %s endpoints", endpoint.Class)
+			}
+			if endpoint.Auth == platformdomain.ExtensionEndpointAuthPublic &&
+				endpoint.Class != platformdomain.ExtensionEndpointClassWebhook {
+				return fmt.Errorf("privileged endpoint %s may not use public auth", endpoint.Name)
+			}
 		}
 		serviceTarget := strings.TrimSpace(endpoint.ServiceTarget)
 		if serviceTarget != "" && !r.registry.SupportsServiceTarget(manifest.Runtime.Protocol, serviceTarget) {
@@ -232,7 +234,7 @@ func (r *Runtime) PrepareInstall(_ context.Context, manifest platformdomain.Exte
 		}
 	}
 	if !hasHealthEndpoint {
-		return fmt.Errorf("privileged extensions must declare a health endpoint")
+		return fmt.Errorf("managed extensions must declare a health endpoint")
 	}
 	for _, consumer := range manifest.EventConsumers {
 		serviceTarget := strings.TrimSpace(consumer.ServiceTarget)
