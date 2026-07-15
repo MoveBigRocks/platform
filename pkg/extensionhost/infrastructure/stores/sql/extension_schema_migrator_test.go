@@ -845,12 +845,56 @@ func loadReferenceExtensionInstallParams(t *testing.T, extensionName, workspaceI
 	require.NoError(t, json.Unmarshal(manifestBytes, &manifest))
 
 	migrations := loadReferenceExtensionMigrations(t, filepath.Join(root, "migrations"))
+	// Install the extension with its packaged assets, the way the deploy does,
+	// so manifest asset references (agent skills, artifact seeds) validate.
+	assets := loadReferenceExtensionAssets(t, filepath.Join(root, "assets"))
+	// Instance-scoped extensions are not bound to a workspace; the install
+	// rejects a workspace_id for them, so mirror how the deploy installs them.
+	installWorkspaceID := workspaceID
+	if manifest.Scope == platformdomain.ExtensionScopeInstance {
+		installWorkspaceID = ""
+	}
 	return platformservices.InstallExtensionParams{
-		WorkspaceID:  workspaceID,
+		WorkspaceID:  installWorkspaceID,
 		LicenseToken: "lic_" + strings.ReplaceAll(extensionName, "-", "_"),
 		Manifest:     manifest,
+		Assets:       assets,
 		Migrations:   migrations,
 	}
+}
+
+// loadReferenceExtensionAssets walks an extension's assets/ directory and
+// returns each file as an install asset, with the path relative to assets/ (the
+// convention manifest asset references use, for example agent-skills/x.md).
+func loadReferenceExtensionAssets(t *testing.T, assetsRoot string) []platformservices.ExtensionAssetInput {
+	t.Helper()
+	if _, err := os.Stat(assetsRoot); errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	var assets []platformservices.ExtensionAssetInput
+	err := filepath.WalkDir(assetsRoot, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		rel, relErr := filepath.Rel(assetsRoot, path)
+		if relErr != nil {
+			return relErr
+		}
+		assets = append(assets, platformservices.ExtensionAssetInput{
+			Path:    filepath.ToSlash(rel),
+			Content: content,
+		})
+		return nil
+	})
+	require.NoError(t, err)
+	return assets
 }
 
 func loadReferenceExtensionMigrations(t *testing.T, root string) []platformservices.ExtensionMigrationInput {
