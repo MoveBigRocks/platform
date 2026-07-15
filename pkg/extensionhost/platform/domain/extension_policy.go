@@ -37,25 +37,35 @@ func (m ExtensionManifest) ValidateGenericInstallPolicy() error {
 
 // ValidatePrivilegedInstallPolicy enforces privileged runtime install constraints.
 func (m ExtensionManifest) ValidatePrivilegedInstallPolicy(workspaceID string, publisherAllowed func(string) bool) error {
-	switch m.Kind {
-	case ExtensionKindIdentity, ExtensionKindConnector:
-	default:
-		return fmt.Errorf("privileged runtime currently supports only identity and connector extensions")
-	}
-	if m.Risk != ExtensionRiskPrivileged {
-		return fmt.Errorf("%s extensions must declare risk=privileged", m.Kind)
-	}
 	if m.RuntimeClass != ExtensionRuntimeClassServiceBacked {
 		return fmt.Errorf("%s extensions require service_backed runtime", m.Kind)
 	}
 	switch m.Scope {
 	case ExtensionScopeWorkspace:
+		if m.Kind != ExtensionKindIdentity && m.Kind != ExtensionKindConnector {
+			return fmt.Errorf("privileged workspace runtime supports only identity and connector extensions")
+		}
+		if m.Risk != ExtensionRiskPrivileged {
+			return fmt.Errorf("%s extensions must declare risk=privileged", m.Kind)
+		}
 		if strings.TrimSpace(workspaceID) == "" {
 			return fmt.Errorf("workspace_id is required for privileged workspace-scoped extensions")
 		}
 	case ExtensionScopeInstance:
 		if strings.TrimSpace(workspaceID) != "" {
 			return fmt.Errorf("workspace_id is not allowed for privileged instance-scoped extensions")
+		}
+		switch m.Kind {
+		case ExtensionKindIdentity, ExtensionKindConnector:
+			if m.Risk != ExtensionRiskPrivileged {
+				return fmt.Errorf("%s extensions must declare risk=privileged", m.Kind)
+			}
+		case ExtensionKindProduct, ExtensionKindOperational:
+			if m.Risk != ExtensionRiskStandard {
+				return fmt.Errorf("instance-scoped %s extensions must declare risk=standard", m.Kind)
+			}
+		default:
+			return fmt.Errorf("unsupported instance-scoped extension kind %q", m.Kind)
 		}
 	default:
 		return fmt.Errorf("unsupported privileged extension scope %q", m.Scope)

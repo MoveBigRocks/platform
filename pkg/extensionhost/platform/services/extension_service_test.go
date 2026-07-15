@@ -237,6 +237,58 @@ func TestExtensionService_UpgradePreservesCustomizableAssetsAndActiveState(t *te
 	assert.Contains(t, string(assets[0].Content), "Acme Careers")
 }
 
+func TestExtensionService_UpgradeClearsWorkspaceWhenScopeBecomesInstance(t *testing.T) {
+	store, cleanup := testutil.SetupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	workspace := testutil.NewIsolatedWorkspace(t)
+	require.NoError(t, store.Workspaces().CreateWorkspace(ctx, workspace))
+	service := NewExtensionService(store.Extensions(), store.Workspaces(), store.Queues(), store.Forms(), store.Rules(), store)
+
+	installed, err := service.InstallExtension(ctx, InstallExtensionParams{
+		WorkspaceID: workspace.ID,
+		Manifest: platformdomain.ExtensionManifest{
+			SchemaVersion: 1, Slug: "error-tracking", Name: "Error Tracking", Version: "1.0.0", Publisher: "DemandOps",
+			Kind: platformdomain.ExtensionKindProduct, Scope: platformdomain.ExtensionScopeWorkspace,
+			Risk: platformdomain.ExtensionRiskStandard, RuntimeClass: platformdomain.ExtensionRuntimeClassBundle,
+			StorageClass: platformdomain.ExtensionStorageClassSharedPrimitivesOnly,
+		},
+	})
+	require.NoError(t, err)
+
+	upgraded, err := service.UpgradeExtension(ctx, UpgradeExtensionParams{
+		ExtensionID:  installed.ID,
+		BundleBase64: base64.StdEncoding.EncodeToString([]byte(`{}`)),
+		Manifest: platformdomain.ExtensionManifest{
+			SchemaVersion: 1, Slug: "error-tracking", Name: "Error Tracking", Version: "2.0.0", Publisher: "DemandOps",
+			Kind: platformdomain.ExtensionKindProduct, Scope: platformdomain.ExtensionScopeInstance,
+			Risk: platformdomain.ExtensionRiskStandard, RuntimeClass: platformdomain.ExtensionRuntimeClassServiceBacked,
+			StorageClass: platformdomain.ExtensionStorageClassOwnedSchema,
+			Schema: platformdomain.ExtensionSchemaManifest{
+				Name: "ext_demandops_error_tracking", PackageKey: "demandops/error-tracking", TargetVersion: "1", MigrationEngine: "postgres_sql",
+			},
+			Runtime: platformdomain.ExtensionRuntimeSpec{
+				Protocol: platformdomain.ExtensionRuntimeProtocolUnixSocketHTTP, OCIReference: "ghcr.io/movebigrocks/mbr-ext-error-tracking-runtime:v2.0.0", Digest: "sha256:test",
+			},
+			Endpoints: []platformdomain.ExtensionEndpoint{{
+				Name: "runtime-health", Class: platformdomain.ExtensionEndpointClassHealth, MountPath: "/extensions/error-tracking/health",
+				Methods: []string{"GET"}, Auth: platformdomain.ExtensionEndpointAuthInternalOnly,
+				WorkspaceBinding: platformdomain.ExtensionWorkspaceBindingInstanceScoped, ServiceTarget: "error-tracking.runtime.health",
+			}},
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, installed.ID, upgraded.ID)
+	assert.Empty(t, upgraded.WorkspaceID)
+	assert.Equal(t, platformdomain.ExtensionScopeInstance, upgraded.Manifest.Scope)
+
+	stored, err := service.GetInstalledExtension(ctx, installed.ID)
+	require.NoError(t, err)
+	assert.Empty(t, stored.WorkspaceID)
+	assert.Equal(t, platformdomain.ExtensionScopeInstance, stored.Manifest.Scope)
+}
+
 func TestExtensionService_InstallInvalidAssetTopologyMarksFailed(t *testing.T) {
 	store, cleanup := testutil.SetupTestStore(t)
 	defer cleanup()

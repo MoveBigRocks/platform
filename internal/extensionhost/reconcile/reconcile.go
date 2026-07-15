@@ -315,6 +315,9 @@ func (e *Engine) Apply(ctx context.Context, doc extensiondesiredstate.Document, 
 			continue
 		}
 		currentExt := current[key]
+		if currentExt == nil && op.ExtensionID != "" {
+			currentExt = installedExtensionByID(current, op.ExtensionID)
+		}
 
 		switch op.Action {
 		case OperationInstall:
@@ -580,7 +583,18 @@ func (e *Engine) evaluate(ctx context.Context, doc extensiondesiredstate.Documen
 	for _, key := range keys {
 		desired := resolved[key]
 		existing := current[key]
-		matched[key] = struct{}{}
+		matchedKey := key
+		if existing == nil && desired.entry.Scope == string(domain.ExtensionScopeInstance) {
+			var transitionErr error
+			matchedKey, existing, transitionErr = instanceScopeTransitionCandidate(current, desired.entry.Slug)
+			if transitionErr != nil {
+				return evaluation{}, transitionErr
+			}
+			if existing == nil {
+				matchedKey = key
+			}
+		}
+		matched[matchedKey] = struct{}{}
 		ops = append(ops, e.planForEntry(desired, existing)...)
 	}
 
@@ -622,6 +636,30 @@ func (e *Engine) evaluate(ctx context.Context, doc extensiondesiredstate.Documen
 		resolved: resolved,
 		current:  current,
 	}, nil
+}
+
+func instanceScopeTransitionCandidate(current map[string]*domain.InstalledExtension, slug string) (string, *domain.InstalledExtension, error) {
+	var candidateKey string
+	var candidate *domain.InstalledExtension
+	for key, extension := range current {
+		if extension == nil || !strings.EqualFold(extension.Slug, slug) || extension.Manifest.Scope != domain.ExtensionScopeWorkspace {
+			continue
+		}
+		if candidate != nil {
+			return "", nil, fmt.Errorf("cannot transition extension %s to instance scope: multiple workspace installations exist", slug)
+		}
+		candidateKey, candidate = key, extension
+	}
+	return candidateKey, candidate, nil
+}
+
+func installedExtensionByID(current map[string]*domain.InstalledExtension, extensionID string) *domain.InstalledExtension {
+	for _, extension := range current {
+		if extension != nil && extension.ID == extensionID {
+			return extension
+		}
+	}
+	return nil
 }
 
 func (e *Engine) resolveDesiredEntries(ctx context.Context, doc extensiondesiredstate.Document) (map[string]resolvedEntry, RuntimeManifest, error) {
@@ -755,7 +793,9 @@ func (e *Engine) planForEntry(desired resolvedEntry, existing *domain.InstalledE
 			activate.Reason = "desired state requires active extension"
 			ops = append(ops, activate)
 		}
-	case checksumHex(desired.payload.Bytes) != existing.BundleSHA256 || existing.Version != desired.manifest.Version:
+	case checksumHex(desired.payload.Bytes) != existing.BundleSHA256 ||
+		existing.Version != desired.manifest.Version ||
+		existing.Manifest.Scope != desired.manifest.Scope:
 		upgrade := base
 		upgrade.Action = OperationUpgrade
 		upgrade.Reason = "installed bundle differs from desired bundle"

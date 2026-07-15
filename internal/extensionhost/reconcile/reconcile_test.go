@@ -274,6 +274,70 @@ extensions:
 	assert.Equal(t, "error-tracking", plan.Operations[3].Slug)
 }
 
+func TestPlanUpgradesSingleWorkspaceInstallationToInstanceScopeInPlace(t *testing.T) {
+	payload := payloadForManifest(t, domain.ExtensionManifest{
+		SchemaVersion: 1,
+		Slug:          "error-tracking",
+		Name:          "Error Tracking",
+		Version:       "2.0.0",
+		Publisher:     "DemandOps",
+		Kind:          domain.ExtensionKindProduct,
+		Scope:         domain.ExtensionScopeInstance,
+		Risk:          domain.ExtensionRiskStandard,
+		RuntimeClass:  domain.ExtensionRuntimeClassServiceBacked,
+		StorageClass:  domain.ExtensionStorageClassOwnedSchema,
+		Schema: domain.ExtensionSchemaManifest{
+			Name: "ext_demandops_error_tracking", PackageKey: "demandops/error-tracking", TargetVersion: "1", MigrationEngine: "postgres_sql",
+		},
+		Runtime: domain.ExtensionRuntimeSpec{
+			Protocol: domain.ExtensionRuntimeProtocolUnixSocketHTTP, OCIReference: "ghcr.io/movebigrocks/mbr-ext-error-tracking-runtime:v2.0.0", Digest: "sha256:test",
+		},
+		Endpoints: []domain.ExtensionEndpoint{{
+			Name: "runtime-health", Class: domain.ExtensionEndpointClassHealth, MountPath: "/extensions/error-tracking/health",
+			Methods: []string{"GET"}, Auth: domain.ExtensionEndpointAuthInternalOnly,
+			WorkspaceBinding: domain.ExtensionWorkspaceBindingInstanceScoped, ServiceTarget: "error-tracking.runtime.health",
+		}},
+	})
+	engine := NewEngine(
+		fakeBundleLoader{payloads: map[string]extensionbundle.SourcePayload{"oci://error-tracking": payload}},
+		fakeInventory{installed: []*domain.InstalledExtension{{
+			ID: "ext_error_tracking", WorkspaceID: "ws_engineering", Slug: "error-tracking", Version: "2.0.0",
+			BundleSHA256: checksumHex(payload.Bytes), Manifest: domain.ExtensionManifest{Scope: domain.ExtensionScopeWorkspace},
+			Status: domain.ExtensionStatusActive, ValidationStatus: domain.ExtensionValidationValid,
+		}}},
+		fakeWorkspaceLookup{},
+		fakeLifecycle{},
+	)
+	doc := mustDesiredState(t, `
+extensions:
+  installed:
+    - slug: error-tracking
+      ref: oci://error-tracking
+      scope: instance
+`)
+
+	plan, err := engine.Plan(t.Context(), doc, "")
+	require.NoError(t, err)
+	require.Len(t, plan.Operations, 2)
+	assert.Equal(t, OperationUpgrade, plan.Operations[0].Action)
+	assert.Equal(t, "ext_error_tracking", plan.Operations[0].ExtensionID)
+	assert.Equal(t, OperationValidate, plan.Operations[1].Action)
+}
+
+func TestInstanceScopeTransitionCandidateRejectsMultipleWorkspaceInstallations(t *testing.T) {
+	current := map[string]*domain.InstalledExtension{
+		"workspace:ws_one:error-tracking": {
+			ID: "ext_one", Slug: "error-tracking", Manifest: domain.ExtensionManifest{Scope: domain.ExtensionScopeWorkspace},
+		},
+		"workspace:ws_two:error-tracking": {
+			ID: "ext_two", Slug: "error-tracking", Manifest: domain.ExtensionManifest{Scope: domain.ExtensionScopeWorkspace},
+		},
+	}
+
+	_, _, err := instanceScopeTransitionCandidate(current, "error-tracking")
+	require.EqualError(t, err, "cannot transition extension error-tracking to instance scope: multiple workspace installations exist")
+}
+
 func TestRenderRuntimeManifestForServiceBackedExtension(t *testing.T) {
 	engine := NewEngine(
 		fakeBundleLoader{payloads: map[string]extensionbundle.SourcePayload{

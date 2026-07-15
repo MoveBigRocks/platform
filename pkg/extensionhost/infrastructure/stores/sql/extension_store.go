@@ -154,7 +154,7 @@ func (s *ExtensionStore) UpdateInstalledExtension(ctx context.Context, extension
 	}
 
 	query := `UPDATE core_platform.installed_extensions SET
-		slug = ?, name = ?, publisher = ?, version = ?, description = ?,
+		workspace_id = ?, slug = ?, name = ?, publisher = ?, version = ?, description = ?,
 		license_token = ?, bundle_sha256 = ?, bundle_size = ?, bundle_payload = ?, manifest_json = ?, config_json = ?,
 		status = ?, validation_status = ?, validation_message = ?, health_status = ?, health_message = ?,
 		installed_by_id = ?, installed_at = ?, activated_at = ?, deactivated_at = ?,
@@ -164,6 +164,7 @@ func (s *ExtensionStore) UpdateInstalledExtension(ctx context.Context, extension
 	result, err := s.db.Get(ctx).ExecContext(
 		ctx,
 		query,
+		nullableUUIDPtrValue(model.WorkspaceID),
 		model.Slug,
 		model.Name,
 		model.Publisher,

@@ -70,5 +70,21 @@ func TestExtensionInstallPoliciesCoverage(t *testing.T) {
 		Risk:         ExtensionRiskPrivileged,
 		RuntimeClass: ExtensionRuntimeClassServiceBacked,
 	}
-	require.EqualError(t, wrongKind.ValidatePrivilegedInstallPolicy("ws_1", nil), "privileged runtime currently supports only identity and connector extensions")
+	require.EqualError(t, wrongKind.ValidatePrivilegedInstallPolicy("ws_1", nil), "privileged workspace runtime supports only identity and connector extensions")
+
+	instanceProduct := ExtensionManifest{
+		Kind:         ExtensionKindProduct,
+		Scope:        ExtensionScopeInstance,
+		Risk:         ExtensionRiskStandard,
+		RuntimeClass: ExtensionRuntimeClassServiceBacked,
+		Publisher:    "DemandOps",
+	}
+	require.True(t, instanceProduct.RequiresPrivilegedInstallPolicy())
+	require.NoError(t, instanceProduct.ValidatePrivilegedInstallPolicy("", func(publisher string) bool {
+		return publisher == "DemandOps"
+	}))
+	require.EqualError(t,
+		instanceProduct.ValidatePrivilegedInstallPolicy("ws_1", func(string) bool { return true }),
+		"workspace_id is not allowed for privileged instance-scoped extensions",
+	)
 }

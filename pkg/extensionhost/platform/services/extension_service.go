@@ -494,12 +494,18 @@ func (s *ExtensionService) UpgradeExtension(ctx context.Context, params UpgradeE
 	if params.Manifest.Slug != existing.Slug {
 		return nil, apierrors.Newf(apierrors.ErrorTypeValidation, "extension slug cannot change during upgrade")
 	}
-	if err := s.validateInstallPolicy(ctx, params.Manifest, existing.WorkspaceID); err != nil {
+	targetWorkspaceID := existing.WorkspaceID
+	if params.Manifest.Scope == platformdomain.ExtensionScopeInstance {
+		targetWorkspaceID = ""
+	} else if existing.Manifest.Scope == platformdomain.ExtensionScopeInstance {
+		return nil, apierrors.Newf(apierrors.ErrorTypeValidation, "instance-scoped extensions cannot become workspace-scoped during upgrade")
+	}
+	if err := s.validateInstallPolicy(ctx, params.Manifest, targetWorkspaceID); err != nil {
 		return nil, apierrors.Wrap(err, apierrors.ErrorTypeValidation, "extension policy validation failed")
 	}
 
 	installParams := InstallExtensionParams{
-		WorkspaceID:   existing.WorkspaceID,
+		WorkspaceID:   targetWorkspaceID,
 		InstalledByID: params.InstalledByID,
 		LicenseToken:  params.LicenseToken,
 		BundleBase64:  params.BundleBase64,
@@ -530,6 +536,7 @@ func (s *ExtensionService) UpgradeExtension(ctx context.Context, params UpgradeE
 	}
 
 	upgraded := *existing
+	upgraded.WorkspaceID = targetWorkspaceID
 	upgraded.Manifest = params.Manifest
 	upgraded.Name = params.Manifest.Name
 	upgraded.Publisher = params.Manifest.Publisher
