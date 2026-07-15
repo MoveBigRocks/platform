@@ -95,6 +95,6 @@ docker-data/
 # Test output files
 test_output*.txt
 
-# Local audit artifacts
-docs/planning/dead-code-audit-findings.md
-docs/planning/linus-review-findings.md
+# Local planning + audit artifacts (gitignored working docs; status of record
+# lives in the gate + tests + e2e evidence, never in a committed doc)
+docs/planning/
