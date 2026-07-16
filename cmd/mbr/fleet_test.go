@@ -174,6 +174,18 @@ func TestNormalizeFleetRegisterURLUsesAPIBaseURL(t *testing.T) {
 	}
 }
 
+func TestNormalizeFleetRegisterURLPreservesDirectAPIOrigin(t *testing.T) {
+	t.Parallel()
+
+	got, err := normalizeFleetRegisterURL("https://api.mbr.demandops.com")
+	if err != nil {
+		t.Fatalf("normalizeFleetRegisterURL returned error: %v", err)
+	}
+	if got != "https://api.mbr.demandops.com/api/fleet/register" {
+		t.Fatalf("unexpected direct API URL %q", got)
+	}
+}
+
 func TestLoadFleetRegisterConfigFallsBackToBreakGlassAdminEmail(t *testing.T) {
 	t.Parallel()
 

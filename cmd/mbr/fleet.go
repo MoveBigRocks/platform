@@ -72,7 +72,7 @@ func runFleet(ctx context.Context, args []string, stdout, stderr io.Writer) int 
 		fs := flag.NewFlagSet("mbr fleet register", flag.ContinueOnError)
 		fs.SetOutput(stderr)
 		configPath := fs.String("config", "", "Path to mbr.instance.yaml")
-		fleetURL := fs.String("fleet-url", "", "Fleet control-plane URL, for example https://movebigrocks.com")
+		fleetURL := fs.String("fleet-url", "", "Fleet control-plane URL, for example https://api.mbr.demandops.com")
 		instanceID := fs.String("instance-id", "", "Instance ID")
 		instanceName := fs.String("instance-name", "", "Instance name")
 		operatorEmail := fs.String("operator-email", "", "Operator email address")
