@@ -179,6 +179,28 @@ jobs:
           go build -v -o mbr-server ./cmd/api
           go build -v -o mbr ./cmd/mbr
 
+      - name: Verify public CLI release contract
+        working-directory: platform
+        run: |
+          set -euo pipefail
+          VERSION="ci-${GITHUB_SHA::12}"
+          rm -rf dist/cli-contract-check
+          bash scripts/build-cli-release.sh --version "${VERSION}" --out dist/cli-contract-check
+          bash scripts/verify-cli-release.sh dist/cli-contract-check \
+            --version "${VERSION}" \
+            --git-sha "${GITHUB_SHA}"
+          mkdir -p /tmp/mbr-cli-contract-check
+          tar -xzf "dist/cli-contract-check/mbr_${VERSION}_linux_amd64.tar.gz" \
+            -C /tmp/mbr-cli-contract-check
+          /tmp/mbr-cli-contract-check/mbr version --json | jq -e --arg version "${VERSION}" '.version == $version'
+          /tmp/mbr-cli-contract-check/mbr spec export --json | jq -e '
+            [.commands[].path | join(" ")] as $commands |
+            ($commands | index("extensions verify")) != null and
+            ($commands | index("extensions nav")) != null and
+            ($commands | index("extensions widgets")) != null and
+            ($commands | index("fleet register")) != null
+          '
+
       - name: Create test summary
         if: always()
         working-directory: platform

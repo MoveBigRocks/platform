@@ -92,7 +92,10 @@ build_archive() {
 
   (
     cd "$ROOT_DIR"
-    CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build -trimpath -o "$stage_dir/$binary_name" ./cmd/mbr
+    CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build \
+      -trimpath \
+      -ldflags "-s -w -X main.cliVersion=${VERSION} -X main.cliGitCommit=${GIT_SHA} -X main.cliBuildDate=${BUILD_DATE}" \
+      -o "$stage_dir/$binary_name" ./cmd/mbr
   )
 
   if [[ "$goos" == "windows" ]]; then

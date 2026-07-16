@@ -9,6 +9,7 @@ import (
 type rootCommandHandler func(context.Context, []string, io.Writer, io.Writer) int
 
 var rootCommandHandlers = map[string]rootCommandHandler{
+	"version":           runVersion,
 	"auth":              runAuth,
 	"context":           runContext,
 	"spec":              runSpec,
@@ -43,6 +44,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	case "help", "-h", "--help":
 		printRootUsage(stdout)
 		return 0
+	case "--version":
+		return runVersion(ctx, nil, stdout, stderr)
 	}
 
 	handler, ok := rootCommandHandlers[args[0]]

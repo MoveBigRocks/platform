@@ -27,6 +27,10 @@ jobs:
     permissions:
       contents: write
       packages: write
+      id-token: write
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+      skip: ${{ steps.version.outputs.skip }}
     env:
       REGISTRY: ghcr.io
       IMAGE_BASE: movebigrocks/mbr
@@ -177,6 +181,22 @@ jobs:
 
           echo "Tagged all OCI artifacts with ${VERSION}"
 
+      - name: Install Cosign
+        if: steps.version.outputs.skip != 'true'
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign OCI artifacts with GitHub OIDC identity
+        if: steps.version.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.new_version }}
+        run: |
+          set -euo pipefail
+          for artifact in services migrations manifest; do
+            ref="${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-${artifact}:${VERSION}"
+            echo "Signing ${ref}"
+            cosign sign --yes "${ref}"
+          done
+
       - name: Create release summary
         if: steps.version.outputs.skip != 'true'
         run: |
@@ -209,3 +229,18 @@ jobs:
           oras pull ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-manifest:$VERSION
           \`\`\`
           EOF
+
+  cli-release:
+    name: Publish CLI Release
+    needs:
+      - build
+      - version
+    if: needs.version.outputs.skip != 'true'
+    permissions:
+      contents: write
+      id-token: write
+    uses: ./.github/workflows/cli-release.yml
+    with:
+      version: ${{ needs.version.outputs.new_version }}
+      git_sha: ${{ needs.build.outputs.git_sha }}
+      publish: true

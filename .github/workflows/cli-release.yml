@@ -1,6 +1,21 @@
 name: CLI Release
 
 on:
+  workflow_call:
+    inputs:
+      version:
+        description: Release version
+        required: true
+        type: string
+      git_sha:
+        description: Commit to build
+        required: true
+        type: string
+      publish:
+        description: Publish assets to the GitHub release
+        required: false
+        default: true
+        type: boolean
   push:
     tags:
       - 'v*'
@@ -23,6 +38,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.git_sha || github.ref }}
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -33,7 +50,9 @@ jobs:
       - name: Resolve version
         id: version
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          elif [ -n "${{ github.event.inputs.version }}" ]; then
             VERSION="${{ github.event.inputs.version }}"
           elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             VERSION="${GITHUB_REF#refs/tags/}"
@@ -48,6 +67,18 @@ jobs:
           bash scripts/build-cli-release.sh \
             --version "${{ steps.version.outputs.value }}" \
             --out dist/cli-release
+
+      - name: Verify CLI release bundle and embedded version
+        run: |
+          set -euo pipefail
+          bash scripts/verify-cli-release.sh dist/cli-release \
+            --version "${{ steps.version.outputs.value }}" \
+            --git-sha "$(git rev-parse HEAD)"
+          mkdir -p /tmp/mbr-cli-verify
+          tar -xzf "dist/cli-release/mbr_${{ steps.version.outputs.value }}_linux_amd64.tar.gz" \
+            -C /tmp/mbr-cli-verify
+          /tmp/mbr-cli-verify/mbr version --json | \
+            jq -e --arg version "${{ steps.version.outputs.value }}" '.version == $version'
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
@@ -68,9 +99,11 @@ jobs:
           path: dist/cli-release/*
 
       - name: Publish GitHub release assets
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.publish
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.value }}
+          target_commitish: ${{ inputs.git_sha || github.sha }}
           files: dist/cli-release/*
           generate_release_notes: true
 

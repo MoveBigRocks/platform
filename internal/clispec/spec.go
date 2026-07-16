@@ -75,6 +75,7 @@ type Spec struct {
 }
 
 var sections = []SectionSpec{
+	{Key: "version", Title: "version"},
 	{Key: "auth", Title: "auth", Notes: []string{"If no token is supplied, `mbr auth login` opens the browser and stores a session-backed CLI login."}},
 	{Key: "context", Title: "context", Notes: []string{"`mbr context set` stores the current workspace and team so agents can operate with much shorter commands."}},
 	{Key: "spec", Title: "spec"},
@@ -101,6 +102,17 @@ var sections = []SectionSpec{
 }
 
 var commands = []CommandSpec{
+	{
+		Section:      "version",
+		Path:         []string{"version"},
+		Usage:        "mbr version [--json]",
+		Summary:      "Show CLI release and build provenance.",
+		SupportsJSON: true,
+		AuthMode:     AuthModeNone,
+		Operation:    OperationLocal,
+		Idempotency:  IdempotencyNotApplicable,
+		Flags:        []FlagSpec{{Name: "--json"}},
+	},
 	{
 		Section:      "auth",
 		Path:         []string{"auth", "whoami"},
