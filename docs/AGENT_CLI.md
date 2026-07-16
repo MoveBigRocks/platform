@@ -73,6 +73,7 @@ at the runtime bootstrap endpoint.
 > Generated from `internal/clispec`. Run `go run ./cmd/tools/sync-agent-cli-doc` to regenerate.
 
 ```text
+mbr version [--json]
 mbr auth whoami [--url URL] [--token TOKEN] [--json]
 mbr auth login --url URL [--token TOKEN | --token-stdin] [--json]
 mbr auth logout
@@ -190,6 +191,7 @@ mbr extensions uninstall --id EXTENSION_ID [--deactivate] [--reason TEXT] [--exp
 
 | Command | Auth | JSON | Operation | Idempotency |
 | --- | --- | --- | --- | --- |
+| `version` | No remote auth required | yes | local | not_applicable |
 | `auth whoami` | Bearer token or browser-backed session | yes | read | read_only |
 | `auth login` | No remote auth required | yes | local | local_state |
 | `auth logout` | Local CLI state | no | local | local_state |
