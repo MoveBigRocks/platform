@@ -45,7 +45,7 @@ jobs:
           path: platform
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           # Match the go.mod toolchain directive so every step (build, tests,
           # gosec, govulncheck) runs under the exact Go the repo ships with.
